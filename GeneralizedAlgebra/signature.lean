@@ -34,6 +34,12 @@ def v0 : preTm := prePROJ2 (preID (preEXTEND preEMPTY preUU))
 
 def GAT_sig : Type := preCon
 
+set_option hygiene false
+
+
+
+
+
 declare_syntax_cat gat_ty
 syntax "U"       : gat_ty
 syntax "(" gat_ty ")" : gat_ty
@@ -107,6 +113,59 @@ partial def elabGATCon (s : Syntax) : MetaM Expr := do
   return res
 
 elab g:gat_con : term => elabGATCon g
+
+
+@[app_unexpander preTy.preUU]
+def unexpandUU : Lean.PrettyPrinter.Unexpander
+  | `($(_)) => `(UU)
+@[app_unexpander preTy.prePI]
+def unexpandPI : Lean.PrettyPrinter.Unexpander
+  | `($(_) $dom $cod) => `($dom -> $cod)
+  | _ => throw ()
+@[app_unexpander preCon.preEMPTY]
+def unexpandEMPTY : Lean.PrettyPrinter.Unexpander
+  | `($(_)) => `(⬝)
+  -- | _ => throw ()
+@[app_unexpander preCon.preEXTEND]
+def unexpandEXTEND : Lean.PrettyPrinter.Unexpander
+  | `($(_) $C $T) =>
+    match C with
+    | `(⬝) => `($T)
+    | _ => `($C ▸ $T)
+  | _ => throw ()
+@[app_unexpander preTy.preEL]
+def unexpandEL : Lean.PrettyPrinter.Unexpander
+  | `($(_) $code) => `(El $code)
+  | _ => throw ()
+@[app_unexpander preSub.prePROJ1]
+def unexpandPROJ1 : Lean.PrettyPrinter.Unexpander
+  | `($(_) $code) =>
+    match code with
+    | `(preID $_) => `(wk)
+    | _ => `(π₁ $code)
+  | _ => throw ()
+@[app_unexpander preTm.preSUBST_Tm]
+def unexpandSUBST_Tm : Lean.PrettyPrinter.Unexpander
+  | `($(_) $sigma $t) =>
+    match sigma with
+    | `(wk) => match t with
+      | `($n:num) => match n.getNat with
+        | 0 => `(1) | 1 => `(2) | 2 => `(3) | 3 => `(4) | 4 => `(5) | 5 => `(6) | 6 => `(7) | 7 => `(8) | 8 => `(9) | 9 => `(10) | 10 => `(11)
+        | _ => throw ()
+      | _ => `($t[wk])
+    | _ => `($t[$sigma])
+  | _ => throw ()
+@[app_unexpander preTm.prePROJ2]
+def unexpandPROJ2 : Lean.PrettyPrinter.Unexpander
+  | `($(_) $code) =>
+    match code with
+    | `(preID $_) => `(0)
+    | _ => `(π₂ $code)
+  | _ => throw ()
+
+#reduce Nat   : U,
+    zero  : Nat,
+    suc   : Nat ⇒ Nat
 
   mutual
     inductive wfCon : preCon → Prop where
