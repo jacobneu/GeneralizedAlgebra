@@ -1,1 +1,1 @@
-# thesis-lean
+# Generalized Algebra
