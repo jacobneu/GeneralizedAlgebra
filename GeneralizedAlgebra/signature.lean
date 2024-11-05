@@ -36,57 +36,75 @@ def GAT_sig : Type := preCon
 
 declare_syntax_cat gat_ty
 syntax "U"       : gat_ty
+syntax "(" gat_ty ")" : gat_ty
 
 
 declare_syntax_cat gat_tm
 syntax ident     : gat_tm
+syntax "(" gat_tm ")" : gat_tm
 syntax gat_tm : gat_ty
 syntax gat_tm "⇒" gat_ty : gat_ty
 
 declare_syntax_cat gat_decl
 syntax ident ":" gat_ty : gat_decl
 
-partial def elabGATTm : Syntax → MetaM Expr
-| `(gat_tm| $i:ident ) => return mkStrLit i.getId.toString
-| _ => throwUnsupportedSyntax
-
-partial def elabGATTy : Syntax → MetaM Expr
-| `(gat_ty| U ) => return .const ``preUU []
-| `(gat_ty| $_:gat_tm ) => mkAppM ``preEL #[.const ``v0 []] -- TODO: implement de bruijn indices
-| `(gat_ty| $_:gat_tm ⇒ $T':gat_ty) => do
-  let domain := .const ``v0 [] -- TODO: implement de bruijn indices
-  let codomain ← elabGATTy T'
-  mkAppM  ``prePI #[domain,codomain]
-| _ => throwUnsupportedSyntax
-
-partial def elabGATdecl_Ty : Syntax → MetaM Expr
-| `(gat_decl| $_:ident : $g:gat_ty ) => elabGATTy g
-| _ => throwUnsupportedSyntax
-
 declare_syntax_cat gat_con
 syntax "⬝" : gat_con
 syntax gat_decl : gat_con
-syntax "⊳" gat_decl : gat_con
 syntax gat_con "," gat_decl : gat_con
-syntax gat_con "⊳" gat_decl : gat_con
 
-partial def elabGATCon : Syntax → MetaM Expr
-| `(gat_con| ⬝ ) => return .const ``preEMPTY []
-| `(gat_con| $rest:gat_con , $d:gat_decl ) => do
-  let t ← elabGATdecl_Ty d
-  let C ← elabGATCon rest
-  mkAppM ``preEXTEND #[C, t]
-| `(gat_con| $rest:gat_con ⊳ $d:gat_decl ) => do
-  let t ← elabGATdecl_Ty d
-  let C ← elabGATCon rest
-  mkAppM ``preEXTEND #[C, t]
-| `(gat_con| $d:gat_decl ) => do
-  let t ← elabGATdecl_Ty d
-  mkAppM ``preEXTEND #[.const ``preEMPTY [], t]
-| `(gat_con| ⊳ $d:gat_decl ) => do
-  let t ← elabGATdecl_Ty d
-  mkAppM ``preEXTEND #[.const ``preEMPTY [], t]
+partial def elabGATTm (vars : String → MetaM Expr) : Syntax → MetaM Expr
+| `(gat_tm| ( $g:gat_tm ) ) => elabGATTm vars g
+| `(gat_tm| $i:ident ) => vars i.getId.toString
 | _ => throwUnsupportedSyntax
+
+partial def elabGATTy (vars : String → MetaM Expr) : Syntax → MetaM Expr
+| `(gat_ty| ( $g:gat_ty ) ) => elabGATTy vars g
+| `(gat_ty| U ) => return .const ``preUU []
+| `(gat_ty| $x:gat_tm ) => do
+  let t ← elabGATTm vars x
+  mkAppM ``preEL #[t]
+| `(gat_ty| $T:gat_tm ⇒ $T':gat_ty) => do
+  let domain ← elabGATTm vars T
+  let codomain ← elabGATTy vars T'
+  mkAppM  ``prePI #[domain,codomain]
+| _ => throwUnsupportedSyntax
+
+-- Returns (identifier , type)
+partial def elabGATdecl (vars : String → MetaM Expr) : Syntax → MetaM (String × Expr)
+| `(gat_decl| $i:ident : $g:gat_ty ) => do
+    let T ← elabGATTy vars g
+    return (i.getId.toString,T)
+| _ => throwUnsupportedSyntax
+
+partial def elabGATCon_core : Syntax → MetaM (Expr × (String → MetaM Expr))
+| `(gat_con| ⬝ ) => return (.const ``preEMPTY [] , λ _ => throwUnsupportedSyntax)
+| `(gat_con| $rest:gat_con , $d:gat_decl ) => do
+  let (C , restVars) ← elabGATCon_core rest
+  let (i,T) ← elabGATdecl restVars d
+  let res ← mkAppM ``preEXTEND #[C, T]
+  let newVars := λ s =>
+    if s=i
+    then return (.const ``v0 [])
+    else do
+      let old ← restVars s
+      let ID ← mkAppM ``preID #[res]
+      let p ← mkAppM ``prePROJ1 #[ID]
+      mkAppM ``preSUBST_Tm #[ p , old]
+  return (res, newVars)
+| `(gat_con| $d:gat_decl ) => do
+  let (i,T) ← elabGATdecl (λ _ => throwUnsupportedSyntax) d
+  let newVars := λ s =>
+    if s=i
+    then return (.const ``v0 [])
+    else throwUnsupportedSyntax
+  let res ← mkAppM ``preEXTEND #[.const ``preEMPTY [], T]
+  return (res, newVars)
+| _ => throwUnsupportedSyntax
+
+partial def elabGATCon (s : Syntax) : MetaM Expr := do
+  let (res,_) ← elabGATCon_core s
+  return res
 
 elab g:gat_con : term => elabGATCon g
 
