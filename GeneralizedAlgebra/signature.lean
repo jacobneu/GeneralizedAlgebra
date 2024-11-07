@@ -163,10 +163,6 @@ def unexpandPROJ2 : Lean.PrettyPrinter.Unexpander
     | _ => `(π₂ $code)
   | _ => throw ()
 
-#reduce Nat   : U,
-    zero  : Nat,
-    suc   : Nat ⇒ Nat
-
   mutual
     inductive wfCon : preCon → Prop where
     | wfEMPTY : wfCon preEMPTY
