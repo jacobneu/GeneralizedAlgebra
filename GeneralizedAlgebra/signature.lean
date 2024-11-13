@@ -31,6 +31,12 @@ end
 open preCon preSub preTy preTm
 
 def v0 : preTm := prePROJ2 (preID (preEXTEND preEMPTY preUU))
+def preAPP' (Γ : preCon) (f : preTm) (x : preTm) : preTm :=
+   preSUBST_Tm (prePAIR (preID Γ) x) (preAPP f)
+
+def preCTXAPPEND (old : preCon) : preCon → preCon
+| preEMPTY => old
+| (preEXTEND Δ A) => preEXTEND (preCTXAPPEND old Δ) A
 
 def GAT_sig : Type := preCon
 
@@ -48,21 +54,46 @@ syntax "(" gat_ty ")" : gat_ty
 declare_syntax_cat gat_tm
 syntax ident     : gat_tm
 syntax "(" gat_tm ")" : gat_tm
+syntax gat_tm gat_tm : gat_tm
 syntax gat_tm : gat_ty
-syntax gat_tm "⇒" gat_ty : gat_ty
 
 declare_syntax_cat gat_decl
 syntax ident ":" gat_ty : gat_decl
+
+declare_syntax_cat gat_arg
+syntax "(" ident ":" gat_tm ")" : gat_arg
+syntax "(" "_" ":" gat_tm ")" : gat_arg
+syntax gat_tm : gat_arg
+
+syntax gat_arg "⇒" gat_ty : gat_ty
+
+declare_syntax_cat ident_list
+syntax ident : ident_list
+syntax "_" : ident_list
+syntax ident_list "," "_" : ident_list
+syntax ident_list "," ident : ident_list
 
 declare_syntax_cat gat_con
 syntax "⬝" : gat_con
 syntax gat_decl : gat_con
 syntax gat_con "," gat_decl : gat_con
+syntax "include" ident "as" "(" ident_list ");" gat_con : gat_con
 
 partial def elabGATTm (vars : String → MetaM Expr) : Syntax → MetaM Expr
 | `(gat_tm| ( $g:gat_tm ) ) => elabGATTm vars g
+-- | `(gat_tm| $g1:gat_tm $g2:gat_tm ) => do
+--       let t1 ← elabGATTm vars g1
+--       let t2 ← elabGATTm vars g2
+--       mkAppM  ``preAPP #[t1]
 | `(gat_tm| $i:ident ) => vars i.getId.toString
 | _ => throwUnsupportedSyntax
+
+partial def elabGATArg (vars : String → MetaM Expr) : Syntax → MetaM Expr
+| `(gat_arg| ( $_:ident : $g:gat_tm ) ) => elabGATTm vars g
+| `(gat_arg| ( _ : $g:gat_tm ) ) => elabGATTm vars g
+| `(gat_arg| $g:gat_tm ) => elabGATTm vars g
+| _ => throwUnsupportedSyntax
+
 
 partial def elabGATTy (vars : String → MetaM Expr) : Syntax → MetaM Expr
 | `(gat_ty| ( $g:gat_ty ) ) => elabGATTy vars g
@@ -70,10 +101,31 @@ partial def elabGATTy (vars : String → MetaM Expr) : Syntax → MetaM Expr
 | `(gat_ty| $x:gat_tm ) => do
   let t ← elabGATTm vars x
   mkAppM ``preEL #[t]
-| `(gat_ty| $T:gat_tm ⇒ $T':gat_ty) => do
-  let domain ← elabGATTm vars T
+| `(gat_ty| $T:gat_arg ⇒ $T':gat_ty) => do
+  let domain ← elabGATArg vars T
   let codomain ← elabGATTy vars T'
   mkAppM  ``prePI #[domain,codomain]
+| _ => throwUnsupportedSyntax
+
+partial def elab_ident_list (oldCtx newCtx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM (Expr × (String → MetaM Expr))
+| `(ident_list| $i:ident ) => do
+  let newVars := λ s =>
+    if s=i.getId.toString
+    then return (.const ``v0 [])
+    else vars s
+  let appendedCtx ← mkAppM ``preCTXAPPEND #[oldCtx,newCtx]
+  return (appendedCtx,newVars)
+| `(ident_list| $is:ident_list , $i:ident ) => do
+  let (appendedCtx,othervars) ← elab_ident_list oldCtx newCtx vars is
+  let newVars := λ s =>
+    if s=i.getId.toString
+    then return (.const ``v0 [])
+    else do
+      let old ← othervars s
+      let ID ← mkAppM ``preID #[appendedCtx]
+      let p ← mkAppM ``prePROJ1 #[ID]
+      mkAppM ``preSUBST_Tm #[ p , old]
+  return (appendedCtx,newVars)
 | _ => throwUnsupportedSyntax
 
 -- Returns (identifier , type)
@@ -83,10 +135,10 @@ partial def elabGATdecl (vars : String → MetaM Expr) : Syntax → MetaM (Strin
     return (i.getId.toString,T)
 | _ => throwUnsupportedSyntax
 
-partial def elabGATCon_core : Syntax → MetaM (Expr × (String → MetaM Expr))
+partial def elabGATCon_core (ctx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM (Expr × (String → MetaM Expr))
 | `(gat_con| ⬝ ) => return (.const ``preEMPTY [] , λ _ => throwUnsupportedSyntax)
 | `(gat_con| $rest:gat_con , $d:gat_decl ) => do
-  let (C , restVars) ← elabGATCon_core rest
+  let (C , restVars) ← elabGATCon_core ctx vars rest
   let (i,T) ← elabGATdecl restVars d
   let res ← mkAppM ``preEXTEND #[C, T]
   let newVars := λ s =>
@@ -99,20 +151,24 @@ partial def elabGATCon_core : Syntax → MetaM (Expr × (String → MetaM Expr))
       mkAppM ``preSUBST_Tm #[ p , old]
   return (res, newVars)
 | `(gat_con| $d:gat_decl ) => do
-  let (i,T) ← elabGATdecl (λ _ => throwUnsupportedSyntax) d
+  let (i,T) ← elabGATdecl vars d
   let newVars := λ s =>
     if s=i
     then return (.const ``v0 [])
     else throwUnsupportedSyntax
-  let res ← mkAppM ``preEXTEND #[.const ``preEMPTY [], T]
+  let res ← mkAppM ``preEXTEND #[ctx, T]
   return (res, newVars)
+| `(gat_con| include $g:ident as ( $is:ident_list ); $rest:gat_con ) => do
+  let (newCon,newVars) ← elab_ident_list ctx (.const g.getId []) vars is
+  elabGATCon_core newCon newVars rest
 | _ => throwUnsupportedSyntax
 
 partial def elabGATCon (s : Syntax) : MetaM Expr := do
-  let (res,_) ← elabGATCon_core s
+  let (res,_) ← elabGATCon_core (.const ``preEMPTY []) (λ _ => throwUnsupportedSyntax) s
   return res
 
 elab g:gat_con : term => elabGATCon g
+
 
 
 @[app_unexpander preTy.preUU]
@@ -162,6 +218,16 @@ def unexpandPROJ2 : Lean.PrettyPrinter.Unexpander
     | `(preID $_) => `(0)
     | _ => `(π₂ $code)
   | _ => throw ()
+
+-- -- pointed
+-- def 𝔓 : GAT_sig := X : U, x : X
+-- #reduce 𝔓
+
+-- -- nat as an extension of pointed
+-- def 𝔑 : GAT_sig :=
+--   include 𝔓 as (Nat,zero);
+--   suc : Nat ⇒ Nat
+-- #reduce 𝔑
 
   mutual
     inductive wfCon : preCon → Prop where
