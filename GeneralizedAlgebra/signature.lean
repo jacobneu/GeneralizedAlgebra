@@ -155,7 +155,11 @@ partial def elabGATCon_core (ctx : Expr) (vars : String → MetaM Expr) : Syntax
   let newVars := λ s =>
     if s=i
     then return (.const ``v0 [])
-    else throwUnsupportedSyntax
+    else do
+      let old ← vars s
+      let ID ← mkAppM ``preID #[ctx]
+      let p ← mkAppM ``prePROJ1 #[ID]
+      mkAppM ``preSUBST_Tm #[ p , old]
   let res ← mkAppM ``preEXTEND #[ctx, T]
   return (res, newVars)
 | `(gat_con| include $g:ident as ( $is:ident_list ); $rest:gat_con ) => do
@@ -223,10 +227,11 @@ def unexpandPROJ2 : Lean.PrettyPrinter.Unexpander
 -- def 𝔓 : GAT_sig := X : U, x : X
 -- #reduce 𝔓
 
--- -- nat as an extension of pointed
 -- def 𝔑 : GAT_sig :=
 --   include 𝔓 as (Nat,zero);
+--   include 𝔓 as (Nat',zero');
 --   suc : Nat ⇒ Nat
+--   , foo : Nat' ⇒ Nat
 -- #reduce 𝔑
 
   mutual
