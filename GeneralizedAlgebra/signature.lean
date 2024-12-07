@@ -78,32 +78,45 @@ def WkTy {Γ : Con}{A : Ty Γ} (B : Ty Γ) : Ty (EXTEND Γ A) :=
 def PI {Γ : Con} (X : Tm Γ UU) (Y : Ty (EXTEND Γ (EL X))) : Ty Γ :=
 ⟨prePI X.1 Y.1, @wfPI _ _ _ Γ.2 X.2 Y.2⟩
 
-
--- def V2 {Γ : Con}{A : Ty Γ}{B : Ty (EXTEND Γ A)}{C : Ty (EXTEND (EXTEND Γ A) B)} : Tm (EXTEND (EXTEND (EXTEND Γ A) B) C) (WkTy (WkTy (WkTy A))) :=
-
--- ⟨VAR 2,@wfVARsuc _ _ _ (EXTEND (EXTEND Γ A) B).2 C.2 (WkTy (WkTy A)).2 _ V1.2⟩
-
 -- inductive isWk : Con → preTy → Type where
 -- | wkZero : {Γ : Con} → (A : Ty Γ) → isWk Γ A.1
 -- | wkSucc : {Γ : Con} → {A : preTy} → isWk Γ A → (B : Ty Γ) → isWk (EXTEND Γ B) A
 -- open isWk
-inductive wkTypes : Con →  Nat → Type where
-| wkZero : {Γ : Con} → Ty Γ → wkTypes Γ 0
-| wkSucc : (Γ : Con) → {n : Nat} → (B : Ty Γ) → wkTypes Γ n → wkTypes (EXTEND Γ B) (succ n)
-open wkTypes
+-- inductive wkTypes : Con →  Nat → Type where
+-- | wkZero : {Γ : Con} → Ty Γ → wkTypes Γ 0
+-- | wkSucc : (Γ : Con) → {n : Nat} → (B : Ty Γ) → wkTypes Γ n → wkTypes (EXTEND Γ B) (succ n)
+-- open wkTypes
 
-def nWkTy {Γ : Con} : (n : Nat) → wkTypes Γ n → Ty Γ
-| 0, wkZero A => A
-| succ n, wkSucc Γ B A => WkTy (nWkTy n A)
+-- def nWkTy {Γ : Con} : (n : Nat) → wkTypes Γ n → Ty Γ
+-- | 0, wkZero A => A
+-- | succ n, wkSucc Γ B A => WkTy (nWkTy n A)
 
 -- def nWkTy  {Γ : Con}{A : preTy} : isWk Γ A → Ty Γ
 -- | wkZero A => A
 -- | wkSucc h B => WkTy (nWkTy h)
 
--- def V0 {Γ : Con}{A : Ty Γ} : Tm (EXTEND Γ A) (WkTy A) :=
--- ⟨ VAR 0 , @wfVAR0 _ _ Γ.2 A.2 ⟩
--- def V1 {Γ : Con}{A : Ty Γ}{B : Ty (EXTEND Γ A)} : Tm (EXTEND (EXTEND Γ A) B) (WkTy (WkTy A)) :=
--- ⟨VAR 1,@wfVARsuc _ _ _ (EXTEND Γ A).2 B.2 (WkTy A).2 _ V0.2 ⟩
+-- inductive Tel : Con → Type where
+-- | telZero : {Γ : Con} → Ty Γ → Tel Γ
+-- -- | telSucc : {Γ : Con}
+-- open Tel
+
+-- def extCon {Γ : Con} : Tel Γ → Con
+-- | telZero A => EXTEND Γ A
+
+-- def extTy {Γ : Con} : (T : Tel Γ) → Ty (extCon T)
+-- | telZero A => WkTy A
+
+def V0 {Γ : Con}{A : Ty Γ} : Tm (EXTEND Γ A) (WkTy A) :=
+⟨ VAR 0 , @wfVAR0 _ _ Γ.2 A.2 ⟩
+def V1 {Γ : Con}{A : Ty Γ}{B : Ty (EXTEND Γ A)} : Tm (EXTEND (EXTEND Γ A) B) (WkTy (WkTy A)) :=
+⟨VAR 1,@wfVARsuc _ _ _ (EXTEND Γ A).2 B.2 (WkTy A).2 _ V0.2 ⟩
+def V2 {Γ : Con}{A : Ty Γ}{B : Ty (EXTEND Γ A)}{C : Ty (EXTEND (EXTEND Γ A) B)} : Tm (EXTEND (EXTEND (EXTEND Γ A) B) C) (WkTy (WkTy (WkTy A))) :=
+⟨VAR 2, @wfVARsuc _ _ _ (EXTEND (EXTEND Γ A) B).2 C.2 (WkTy (WkTy A)).2 _ V1.2⟩
+def V3 {Γ : Con}{A : Ty Γ}{B : Ty (EXTEND Γ A)}{C : Ty (EXTEND (EXTEND Γ A) B)}{D : Ty (EXTEND (EXTEND (EXTEND Γ A) B) C)} : Tm (EXTEND (EXTEND (EXTEND (EXTEND Γ A) B) C) D) (WkTy (WkTy (WkTy (WkTy A)))) :=
+⟨VAR 3, @wfVARsuc _ _ _ (EXTEND (EXTEND (EXTEND Γ A) B) C).2 D.2 (WkTy (WkTy (WkTy A))).2 _ V2.2⟩
+
+-- def V {Γ : Con} : (T : Tel Γ) → Tm (extCon T) (extTy T)
+-- | telZero A => ⟨ VAR 0 , @wfVAR0 _ _ Γ.2 A.2 ⟩
 
 -- def Vsuc {Γ : Con}{B : Ty Γ}{n : Nat}{A : wkTypes Γ n} :  Tm (EXTEND Γ B) (nWkTy (succ n) (wkSucc B A)) :=
 -- ⟨VAR (succ n), @wfVARsuc _ _ _ _ _ _ _ _⟩
@@ -111,12 +124,20 @@ def nWkTy {Γ : Con} : (n : Nat) → wkTypes Γ n → Ty Γ
 -- | wkSucc h' B', v => ⟨wkTm v.1,_⟩
 
 -- def wfWkTm {Γ : Con}{n : Nat}{B : Ty Γ}{A : wkTypes Γ n}{t : preTm} : wfTm Γ.1 (nWkTy n A).1 t → wfTm (EXTEND Γ B).1 (nWkTy (succ n) (wkSucc B A)).1 (wkTm t):= _
-def V_helper {Γ : Con} : (n : Nat) → (A : wkTypes Γ n) → wfTm (EXTEND Γ (nWkTy n A)).1 (nWkTy (succ n) (wkSucc _ (nWkTy n A) A)).1 (VAR n)
-| 0,wkZero A => @wfVAR0 _ _ Γ.2 A.2
-| succ n, wkSucc Γ B A => @wfVARsuc _ _ _ (EXTEND Γ B).2 (nWkTy _ _).2 (nWkTy _ _).2 _ _
+-- def varCon {Γ:Con} : (n : Nat) →(A : wkTypes Γ n) → Con
+-- | 0, wkZero A => EXTEND Γ A
+-- | succ n, wkSucc Γ B A => EXTEND Γ B
 
-def V {Γ : Con} (n : Nat) (A : wkTypes Γ n):
-  Tm (EXTEND Γ (nWkTy n A)) (nWkTy (succ n) (wkSucc _ _ A)) := ⟨VAR n,V_helper n A⟩
+-- def varTy  {Γ:Con} : (n : Nat) →(A : wkTypes Γ n) → Ty (varCon n A)
+-- | 0, wkZero A => WkTy A
+-- | succ n, wkSucc Γ B A =>
+
+-- def V_helper {Γ : Con} : (n : Nat) → (A : wkTypes Γ n) → wfTm (EXTEND Γ (nWkTy n A)).1 (nWkTy (succ n) (wkSucc _ (nWkTy n A) A)).1 (VAR n)
+-- | 0,wkZero A => @wfVAR0 _ _ Γ.2 A.2
+-- | succ n, wkSucc Γ B A => @wfVARsuc _ _ _ (EXTEND Γ B).2 (nWkTy _ _).2 (nWkTy _ _).2 _ _
+
+-- def V {Γ : Con} : (n : Nat) → (A : wkTypes Γ n) →
+--   Tm (varCon n A) (nWkTy (succ n) (wkSucc _ _ A)) := ⟨VAR n,V_helper n A⟩
 
 -- #check EXTEND (EXTEND (EXTEND EMPTY UU) (EL V0)) (PI (V1) (WkTy (EL V1)))
 -- mutual
