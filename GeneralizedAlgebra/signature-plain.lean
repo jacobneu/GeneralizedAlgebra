@@ -4,31 +4,86 @@ open Lean Elab Meta
 
 
 mutual
-  inductive preCon : Type where
-  | preEMPTY : preCon
-  | preEXTEND : preCon → preTy → preCon
+  inductive Con : Type where
+  | EMPTY : Con
+  | EXTEND : Con → Ty → Con
 
-  inductive preSub : Type where
-  | preEPSILON : preCon → preSub
-  | preID : preCon → preSub
-  | preCOMP : preSub → preSub → preSub
-  | prePAIR : preSub → preTm → preSub
-  | prePROJ1 : preSub → preSub
+  inductive Subst : Type where
+  | EPSILON : Con → Subst
+  | ID : {_ : Con} → Subst
+  | COMP : Subst → Subst → Subst
+  | PAIR : Subst → Tm → Subst
+  | PROJ1 : Subst → Subst
 
-  inductive preTy : Type where
-  | preSUBST_Ty : preSub → preTy → preTy
-  | preUU : preTy
-  | preEL : preTm → preTy
-  | prePI : preTm → preTy → preTy
-  | preEQ : preTm → preTm → preTy
+  inductive Ty : Type where
+  | SUBST_Ty : Subst → Ty → Ty
+  | UU : Ty
+  | EL : Tm → Ty
+  | PI : Tm → Ty → Ty
+  | EQ : Tm → Tm → Ty
 
-  inductive preTm : Type where
-  | preSUBST_Tm : preSub → preTm → preTm
-  | prePROJ2 : preSub → preTm
-  | preAPP : preTm → preTm
+  inductive Tm : Type where
+  | SUBST_Tm : Subst → Tm → Tm
+  | PROJ2 : Subst → Tm
+  | APP : Tm → Tm
 end
 
-open preCon preSub preTy preTm
+open Con Subst Ty Tm
+
+
+infixl:10 " ▷ " => EXTEND
+notation t " [ " σ " ]t " => SUBST_Tm σ t
+
+def wk {Γ : Con} {A : Ty} : Subst := PROJ1 (@ID (Γ ▷ A))
+def V0 {Γ : Con} {T0 : Ty} : Tm := PROJ2 (@ID (Γ ▷ T0))
+def V1 {Γ}{T1}{T0} := (@V0 Γ T0) [@wk (Γ ▷ T1) T0]t
+def V2 {Γ}{T2}{T1}{T0} := (@V1 Γ T0 T1) [@wk (Γ ▷ T2 ▷ T1) T0]t
+def V3 {Γ}{T3}{T2}{T1}{T0} := (@V2 Γ T0 T1 T2) [@wk (Γ ▷ T3 ▷ T2 ▷ T1) T0]t
+def V4 {Γ}{T4}{T3}{T2}{T1}{T0} := (@V3 Γ T0 T1 T2 T3) [@wk (Γ ▷ T4 ▷ T3 ▷ T2 ▷ T1) T0]t
+def V5 {Γ}{T5}{T4}{T3}{T2}{T1}{T0} := (@V4 Γ T0 T1 T2 T3 T4) [@wk (Γ ▷ T5 ▷ T4 ▷ T3 ▷ T2 ▷ T1) T0]t
+def V6 {Γ}{T6}{T5}{T4}{T3}{T2}{T1}{T0} := (@V5 Γ T0 T1 T2 T3 T4 T5) [@wk (Γ ▷ T6 ▷ T5 ▷ T4 ▷ T3 ▷ T2 ▷ T1) T0]t
+def V7 {Γ}{T7}{T6}{T5}{T4}{T3}{T2}{T1}{T0} := (@V6 Γ T0 T1 T2 T3 T4 T5 T6) [@wk (Γ ▷ T7 ▷ T6 ▷ T5 ▷ T4 ▷ T3 ▷ T2 ▷ T1) T0]t
+def V8 {Γ}{T8}{T7}{T6}{T5}{T4}{T3}{T2}{T1}{T0} := (@V7 Γ T0 T1 T2 T3 T4 T5 T6 T7) [@wk (Γ ▷ T8 ▷ T7 ▷ T6 ▷ T5 ▷ T4 ▷ T3 ▷ T2 ▷ T1) T0]t
+def V9 {Γ}{T9}{T8}{T7}{T6}{T5}{T4}{T3}{T2}{T1}{T0} := (@V8 Γ T0 T1 T2 T3 T4 T5 T6 T7 T8) [@wk (Γ ▷ T9 ▷ T8 ▷ T7 ▷ T6 ▷ T5 ▷ T4 ▷ T3 ▷ T2 ▷ T1) T0]t
+def V10 {Γ}{T10}{T9}{T8}{T7}{T6}{T5}{T4}{T3}{T2}{T1}{T0} := (@V9 Γ T0 T1 T2 T3 T4 T5 T6 T7 T8 T9) [@wk (Γ ▷ T10 ▷ T9 ▷ T8 ▷ T7 ▷ T6 ▷ T5 ▷ T4 ▷ T3 ▷ T2 ▷ T1) T0]t
+def V11 {Γ}{T11}{T10}{T9}{T8}{T7}{T6}{T5}{T4}{T3}{T2}{T1}{T0} := (@V10 Γ T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10) [@wk (Γ ▷ T11 ▷ T10 ▷ T9 ▷ T8 ▷ T7 ▷ T6 ▷ T5 ▷ T4 ▷ T3 ▷ T2 ▷ T1) T0]t
+
+
+def foo : Con := EMPTY ▷ UU ▷ PI (@V0 EMPTY UU) (PI (@V1 EMPTY (EL (@V0 EMPTY UU)) (EL (@V0 EMPTY UU))) UU)
+
+
+mutual
+  def Con_toString : Con → String
+  | EMPTY => "⋄"
+  | Γ ▷ A => (Con_toString Γ) ++ " ▷ " ++ (Ty_toString A)
+  def Ty_toString : Ty → String
+  | UU => "U"
+  | EL X => "El " ++ Tm_toString X
+  | PI X UU => "Π " ++ (Tm_toString X) ++ " U"
+  | PI X Y => "Π " ++ (Tm_toString X) ++ " (" ++  (Ty_toString Y)  ++ ")"
+  | EQ t t' => "Eq " ++ (Tm_toString t) ++ " " ++ (Tm_toString t')
+  | SUBST_Ty σ T => (Ty_toString T) ++ " [ " ++ (Subst_toString σ) ++ " ]t"
+  def Tm_toString : Tm → String
+  | PROJ2 ID => "0"
+  | (PROJ2 ID) [ PROJ1 ID ]t => "1"
+  | ((PROJ2 ID) [ PROJ1 ID ]t) [ PROJ1 ID ]t => "2"
+  | (((PROJ2 ID) [ PROJ1 ID ]t) [ PROJ1 ID ]t) [ PROJ1 ID ]t => "3"
+  | ((((PROJ2 ID) [ PROJ1 ID ]t) [ PROJ1 ID ]t) [ PROJ1 ID ]t) [ PROJ1 ID ]t => "4"
+  | (((((PROJ2 ID) [ PROJ1 ID ]t) [ PROJ1 ID ]t) [ PROJ1 ID ]t) [ PROJ1 ID ]t) [ PROJ1 ID ]t => "5"
+  | (APP f) [ PAIR ID t ]t => (Tm_toString f) ++ " $ " ++ (Tm_toString t)
+  | PROJ2 σ => "π₂ " ++ (Subst_toString σ)
+  | APP f => "App " ++ (Tm_toString f)
+  | t [ σ ]t => (Tm_toString t) ++ " [ " ++ (Subst_toString σ) ++ " ] "
+  def Subst_toString : Subst → String
+  | PROJ1 ID => "wk"
+  | PROJ1 σ => "π₁ " ++ (Subst_toString σ)
+  | PAIR σ t => (Subst_toString σ) ++ " , " ++ (Tm_toString t)
+  | EPSILON _ => "ε"
+  | COMP σ τ => (Subst_toString σ) ++ " ∘ " ++ (Subst_toString τ)
+  | ID => "id"
+end
+
+#eval Con_toString foo
 
 -- def v0 : preTm := prePROJ2 (preID (preEXTEND preEMPTY preUU))
 -- def preAPP' (Γ : preCon) (f : preTm) (x : preTm) : preTm :=
@@ -42,86 +97,68 @@ open preCon preSub preTy preTm
 
 -- set_option hygiene false
 
-mutual
-  inductive wfCon : preCon → Prop where
-  | wfEMPTY : wfCon preEMPTY
-  | wfEXTEND : {Γ : preCon} → {A : preTy} → wfCon Γ → wfTy Γ A → wfCon (preEXTEND Γ A)
+-- mutual
+--   inductive wfCon : preCon → Prop where
+--   | wfEMPTY : wfCon preEMPTY
+--   | wfEXTEND : {Γ : preCon} → {A : preTy} → wfCon Γ → wfTy Γ A → wfCon (preEXTEND Γ A)
 
-  inductive wfSub : preCon → preCon → preSub → Prop
-  | wfEPSILON : {Γ : preCon} → {_ : wfCon Γ} → wfSub Γ preEMPTY (preEPSILON Γ)
-  | wfID : {Γ : preCon} → {_ : wfCon Γ} → wfSub Γ Γ (preID Γ)
-  | wfCOMP : {Θ Δ Γ : preCon} → {δ γ : preSub} → {_ :wfCon Θ} → {_ :wfCon Δ} → {_ : wfCon Γ} → wfSub Θ Δ δ → wfSub Δ Γ γ → wfSub Θ Γ (preCOMP γ δ)
-  | wfPAIR : {Δ Γ : preCon} → {A : preTy} → {σ : preSub} → {t : preTm} → {_ : wfCon Δ} → {_ : wfCon Γ} → {_ : wfTy Γ A} → wfSub Δ Γ σ → wfTm Δ (preSUBST_Ty σ A) t → wfSub Δ (preEXTEND Γ A) (prePAIR σ t)
-  | wfPROJ1 : {Δ Γ : preCon} → {A : preTy} → {τ : preSub} → {_ : wfCon Δ} → {_ : wfCon Γ} → {_ : wfTy Γ A} → wfSub Δ (preEXTEND Γ A) τ → wfSub Δ Γ (prePROJ1 τ)
+--   inductive wfSub : preCon → preCon → preSub → Prop
+--   | wfEPSILON : {Γ : preCon} → {_ : wfCon Γ} → wfSub Γ preEMPTY (preEPSILON Γ)
+--   | wfID : {Γ : preCon} → {_ : wfCon Γ} → wfSub Γ Γ (preID Γ)
+--   | wfCOMP : {Θ Δ Γ : preCon} → {δ γ : preSub} → {_ :wfCon Θ} → {_ :wfCon Δ} → {_ : wfCon Γ} → wfSub Θ Δ δ → wfSub Δ Γ γ → wfSub Θ Γ (preCOMP γ δ)
+--   | wfPAIR : {Δ Γ : preCon} → {A : preTy} → {σ : preSub} → {t : preTm} → {_ : wfCon Δ} → {_ : wfCon Γ} → {_ : wfTy Γ A} → wfSub Δ Γ σ → wfTm Δ (preSUBST_Ty σ A) t → wfSub Δ (preEXTEND Γ A) (prePAIR σ t)
+--   | wfPROJ1 : {Δ Γ : preCon} → {A : preTy} → {τ : preSub} → {_ : wfCon Δ} → {_ : wfCon Γ} → {_ : wfTy Γ A} → wfSub Δ (preEXTEND Γ A) τ → wfSub Δ Γ (prePROJ1 τ)
 
-  inductive wfTy : preCon → preTy → Prop where
-  | wfSUBST_Ty : {Δ Γ : preCon} → {σ : preSub} → {A : preTy} → {_ : wfCon Δ} → {_ : wfCon Γ} → wfSub Δ Γ σ→ wfTy Γ A → wfTy Δ (preSUBST_Ty σ A)
-  | wfUU : {Γ : preCon} → {_ : wfCon Γ} → wfTy Γ preUU
-  | wfEL : {Γ : preCon} → {X : preTm} → {_ : wfCon Γ} → wfTm Γ preUU X → wfTy Γ (preEL X)
-  | wfPI : {Γ : preCon} → {X : preTm} → {Y : preTy} → {_ : wfCon Γ} → wfTm Γ preUU X → wfTy (preEXTEND Γ (preEL X)) Y → wfTy Γ (prePI X Y)
-  | wfEQ : {Γ : preCon} → {T : preTy} → {_ : wfCon Γ} → {_ : wfTy Γ T} → {t t' : preTm} → wfTm Γ T t → wfTm Γ T t' → wfTy Γ (preEQ t t')
+--   inductive wfTy : preCon → preTy → Prop where
+--   | wfSUBST_Ty : {Δ Γ : preCon} → {σ : preSub} → {A : preTy} → {_ : wfCon Δ} → {_ : wfCon Γ} → wfSub Δ Γ σ→ wfTy Γ A → wfTy Δ (preSUBST_Ty σ A)
+--   | wfUU : {Γ : preCon} → {_ : wfCon Γ} → wfTy Γ preUU
+--   | wfEL : {Γ : preCon} → {X : preTm} → {_ : wfCon Γ} → wfTm Γ preUU X → wfTy Γ (preEL X)
+--   | wfPI : {Γ : preCon} → {X : preTm} → {Y : preTy} → {_ : wfCon Γ} → wfTm Γ preUU X → wfTy (preEXTEND Γ (preEL X)) Y → wfTy Γ (prePI X Y)
+--   | wfEQ : {Γ : preCon} → {T : preTy} → {_ : wfCon Γ} → {_ : wfTy Γ T} → {t t' : preTm} → wfTm Γ T t → wfTm Γ T t' → wfTy Γ (preEQ t t')
 
-  inductive wfTm : preCon → preTy → preTm → Prop where
-  | wfSUBST_Tm : {Δ Γ : preCon} → {A : preTy} → {t : preTm} → {σ : preSub} → {_ : wfCon Δ} → {_ : wfCon Γ} → {_ : wfTy Γ A} → wfSub Δ Γ σ → wfTm Γ A t → wfTm Δ (preSUBST_Ty σ A) (preSUBST_Tm σ t)
-  | wfPROJ2 : {Δ Γ : preCon} → {A : preTy} → {τ : preSub} → {_ : wfCon Δ} → {_ : wfCon Γ} → {_ : wfTy Γ A} → wfSub Δ (preEXTEND Γ A) τ → wfTm Δ (preSUBST_Ty (prePROJ1 τ) A) (prePROJ2 τ)
-  | wfAPP : {Γ : preCon} → {X : preTm} → {Y : preTy} → {f : preTm} → {_ : wfCon Γ} → {_ : wfTm Γ preUU X} → {_ : wfTy (preEXTEND Γ (preEL X)) Y} → wfTm Γ (prePI X Y) f → wfTm (preEXTEND Γ (preEL X)) Y (preAPP f)
-end
+--   inductive wfTm : preCon → preTy → preTm → Prop where
+--   | wfSUBST_Tm : {Δ Γ : preCon} → {A : preTy} → {t : preTm} → {σ : preSub} → {_ : wfCon Δ} → {_ : wfCon Γ} → {_ : wfTy Γ A} → wfSub Δ Γ σ → wfTm Γ A t → wfTm Δ (preSUBST_Ty σ A) (preSUBST_Tm σ t)
+--   | wfPROJ2 : {Δ Γ : preCon} → {A : preTy} → {τ : preSub} → {_ : wfCon Δ} → {_ : wfCon Γ} → {_ : wfTy Γ A} → wfSub Δ (preEXTEND Γ A) τ → wfTm Δ (preSUBST_Ty (prePROJ1 τ) A) (prePROJ2 τ)
+--   | wfAPP : {Γ : preCon} → {X : preTm} → {Y : preTy} → {f : preTm} → {_ : wfCon Γ} → {_ : wfTm Γ preUU X} → {_ : wfTy (preEXTEND Γ (preEL X)) Y} → wfTm Γ (prePI X Y) f → wfTm (preEXTEND Γ (preEL X)) Y (preAPP f)
+-- end
 
-open wfCon wfSub wfTy wfTm
+-- open wfCon wfSub wfTy wfTm
 
-def Con : Type := { Γ : preCon // wfCon Γ }
-def Subst (Δ Γ : Con) : Type := { σ : preSub // wfSub Δ.1 Γ.1 σ }
-def Ty (Γ : Con) : Type := { A : preTy // wfTy Γ.1 A}
-def Tm (Γ : Con) (A : Ty Γ) : Type := { t : preTm // wfTm Γ.1 A.1 t}
+-- def Con : Type := { Γ : preCon // wfCon Γ }
+-- def Subst (Δ Γ : Con) : Type := { σ : preSub // wfSub Δ.1 Γ.1 σ }
+-- def Ty (Γ : Con) : Type := { A : preTy // wfTy Γ.1 A}
+-- def Tm (Γ : Con) (A : Ty Γ) : Type := { t : preTm // wfTm Γ.1 A.1 t}
 
-def ID {Γ : Con} : Subst Γ Γ :=
-  ⟨ preID Γ.1 , @wfID _ Γ.2 ⟩
-def COMP {Θ Δ Γ : Con} (γ : Subst Δ Γ) (δ : Subst Θ Δ) : Subst Θ Γ :=
-  ⟨ preCOMP γ.1 δ.1 , @wfCOMP _ _ _ _ _ Θ.2 Δ.2 Γ.2 δ.2 γ.2  ⟩
-def EMPTY : Con :=
-  ⟨ preEMPTY , wfEMPTY ⟩
-def EPSILON {Γ : Con} : Subst Γ EMPTY :=
-  ⟨ preEPSILON Γ.1 , @wfEPSILON _ Γ.2 ⟩
-def SUBST_Ty {Δ Γ : Con} (σ : Subst Δ Γ) (A : Ty Γ) : Ty Δ :=
-  ⟨ preSUBST_Ty σ.1 A.1 , @wfSUBST_Ty _ Γ.1 _ _ Δ.2 Γ.2 σ.2 A.2⟩
-def SUBST_Tm {Δ Γ : Con} {A : Ty Γ} (σ : Subst Δ Γ) (t : Tm Γ A) : Tm Δ (SUBST_Ty σ A) :=
-  ⟨ preSUBST_Tm σ.1 t.1 , @wfSUBST_Tm _ Γ.1 _ _ _ Δ.2 Γ.2 A.2 σ.2 t.2 ⟩
+-- def ID {Γ : Con} : Subst Γ Γ :=
+--   ⟨ preID Γ.1 , @wfID _ Γ.2 ⟩
+-- def COMP {Θ Δ Γ : Con} (γ : Subst Δ Γ) (δ : Subst Θ Δ) : Subst Θ Γ :=
+--   ⟨ preCOMP γ.1 δ.1 , @wfCOMP _ _ _ _ _ Θ.2 Δ.2 Γ.2 δ.2 γ.2  ⟩
+-- def EMPTY : Con :=
+--   ⟨ preEMPTY , wfEMPTY ⟩
+-- def EPSILON {Γ : Con} : Subst Γ EMPTY :=
+--   ⟨ preEPSILON Γ.1 , @wfEPSILON _ Γ.2 ⟩
+-- def SUBST_Ty {Δ Γ : Con} (σ : Subst Δ Γ) (A : Ty Γ) : Ty Δ :=
+--   ⟨ preSUBST_Ty σ.1 A.1 , @wfSUBST_Ty _ Γ.1 _ _ Δ.2 Γ.2 σ.2 A.2⟩
+-- def SUBST_Tm {Δ Γ : Con} {A : Ty Γ} (σ : Subst Δ Γ) (t : Tm Γ A) : Tm Δ (SUBST_Ty σ A) :=
+--   ⟨ preSUBST_Tm σ.1 t.1 , @wfSUBST_Tm _ Γ.1 _ _ _ Δ.2 Γ.2 A.2 σ.2 t.2 ⟩
 
-def EXTEND (Γ : Con) (A : Ty Γ) : Con :=
-  ⟨ preEXTEND Γ.1 A.1 , @wfEXTEND _ _ Γ.2 A.2 ⟩
-def PAIR {Δ Γ : Con} {A : Ty Γ} (σ : Subst Δ Γ) (t : Tm Δ (SUBST_Ty σ A)) : Subst Δ (EXTEND Γ A) :=
-  ⟨ prePAIR σ.1 t.1 , @wfPAIR _ _ _ _ _ Δ.2 Γ.2 A.2 σ.2 t.2⟩
-def PROJ1 {Δ Γ : Con} {A : Ty Γ} (τ : Subst Δ (EXTEND Γ A)) : Subst Δ Γ :=
-  ⟨ prePROJ1 τ.1 , @wfPROJ1 _ _ A.1 _ Δ.2 Γ.2 A.2 τ.2 ⟩
-def PROJ2 {Δ Γ : Con} {A : Ty Γ} (τ : Subst Δ (EXTEND Γ A)) : Tm Δ (SUBST_Ty (PROJ1 τ) A) :=
-  ⟨ prePROJ2 τ.1 , @wfPROJ2 _ _ A.1 _ Δ.2 Γ.2 A.2 τ.2 ⟩
+-- def EXTEND (Γ : Con) (A : Ty Γ) : Con :=
+--   ⟨ preEXTEND Γ.1 A.1 , @wfEXTEND _ _ Γ.2 A.2 ⟩
+-- def PAIR {Δ Γ : Con} {A : Ty Γ} (σ : Subst Δ Γ) (t : Tm Δ (SUBST_Ty σ A)) : Subst Δ (EXTEND Γ A) :=
+--   ⟨ prePAIR σ.1 t.1 , @wfPAIR _ _ _ _ _ Δ.2 Γ.2 A.2 σ.2 t.2⟩
+-- def PROJ1 {Δ Γ : Con} {A : Ty Γ} (τ : Subst Δ (EXTEND Γ A)) : Subst Δ Γ :=
+--   ⟨ prePROJ1 τ.1 , @wfPROJ1 _ _ A.1 _ Δ.2 Γ.2 A.2 τ.2 ⟩
+-- def PROJ2 {Δ Γ : Con} {A : Ty Γ} (τ : Subst Δ (EXTEND Γ A)) : Tm Δ (SUBST_Ty (PROJ1 τ) A) :=
+--   ⟨ prePROJ2 τ.1 , @wfPROJ2 _ _ A.1 _ Δ.2 Γ.2 A.2 τ.2 ⟩
 
-def UU {Γ : Con} : Ty Γ :=
-  ⟨ preUU , @wfUU Γ.1 Γ.2 ⟩
-def EL {Γ : Con} (X : Tm Γ UU) : Ty Γ :=
-  ⟨ preEL X.1 , @wfEL _ _ Γ.2 X.2⟩
-def PI {Γ : Con} (X : Tm Γ UU) (Y : Ty (EXTEND Γ (EL X))) : Ty Γ :=
-  ⟨ prePI X.1 Y.1 , @wfPI _ _ _ Γ.2 X.2 Y.2⟩
-def APP {Γ : Con} {X : Tm Γ UU} {Y : Ty (EXTEND Γ (EL X))} (f : Tm Γ (PI X Y)) : Tm (EXTEND Γ (EL X)) Y :=
-  ⟨ preAPP f.1, @wfAPP _ _ _ _ Γ.2 X.2 Y.2 f.2 ⟩
-
-def wk {Γ : Con} {A : Ty Γ} : Subst (EXTEND Γ A) Γ := PROJ1 ID
-def V0 {Γ}{T0} : Tm (EXTEND Γ T0) (SUBST_Ty wk T0) := PROJ2 ID
-def V1 {Γ}{T1}{T0} := SUBST_Tm (@wk (EXTEND Γ T1) T0) V0
-def V2 {Γ}{T2}{T1}{T0} := SUBST_Tm (@wk (EXTEND (EXTEND Γ T2) T1) T0) V1
-def V3 {Γ}{T3}{T2}{T1}{T0} := SUBST_Tm (@wk (EXTEND (EXTEND (EXTEND Γ T3) T2) T1) T0) V2
-def V4 {Γ}{T4}{T3}{T2}{T1}{T0} := SUBST_Tm (@wk (EXTEND (EXTEND (EXTEND (EXTEND Γ T4) T3) T2) T1) T0) V3
-def V5 {Γ}{T5}{T4}{T3}{T2}{T1}{T0} := SUBST_Tm (@wk (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND Γ T5) T4) T3) T2) T1) T0) V4
-def V6 {Γ}{T6}{T5}{T4}{T3}{T2}{T1}{T0} := SUBST_Tm (@wk (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND Γ T6) T5) T4) T3) T2) T1) T0) V5
-def V7 {Γ}{T7}{T6}{T5}{T4}{T3}{T2}{T1}{T0} := SUBST_Tm (@wk (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND Γ T7) T6) T5) T4) T3) T2) T1) T0) V6
-def V8 {Γ}{T8}{T7}{T6}{T5}{T4}{T3}{T2}{T1}{T0} := SUBST_Tm (@wk (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND Γ T8) T7) T6) T5) T4) T3) T2) T1) T0) V7
-def V9 {Γ}{T9}{T8}{T7}{T6}{T5}{T4}{T3}{T2}{T1}{T0} := SUBST_Tm (@wk (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND Γ T9) T8) T7) T6) T5) T4) T3) T2) T1) T0) V8
-def V10 {Γ}{T10}{T9}{T8}{T7}{T6}{T5}{T4}{T3}{T2}{T1}{T0} := SUBST_Tm (@wk (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND Γ T10) T9) T8) T7) T6) T5) T4) T3) T2) T1) T0) V9
-def V11 {Γ}{T11}{T10}{T9}{T8}{T7}{T6}{T5}{T4}{T3}{T2}{T1}{T0} := SUBST_Tm (@wk (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND (EXTEND Γ T11) T10) T9) T8) T7) T6) T5) T4) T3) T2) T1) T0) V10
-
-
-def foo : Con := EXTEND (EXTEND EMPTY UU) (EL V0)
-
+-- def UU {Γ : Con} : Ty Γ :=
+--   ⟨ preUU , @wfUU Γ.1 Γ.2 ⟩
+-- def EL {Γ : Con} (X : Tm Γ UU) : Ty Γ :=
+--   ⟨ preEL X.1 , @wfEL _ _ Γ.2 X.2⟩
+-- def PI {Γ : Con} (X : Tm Γ UU) (Y : Ty (EXTEND Γ (EL X))) : Ty Γ :=
+--   ⟨ prePI X.1 Y.1 , @wfPI _ _ _ Γ.2 X.2 Y.2⟩
+-- def APP {Γ : Con} {X : Tm Γ UU} {Y : Ty (EXTEND Γ (EL X))} (f : Tm Γ (PI X Y)) : Tm (EXTEND Γ (EL X)) Y :=
+--   ⟨ preAPP f.1, @wfAPP _ _ _ _ Γ.2 X.2 Y.2 f.2 ⟩
 
 
 -- declare_syntax_cat gat_ty
