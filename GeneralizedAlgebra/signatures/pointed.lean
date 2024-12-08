@@ -1,3 +1,3 @@
-import GeneralizedAlgebra.signature
+import GeneralizedAlgebra.signature_plain
 
-def 𝔓 : GAT_sig := (X : U, x : X)
+def 𝔓 : Con := ⦃ X : U, x : X ⦄

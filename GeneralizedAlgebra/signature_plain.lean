@@ -63,7 +63,7 @@ mutual
     | s => "El(" ++ s ++ ")"
   | PI X UU => "Π " ++ (Tm_toString X) ++ " U"
   | PI X Y => "Π " ++ (Tm_toString X) ++ " (" ++  (Ty_toString Y)  ++ ")"
-  | EQ t t' => "Eq " ++ (Tm_toString t) ++ " " ++ (Tm_toString t')
+  | EQ t t' => "Eq (" ++ (Tm_toString t) ++ ") (" ++ (Tm_toString t') ++ ")"
   | SUBST_Ty σ T => (Ty_toString T) ++ " [ " ++ (Subst_toString σ) ++ " ]T"
   def Tm_toString : Tm → String
   | PROJ2 (ID _) => "0"
@@ -98,6 +98,7 @@ syntax ident     : gat_tm
 syntax "(" gat_tm ")" : gat_tm
 syntax:60 gat_tm:60 gat_tm:61 : gat_tm
 syntax gat_tm : gat_ty
+syntax gat_tm " ≡ " gat_tm : gat_ty
 
 declare_syntax_cat gat_decl
 syntax ident ":" gat_ty : gat_decl
@@ -169,6 +170,10 @@ partial def elabGATTy (ctx : Expr) (vars : String → MetaM Expr) : Syntax → M
       mkAppM ``SUBST_Tm #[ p , old]
   let codomain ← elabGATTy newCtx newVars T'
   mkAppM  ``PI #[domain,codomain]
+| `(gat_ty| $t1:gat_tm ≡ $t2:gat_tm) => do
+  let tt1 ← elabGATTm ctx vars t1
+  let tt2 ← elabGATTm ctx vars t2
+  mkAppM ``EQ #[tt1,tt2]
 | _ => throwUnsupportedSyntax
 
 partial def elabGATdecl (ctx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM (String × Expr)
@@ -176,6 +181,29 @@ partial def elabGATdecl (ctx : Expr) (vars : String → MetaM Expr) : Syntax →
     let T ← elabGATTy ctx vars g
     return (i.getId.toString,T)
 | _ => throwUnsupportedSyntax
+
+
+
+-- partial def elab_ident_list (oldCtx newCtx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM (Expr × (String → MetaM Expr))
+-- | `(ident_list| $i:ident ) => do
+--   let newVars := λ s =>
+--     if s=i.getId.toString
+--     then return (.const ``v0 [])
+--     else vars s
+--   let appendedCtx ← mkAppM ``preCTXAPPEND #[oldCtx,newCtx]
+--   return (appendedCtx,newVars)
+-- | `(ident_list| $is:ident_list , $i:ident ) => do
+--   let (appendedCtx,othervars) ← elab_ident_list oldCtx newCtx vars is
+--   let newVars := λ s =>
+--     if s=i.getId.toString
+--     then mkAppM ``V0 #[ oldCtx , T ]
+--     else do
+--       let old ← othervars s
+--       let ID ← mkAppM ``ID #[appendedCtx]
+--       let p ← mkAppM ``PROJ1 #[ID]
+--       mkAppM ``SUBST_Tm #[ p , old]
+--   return (appendedCtx,newVars)
+-- | _ => throwUnsupportedSyntax
 
 partial def elabGATCon_core (ctx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM (Expr × (String → MetaM Expr))
 -- | `(gat_con| ⬝ ) => return (.const ``preEMPTY [] , λ _ => throwUnsupportedSyntax)
@@ -225,27 +253,6 @@ elab g:con_outer : term => elabGATCon g
 
 
 
-
--- partial def elab_ident_list (oldCtx newCtx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM (Expr × (String → MetaM Expr))
--- | `(ident_list| $i:ident ) => do
---   let newVars := λ s =>
---     if s=i.getId.toString
---     then return (.const ``v0 [])
---     else vars s
---   let appendedCtx ← mkAppM ``preCTXAPPEND #[oldCtx,newCtx]
---   return (appendedCtx,newVars)
--- | `(ident_list| $is:ident_list , $i:ident ) => do
---   let (appendedCtx,othervars) ← elab_ident_list oldCtx newCtx vars is
---   let newVars := λ s =>
---     if s=i.getId.toString
---     then return (.const ``v0 [])
---     else do
---       let old ← othervars s
---       let ID ← mkAppM ``preID #[appendedCtx]
---       let p ← mkAppM ``prePROJ1 #[ID]
---       mkAppM ``preSUBST_Tm #[ p , old]
---   return (appendedCtx,newVars)
--- | _ => throwUnsupportedSyntax
 
 -- -- Returns (identifier , type)
 
