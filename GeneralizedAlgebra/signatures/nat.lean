@@ -1,6 +1,7 @@
-import GeneralizedAlgebra.signature
+import GeneralizedAlgebra.signature_plain
 
-def 𝔑 : GAT_sig :=
+def 𝔑 : Con := ⦃
     Nat   : U,
     zero  : Nat,
     suc   : Nat ⇒ Nat
+⦄
