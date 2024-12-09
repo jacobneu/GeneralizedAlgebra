@@ -48,9 +48,7 @@ def V9 (Γ)(T9)(T8)(T7)(T6)(T5)(T4)(T3)(T2)(T1)(T0) := (@V8 Γ T0 T1 T2 T3 T4 T5
 def V10 (Γ)(T10)(T9)(T8)(T7)(T6)(T5)(T4)(T3)(T2)(T1)(T0) := (@V9 Γ T0 T1 T2 T3 T4 T5 T6 T7 T8 T9) [@wk (Γ ▷ T10 ▷ T9 ▷ T8 ▷ T7 ▷ T6 ▷ T5 ▷ T4 ▷ T3 ▷ T2 ▷ T1) T0]t
 def V11 (Γ)(T11)(T10)(T9)(T8)(T7)(T6)(T5)(T4)(T3)(T2)(T1)(T0) := (@V10 Γ T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10) [@wk (Γ ▷ T11 ▷ T10 ▷ T9 ▷ T8 ▷ T7 ▷ T6 ▷ T5 ▷ T4 ▷ T3 ▷ T2 ▷ T1) T0]t
 
-
-def foo : Con := EMPTY ▷ UU ▷ PI (@V0 EMPTY UU) (PI (@V1 EMPTY (EL (@V0 EMPTY UU)) (EL (@V0 EMPTY UU))) UU)
-
+def GAT : Type := Con
 
 mutual
   def Con_toString : Con → String
@@ -59,7 +57,7 @@ mutual
   def Ty_toString : Ty → String
   | UU => "U"
   | EL X => match (Tm_toString X) with
-    | "0" => "El 0" | "1" => "El 1" | "2" => "El 2" | "3" => "El 3" | "4" => "El 4" | "5" => "El 5" | "6" => "El 6" | "7" => "El 7"
+    | "0" => "El 0" | "1" => "El 1" | "2" => "El 2" | "3" => "El 3" | "4" => "El 4" | "5" => "El 5" | "6" => "El 6" | "7" => "El 7" | "8" => "El 8" | "9" => "El 9" | "10" => "El 10" | "11" => "El 11" | "12" => "El 12" | "13" => "El 13"
     | s => "El(" ++ s ++ ")"
   | PI X UU => "Π " ++ (Tm_toString X) ++ " U"
   | PI X Y => "Π " ++ (Tm_toString X) ++ " (" ++  (Ty_toString Y)  ++ ")"
@@ -74,6 +72,12 @@ mutual
   | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "5"
   | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "6"
   | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "7"
+  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "8"
+  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "9"
+  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "10"
+  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "11"
+  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "12"
+  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "13"
   | (APP f) [ PAIR (ID _) t ]t => (Tm_toString f) ++ " $ " ++ (Tm_toString t)
   | PROJ2 σ => "π₂ " ++ (Subst_toString σ)
   | APP f => "App " ++ (Tm_toString f)
@@ -110,11 +114,11 @@ syntax gat_tm : gat_arg
 
 syntax gat_arg "⇒" gat_ty : gat_ty
 
--- declare_syntax_cat ident_list
--- syntax ident : ident_list
--- syntax "_" : ident_list
--- syntax ident_list "," "_" : ident_list
--- syntax ident_list "," ident : ident_list
+declare_syntax_cat ident_list
+syntax ident : ident_list
+syntax "_" : ident_list
+syntax ident_list "," "_" : ident_list
+syntax ident_list "," ident : ident_list
 
 declare_syntax_cat con_inner
 syntax gat_decl : con_inner
@@ -182,18 +186,22 @@ partial def elabGATdecl (ctx : Expr) (vars : String → MetaM Expr) : Syntax →
     return (i.getId.toString,T)
 | _ => throwUnsupportedSyntax
 
+partial def last_type : Con → MetaM Ty
+| EMPTY => throwUnsupportedSyntax
+| EXTEND _ A => return A
 
 
--- partial def elab_ident_list (oldCtx newCtx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM (Expr × (String → MetaM Expr))
+-- partial def elab_ident_list (oldCtx newCtx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM (Expr × Expr × (String → MetaM Expr))
 -- | `(ident_list| $i:ident ) => do
+--   let T ← last_type
 --   let newVars := λ s =>
 --     if s=i.getId.toString
---     then return (.const ``v0 [])
+--     then mkAppM ``V0 #[ oldCtx , T ]
 --     else vars s
 --   let appendedCtx ← mkAppM ``preCTXAPPEND #[oldCtx,newCtx]
 --   return (appendedCtx,newVars)
 -- | `(ident_list| $is:ident_list , $i:ident ) => do
---   let (appendedCtx,othervars) ← elab_ident_list oldCtx newCtx vars is
+--   let (appendedCtx,T,othervars) ← elab_ident_list oldCtx newCtx vars is
 --   let newVars := λ s =>
 --     if s=i.getId.toString
 --     then mkAppM ``V0 #[ oldCtx , T ]

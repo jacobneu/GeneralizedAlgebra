@@ -1,6 +1,6 @@
-import GeneralizedAlgebra.signature
+import GeneralizedAlgebra.signatures.category
 
-def ℭ𝔴𝔉 : GAT_sig :=
+def ℭ𝔴𝔉 : GAT := ⦃
   include ℭ𝔞𝔱 as (Con,Sub,comp,id,_,_,_);
     Ty      : Con ⇒ U,
     substTy : ( Δ Γ : Con) ⇒ Sub Δ Γ ⇒ Ty Γ ⇒ Ty Δ,
@@ -44,3 +44,4 @@ def ℭ𝔴𝔉 : GAT_sig :=
               (σ : Sub Δ (ext Γ A)) ⇒
               pair Δ Γ A (pi1 Δ Γ A σ) (pi2 Δ Γ A σ)
               ≡ σ
+⦄
