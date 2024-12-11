@@ -1,6 +1,6 @@
 import GeneralizedAlgebra.signature_plain
 
-def ℭ𝔴𝔉 : Con := ⦃
+def 𝔓ℭ𝔴𝔉 : Con := ⦃
     Con : U,
     Sub : Con ⇒ Con ⇒ U,
     id  : (X : Con) ⇒ Sub X X,
@@ -63,6 +63,26 @@ def ℭ𝔴𝔉 : Con := ⦃
     ext_η   : (Δ:Con)⇒ (Γ : Con) ⇒ (A : Ty Γ) ⇒
               (σ : Sub Δ (ext Γ A)) ⇒
               pair Δ Γ A (π₁ Δ Γ A σ) (π₂ Δ Γ A σ)
-              ≡ σ
+              ≡ σ,
+    neg_Con    : Con ⇒ Con,
+    neg_Sub    : (Δ:Con) ⇒  (Γ : Con ) ⇒ Sub Δ Γ ⇒
+        Sub (neg_Con Δ) (neg_Con Γ),
+    neg_id     : ( Γ : Con ) ⇒
+        neg_Sub (id Γ) ≡ id (neg_Con Γ),
+    neg_comp   : (Θ:Con) ⇒ (Δ:Con) ⇒ (Γ : Con ) ⇒
+        (δ : Sub Θ Δ) ⇒ (γ : Sub Δ Γ) ⇒
+        neg_Sub (comp γ δ)
+        ≡ comp (neg_Sub γ) (neg_Sub δ),
+    invl_Con   : ( Γ : Con) ⇒ neg_Con(neg_Con Γ) ≡ Γ,
+    invl_Sub   : (Δ:Con)⇒ (Γ : Con ) ⇒ (γ : Sub Δ Γ) ⇒
+        neg_Sub(neg_Sub γ) ≡ γ,
+    invl_empty : neg_Con empty ≡ empty,
+    neg_Ty     : ( Γ : Con ) ⇒ Ty Γ ⇒ Ty Γ,
+    neg_nat    : (Δ:Con) ⇒ (Γ : Con ) ⇒
+        (γ : Sub Δ Γ) ⇒ (A : Ty Γ) ⇒
+        neg_Ty Δ (substTy γ A)
+        ≡ substTy γ (neg_Ty Γ A),
+    invl_Ty    : ( Γ : Con ) ⇒ (A : Ty Γ) ⇒
+        neg_Ty (neg_Ty A) ≡ A
 ⦄
-#eval Con_toString ℭ𝔴𝔉
+#eval Con_toString 𝔓ℭ𝔴𝔉

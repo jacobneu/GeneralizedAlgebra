@@ -78,7 +78,7 @@ mutual
   | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "11"
   | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "12"
   | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "13"
-  | (APP f) [ PAIR (ID _) t ]t => (Tm_toString f) ++ " $ " ++ (Tm_toString t)
+  | (APP f) [ PAIR (ID _) t ]t => (Tm_toString f) ++ " @ " ++ (Tm_toString t)
   | PROJ2 σ => "π₂ " ++ (Subst_toString σ)
   | APP f => "App " ++ (Tm_toString f)
   | t [ σ ]t => (Tm_toString t) ++ " [ " ++ (Subst_toString σ) ++ " ]t "
@@ -123,10 +123,14 @@ syntax ident_list "," ident : ident_list
 declare_syntax_cat con_inner
 syntax gat_decl : con_inner
 syntax con_inner "," gat_decl : con_inner
--- syntax "include" ident "as" "(" ident_list ");" gat_con : gat_con
+syntax "include" ident "as" "(" ident_list ");" con_inner : con_inner
 declare_syntax_cat con_outer
 syntax "⦃" "⦄" : con_outer
 syntax "⦃" con_inner "⦄" : con_outer
+
+declare_syntax_cat nouGAT_instr
+syntax "[nouGAT|" "]" : nouGAT_instr
+syntax "[nouGAT|" con_inner "]" : nouGAT_instr
 
 
 partial def elabGATTm (ctx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM Expr
@@ -186,9 +190,6 @@ partial def elabGATdecl (ctx : Expr) (vars : String → MetaM Expr) : Syntax →
     return (i.getId.toString,T)
 | _ => throwUnsupportedSyntax
 
-partial def last_type : Con → MetaM Ty
-| EMPTY => throwUnsupportedSyntax
-| EXTEND _ A => return A
 
 
 -- partial def elab_ident_list (oldCtx newCtx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM (Expr × Expr × (String → MetaM Expr))
@@ -212,6 +213,7 @@ partial def last_type : Con → MetaM Ty
 --       mkAppM ``SUBST_Tm #[ p , old]
 --   return (appendedCtx,newVars)
 -- | _ => throwUnsupportedSyntax
+
 
 partial def elabGATCon_core (ctx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM (Expr × (String → MetaM Expr))
 -- | `(gat_con| ⬝ ) => return (.const ``preEMPTY [] , λ _ => throwUnsupportedSyntax)
@@ -253,16 +255,131 @@ partial def elabGATCon : Syntax → MetaM Expr
   return res
 | _ => throwUnsupportedSyntax
 
+inductive nouGAT_Tm : Type where
+| V : Nat → nouGAT_Tm
+| nouApp : nouGAT_Tm → nouGAT_Tm → nouGAT_Tm
+open nouGAT_Tm
+
+inductive nouGAT_Ty : Type where
+| nouU : nouGAT_Ty
+| nouEl : nouGAT_Tm → nouGAT_Ty
+| nouEq : nouGAT_Tm → nouGAT_Tm → nouGAT_Ty
+| nouPi : nouGAT_Tm → nouGAT_Ty → nouGAT_Ty
+open nouGAT_Ty
+
+inductive nouGAT_Con : Type where
+| nouEmpty : nouGAT_Con
+| nouSingle : nouGAT_Ty → nouGAT_Con
+| nouExtend : nouGAT_Con → nouGAT_Ty → nouGAT_Con
+open nouGAT_Con
+
+open Nat
+
+
+partial def elabnouGAT_Tm (vars : String → MetaM Expr) : Syntax → MetaM Expr
+| `(gat_tm| ( $g:gat_tm ) ) => elabnouGAT_Tm vars g
+| `(gat_tm| $g1:gat_tm $g2:gat_tm ) => do
+      let t1 ← elabnouGAT_Tm vars g1
+      let t2 ← elabnouGAT_Tm vars g2
+      mkAppM ``nouApp #[t1,t2]
+| `(gat_tm| $i:ident ) => do
+    let n ← vars i.getId.toString
+    mkAppM ``V #[n]
+| _ => throwUnsupportedSyntax
+
+
+partial def elabnouGAT_Arg (vars : String → MetaM Expr) : Syntax → MetaM (String × Expr)
+| `(gat_arg| ( $i:ident : $g:gat_tm ) ) => do
+  let t ← elabnouGAT_Tm vars g
+  return (i.getId.toString,t)
+| `(gat_arg| ( _ : $g:gat_tm ) ) => do
+  let t ← elabnouGAT_Tm vars g
+  return ("",t)
+| `(gat_arg| $g:gat_tm ) => do
+  let t ← elabnouGAT_Tm vars g
+  return ("",t)
+| _ => throwUnsupportedSyntax
+
+partial def elabnouGAT_Ty (vars : String → MetaM Expr) : Syntax → MetaM Expr
+| `(gat_ty| ( $g:gat_ty ) ) => elabnouGAT_Ty vars g
+| `(gat_ty| U ) => return .const ``nouU []
+| `(gat_ty| $x:gat_tm ) => do
+  let t ← elabnouGAT_Tm vars x
+  mkAppM ``nouEl #[t]
+| `(gat_ty| $T:gat_arg ⇒ $T':gat_ty) => do
+  let (i,domain) ← elabnouGAT_Arg vars T
+  -- let elDomain ← mkAppM ``nouEl #[domain]
+  let newVars := λ s =>
+    if s=i
+    then return .const ``zero []
+    else do
+      let old ← vars s
+      mkAppM ``succ #[old]
+  let codomain ← elabnouGAT_Ty newVars T'
+  mkAppM  ``nouPi #[domain,codomain]
+| `(gat_ty| $g1:gat_tm ≡ $g2:gat_tm) => do
+  let t1 ← elabnouGAT_Tm vars g1
+  let t2 ← elabnouGAT_Tm vars g2
+  mkAppM ``nouEq #[t1,t2]
+| _ => throwUnsupportedSyntax
+
+partial def elabnouGAT_decl (vars : String → MetaM Expr) : Syntax → MetaM (String × Expr)
+| `(gat_decl| $i:ident : $g:gat_ty ) => do
+    let T ← elabnouGAT_Ty vars g
+    return (i.getId.toString,T)
+| _ => throwUnsupportedSyntax
+
+
+def conSucc : Con → Nat → Nat
+| EMPTY, x => x
+| Γ ▷ _, x => succ (conSucc Γ x)
+
+partial def elabnouGAT_Con (vars : String → MetaM Expr) : Syntax → MetaM (Expr × (String → MetaM Expr))
+| `(con_inner| $d:gat_decl ) => do
+  let (i,T) ← elabnouGAT_decl vars d
+  let newVars := λ s =>
+    if s=i
+    then return .const ``zero []
+    else do
+      let old ← vars s
+      mkAppM ``succ #[old]
+  let res ← mkAppM ``nouSingle #[T]
+  return (res, newVars)
+| `(con_inner| $rest:con_inner , $d:gat_decl ) => do
+  let (C , restVars) ← elabnouGAT_Con vars rest
+  let (i,T) ← elabnouGAT_decl restVars d
+  let res ← mkAppM ``nouExtend #[C, T]
+  let newVars := λ s =>
+    if s=i
+    then return .const ``zero []
+    else do
+      let old ← restVars s
+      mkAppM ``succ #[old]
+  return (res, newVars)
+| `(con_inner| include $g:ident as ( $is:ident_list ); $rest:con_inner ) => do
+  -- let (newCon,newVars) ← elab_ident_list ctx (.const g.getId []) vars is
+  let newVars := λ s => do
+      let old ← vars s
+      mkAppM ``conSucc #[.const g.getId [],old]
+  elabnouGAT_Con newVars rest
+| _ => throwUnsupportedSyntax
+
+partial def elabnouGAT : Syntax → MetaM Expr
+| `(nouGAT_instr| [nouGAT| $s ] ) => do
+  let (res,_) ← elabnouGAT_Con (λ _ => throwUnsupportedSyntax) s
+  return res
+| `(nouGAT_instr| [nouGAT| ] ) => return .const ``nouEmpty []
+| _ => throwUnsupportedSyntax
+
 
 elab g:con_outer : term => elabGATCon g
+elab g:nouGAT_instr : term => elabnouGAT g
 
-#eval Con_toString $ ⦃ M : U, H : M ⇒ U, foo : (x : M) ⇒ H x ⦄
+def G := ⦃M : U, x : M⦄
+def x := [nouGAT| include G as (_);
+  N : U, y : N ]
+#reduce x
 
-
-
-
-
--- -- Returns (identifier , type)
 
 
 

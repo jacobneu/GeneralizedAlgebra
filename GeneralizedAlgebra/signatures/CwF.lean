@@ -2,6 +2,9 @@ import GeneralizedAlgebra.signatures.category
 
 def ℭ𝔴𝔉 : GAT := ⦃
   include ℭ𝔞𝔱 as (Con,Sub,comp,id,_,_,_);
+    empty : Con,
+    ε : ( Γ : Con) ⇒ Sub Γ empty,
+    ε_η : ( Γ : Con) ⇒ (f : Sub Γ empty) ⇒ f ≡ (ε Γ),
     Ty      : Con ⇒ U,
     substTy : ( Δ Γ : Con) ⇒ Sub Δ Γ ⇒ Ty Γ ⇒ Ty Δ,
     idTy    : ( Γ : Con) ⇒ (A : Ty Γ) ⇒
@@ -27,6 +30,12 @@ def ℭ𝔴𝔉 : GAT := ⦃
               (γ : Sub Δ Γ) ⇒
               Tm Δ (substTy Δ Γ γ A) ⇒
               Sub Δ (ext Γ A),
+    pair_nat: ( Θ Δ Γ : Con) ⇒ (A : Ty Γ) ⇒
+              (γ : Sub Δ Γ) ⇒
+              (t : Tm Δ (substTy Δ Γ γ A)) ⇒
+              (δ : Sub Θ Δ) ⇒
+              comp (pair Δ Γ A γ t) δ
+              ≡ pair Θ Γ A (comp γ δ) (substTm Θ Δ (substTy Δ Γ γ A) δ t),
     π₁      : ( Δ Γ : Con) ⇒ (A : Ty Γ) ⇒
               Sub Δ (ext Γ A) ⇒ Sub Δ Γ,
     π₂      : ( Δ Γ : Con) ⇒ (A : Ty Γ) ⇒
@@ -35,13 +44,13 @@ def ℭ𝔴𝔉 : GAT := ⦃
     ext_β₁  : ( Δ Γ : Con) ⇒ (A : Ty Γ) ⇒
               (γ : Sub Δ Γ) ⇒
               (t : Tm Δ (substTy Δ Γ γ A)) ⇒
-              pi1 Δ Γ A (pair Δ Γ A γ t) ≡ γ,
+              π₁ Δ Γ A (pair Δ Γ A γ t) ≡ γ,
     ext_β₂  : ( Δ Γ : Con) ⇒ (A : Ty Γ) ⇒
               (γ : Sub Δ Γ) ⇒
               (t : Tm Δ (substTy Δ Γ γ A)) ⇒
-              pi2 Δ Γ A (pair Δ Γ A γ t) ≡ t
-    ext_η   : ( Δ Γ : Con) ⇒ (A : Ty Γ) ⇒
+              π₂ Δ Γ A (pair Δ Γ A γ t) ≡ t,
+    ext_η   : (Δ Γ : Con) ⇒ (A : Ty Γ) ⇒
               (σ : Sub Δ (ext Γ A)) ⇒
-              pair Δ Γ A (pi1 Δ Γ A σ) (pi2 Δ Γ A σ)
+              pair Δ Γ A (π₁ Δ Γ A σ) (π₂ Δ Γ A σ)
               ≡ σ
 ⦄
