@@ -2,6 +2,7 @@ import Lean
 
 open Lean Elab Meta
 
+open Nat
 
 mutual
   inductive Con : Type where
@@ -50,42 +51,38 @@ def V11 (Γ)(T11)(T10)(T9)(T8)(T7)(T6)(T5)(T4)(T3)(T2)(T1)(T0) := (@V10 Γ T0 T1
 
 def GAT : Type := Con
 
+def deBruijn : Tm → Option Nat
+| PROJ2 (ID _) => some 0
+| t [ PROJ1 (ID _) ]t => do let res ← deBruijn t; return (succ res)
+| _ => none
+
+def paren (s:String):String :=
+  if String.isNat s then s else "("++s++")"
+
 mutual
   def Con_toString : Con → String
   | EMPTY => "⋄"
   | Γ ▷ A => (Con_toString Γ) ++ " ▷ " ++ (Ty_toString A)
   def Ty_toString : Ty → String
   | UU => "U"
-  | EL X => match (Tm_toString X) with
-    | "0" => "El 0" | "1" => "El 1" | "2" => "El 2" | "3" => "El 3" | "4" => "El 4" | "5" => "El 5" | "6" => "El 6" | "7" => "El 7" | "8" => "El 8" | "9" => "El 9" | "10" => "El 10" | "11" => "El 11" | "12" => "El 12" | "13" => "El 13"
-    | s => "El(" ++ s ++ ")"
-  | PI X UU => "Π " ++ (Tm_toString X) ++ " U"
-  | PI X Y => "Π " ++ (Tm_toString X) ++ " (" ++  (Ty_toString Y)  ++ ")"
-  | EQ t t' => "Eq (" ++ (Tm_toString t) ++ ") (" ++ (Tm_toString t') ++ ")"
+  | EL X => "El " ++ paren (Tm_toString X)
+  | PI X UU => "Π " ++ paren (Tm_toString X) ++ " U"
+  | PI X Y => "Π " ++ paren (Tm_toString X) ++ " " ++ paren (Ty_toString Y)
+  | EQ t t' => "Eq " ++ paren (Tm_toString t) ++ " " ++ paren (Tm_toString t')
   | SUBST_Ty σ T => (Ty_toString T) ++ " [ " ++ (Subst_toString σ) ++ " ]T"
-  def Tm_toString : Tm → String
-  | PROJ2 (ID _) => "0"
-  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t => "1"
-  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "2"
-  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "3"
-  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "4"
-  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "5"
-  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "6"
-  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "7"
-  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "8"
-  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "9"
-  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "10"
-  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "11"
-  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "12"
-  | (PROJ2 (ID _)) [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t [ PROJ1 (ID _) ]t => "13"
-  | (APP f) [ PAIR (ID _) t ]t => (Tm_toString f) ++ " @ " ++ (Tm_toString t)
-  | PROJ2 σ => "π₂ " ++ (Subst_toString σ)
-  | APP f => "App " ++ (Tm_toString f)
-  | t [ σ ]t => (Tm_toString t) ++ " [ " ++ (Subst_toString σ) ++ " ]t "
+
+  def Tm_toString (theTerm : Tm) : String :=
+  match deBruijn theTerm with
+  | some n => Nat.repr n
+  | _ => match theTerm with
+    | (APP f) [ PAIR (ID _) t ]t => (Tm_toString f) ++ " @ " ++ paren (Tm_toString t)
+    | PROJ2 σ => "π₂ " ++ (Subst_toString σ)
+    | APP f => "App " ++ paren (Tm_toString f)
+    | t [ σ ]t => paren (Tm_toString t) ++ " [ " ++ (Subst_toString σ) ++ " ]t "
   def Subst_toString : Subst → String
   | PROJ1 (ID _) => "wk"
   | PROJ1 σ => "π₁ " ++ (Subst_toString σ)
-  | PAIR σ t => (Subst_toString σ) ++ " , " ++ (Tm_toString t)
+  | PAIR σ t => (Subst_toString σ) ++ " , " ++ paren (Tm_toString t)
   | EPSILON _ => "ε"
   | COMP σ τ => (Subst_toString σ) ++ " ∘ " ++ (Subst_toString τ)
   | (ID _) => "id"
@@ -273,7 +270,6 @@ inductive nouGAT_Con : Type where
 | nouExtend : nouGAT_Con → nouGAT_Ty → nouGAT_Con
 open nouGAT_Con
 
-open Nat
 
 
 partial def elabnouGAT_Tm (vars : String → MetaM Expr) : Syntax → MetaM Expr

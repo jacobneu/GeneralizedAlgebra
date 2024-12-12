@@ -7,12 +7,12 @@ def ℭ𝔴𝔉 : Con := ⦃
     comp  : (X :Con) ⇒ (Y : Con) ⇒ (Z : Con) ⇒
             Sub Y Z ⇒ Sub X Y ⇒ Sub X Z,
     lunit : (X : Con) ⇒ (Y : Con) ⇒ (f : Sub X Y) ⇒
-            comp (id Y) f ≡ f,
+            comp X Y Y (id Y) f ≡ f,
     runit : (X : Con) ⇒ (Y : Con) ⇒ (f : Sub X Y) ⇒
-            comp f (id X) ≡ f,
+            comp X X Y f (id X) ≡ f,
     assoc : (W:Con) ⇒ (X:Con) ⇒ (Y:Con) ⇒ (Z:Con) ⇒ (e : Sub W X) ⇒
             (f : Sub X Y) ⇒ (g : Sub Y Z) ⇒
-            comp g (comp f e) ≡ comp (comp g f) e,
+            comp W X Z g (comp W X Y f e) ≡ comp W Y Z (comp X Y Z g f) e,
     empty : Con,
     ε : (Γ : Con) ⇒ Sub Γ empty,
     ηε : (Γ : Con) ⇒ (f : Sub Γ empty) ⇒ f ≡ (ε Γ),
@@ -23,7 +23,7 @@ def ℭ𝔴𝔉 : Con := ⦃
     compTy  : (Θ:Con)⇒ (Δ:Con)⇒  (Γ : Con) ⇒ (A : Ty Γ) ⇒
               (δ : Sub Θ Δ) ⇒ (γ : Sub Δ Γ) ⇒
               substTy Δ Γ γ (substTy Θ Δ δ A)
-              ≡ substTy Θ Γ (comp γ δ) A,
+              ≡ substTy Θ Γ (comp Θ Δ Γ γ δ) A,
     Tm      : (Γ : Con) ⇒ Ty Γ ⇒ U,
     substTm : (Δ:Con)⇒ (Γ : Con) ⇒ (A : Ty Γ) ⇒
               (γ : Sub Δ Γ) ⇒
@@ -35,7 +35,7 @@ def ℭ𝔴𝔉 : Con := ⦃
               (δ : Sub Θ Δ) ⇒ (γ : Sub Δ Γ) ⇒
               substTm Δ Γ A γ
                 (substTm Θ Δ (substTy Δ Γ γ A) δ t)
-              ≡ substTm Θ Γ A (comp γ δ) t,
+              ≡ substTm Θ Γ A (comp Θ Δ Γ γ δ) t,
     ext     : ( Γ : Con) ⇒ Ty Γ ⇒ Con,
     pair    : (Δ:Con)⇒ (Γ : Con) ⇒ (A : Ty Γ) ⇒
               (γ : Sub Δ Γ) ⇒
@@ -45,7 +45,7 @@ def ℭ𝔴𝔉 : Con := ⦃
               (γ : Sub Δ Γ) ⇒
               (t : Tm Δ (substTy Δ Γ γ A)) ⇒
               (δ : Sub Θ Δ) ⇒
-              comp (pair Δ Γ A γ t) δ
+              comp Θ Δ (ext Γ A) (pair Δ Γ A γ t) δ
               ≡ pair Θ Γ A (comp γ δ) (substTm Θ Δ (substTy Δ Γ γ A) δ t),
     π₁      : (Δ:Con)⇒ (Γ : Con) ⇒ (A : Ty Γ) ⇒
               Sub Δ (ext Γ A) ⇒ Sub Δ Γ,
