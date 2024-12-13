@@ -66,3 +66,4 @@ def ℭ𝔴𝔉 : Con := ⦃
               ≡ σ
 ⦄
 #eval Con_toString ℭ𝔴𝔉
+#eval Alg ℭ𝔴𝔉

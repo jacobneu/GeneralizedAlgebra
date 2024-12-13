@@ -15,3 +15,4 @@ def ℭ𝔞𝔱 : Con := ⦃
             comp W X Z g (comp W X Y f e) ≡ comp W Y Z (comp X Y Z g f) e
 ⦄
 #eval Con_toString ℭ𝔞𝔱
+#eval Alg ℭ𝔞𝔱

@@ -49,44 +49,6 @@ def V9 (Γ)(T9)(T8)(T7)(T6)(T5)(T4)(T3)(T2)(T1)(T0) := (@V8 Γ T0 T1 T2 T3 T4 T5
 def V10 (Γ)(T10)(T9)(T8)(T7)(T6)(T5)(T4)(T3)(T2)(T1)(T0) := (@V9 Γ T0 T1 T2 T3 T4 T5 T6 T7 T8 T9) [@wk (Γ ▷ T10 ▷ T9 ▷ T8 ▷ T7 ▷ T6 ▷ T5 ▷ T4 ▷ T3 ▷ T2 ▷ T1) T0]t
 def V11 (Γ)(T11)(T10)(T9)(T8)(T7)(T6)(T5)(T4)(T3)(T2)(T1)(T0) := (@V10 Γ T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10) [@wk (Γ ▷ T11 ▷ T10 ▷ T9 ▷ T8 ▷ T7 ▷ T6 ▷ T5 ▷ T4 ▷ T3 ▷ T2 ▷ T1) T0]t
 
-def GAT : Type := Con
-
-def deBruijn : Tm → Option Nat
-| PROJ2 (ID _) => some 0
-| t [ PROJ1 (ID _) ]t => do let res ← deBruijn t; return (succ res)
-| _ => none
-
-def paren (s:String):String :=
-  if String.isNat s then s else "("++s++")"
-
-mutual
-  def Con_toString : Con → String
-  | EMPTY => "⋄"
-  | Γ ▷ A => (Con_toString Γ) ++ " ▷ " ++ (Ty_toString A)
-  def Ty_toString : Ty → String
-  | UU => "U"
-  | EL X => "El " ++ paren (Tm_toString X)
-  | PI X UU => "Π " ++ paren (Tm_toString X) ++ " U"
-  | PI X Y => "Π " ++ paren (Tm_toString X) ++ " " ++ paren (Ty_toString Y)
-  | EQ t t' => "Eq " ++ paren (Tm_toString t) ++ " " ++ paren (Tm_toString t')
-  | SUBST_Ty σ T => (Ty_toString T) ++ " [ " ++ (Subst_toString σ) ++ " ]T"
-
-  def Tm_toString (theTerm : Tm) : String :=
-  match deBruijn theTerm with
-  | some n => Nat.repr n
-  | _ => match theTerm with
-    | (APP f) [ PAIR (ID _) t ]t => (Tm_toString f) ++ " @ " ++ paren (Tm_toString t)
-    | PROJ2 σ => "π₂ " ++ (Subst_toString σ)
-    | APP f => "App " ++ paren (Tm_toString f)
-    | t [ σ ]t => paren (Tm_toString t) ++ " [ " ++ (Subst_toString σ) ++ " ]t "
-  def Subst_toString : Subst → String
-  | PROJ1 (ID _) => "wk"
-  | PROJ1 σ => "π₁ " ++ (Subst_toString σ)
-  | PAIR σ t => (Subst_toString σ) ++ " , " ++ paren (Tm_toString t)
-  | EPSILON _ => "ε"
-  | COMP σ τ => (Subst_toString σ) ++ " ∘ " ++ (Subst_toString τ)
-  | (ID _) => "id"
-end
 
 
 declare_syntax_cat gat_ty
@@ -392,6 +354,110 @@ def x := [nouGAT| include G as (_);
 
 
 
+def GAT : Type := Con
+
+def deBruijn : Tm → Option Nat
+| PROJ2 (ID _) => some 0
+| t [ PROJ1 (ID _) ]t => do let res ← deBruijn t; return (succ res)
+| _ => none
+
+def paren (s:String):String :=
+  if String.isNat s then s else "("++s++")"
+
+mutual
+  def Con_toString : Con → String
+  | EMPTY => "⋄"
+  | Γ ▷ A => (Con_toString Γ) ++ " ▷ " ++ (Ty_toString A)
+  def Ty_toString : Ty → String
+  | UU => "U"
+  | EL X => "El " ++ paren (Tm_toString X)
+  | PI X UU => "Π " ++ paren (Tm_toString X) ++ " U"
+  | PI X Y => "Π " ++ paren (Tm_toString X) ++ " " ++ paren (Ty_toString Y)
+  | EQ t t' => "Eq " ++ paren (Tm_toString t) ++ " " ++ paren (Tm_toString t')
+  | SUBST_Ty σ T => (Ty_toString T) ++ " [ " ++ (Subst_toString σ) ++ " ]T"
+
+  def Tm_toString (theTerm : Tm) : String :=
+  match deBruijn theTerm with
+  | some n => Nat.repr n
+  | _ => match theTerm with
+    | (APP f) [ PAIR (ID _) t ]t => (Tm_toString f) ++ " @ " ++ paren (Tm_toString t)
+    | PROJ2 σ => "π₂ " ++ (Subst_toString σ)
+    | APP f => "App " ++ paren (Tm_toString f)
+    | t [ σ ]t => paren (Tm_toString t) ++ " [ " ++ (Subst_toString σ) ++ " ]t "
+  def Subst_toString : Subst → String
+  | PROJ1 (ID _) => "wk"
+  | PROJ1 σ => "π₁ " ++ (Subst_toString σ)
+  | PAIR σ t => (Subst_toString σ) ++ " , " ++ paren (Tm_toString t)
+  | EPSILON _ => "ε"
+  | COMP σ τ => (Subst_toString σ) ++ " ∘ " ++ (Subst_toString τ)
+  | (ID _) => "id"
+end
+
+def foldArgs : List String → String
+| [] => ""
+| [s] => s
+| s::ss => (foldArgs ss) ++ "," ++ s
+
+def nth : Nat → List String → Option String
+| _, [] => none
+| 0, x::_ => return x
+| succ n, _::xs => nth n xs
+
+def parenX (s:String):String :=
+  if String.isNat (String.drop s 2) then s else "("++s++")"
+
+def threeRepr (n : Nat) : String :=
+  if n<10 then "00"++ Nat.repr n else
+  if n<100 then "0"++ Nat.repr n else
+  Nat.repr n
+
+mutual
+  -- expression, subargument
+  def Alg_Con : Con → Option (String × List String × Nat)
+  | EMPTY => return ("⊤",[],0)
+  | EMPTY ▷ UU => return ("(X_000 : Set)",["X_000"],1)
+  | EMPTY ▷ _ => none
+  | Γ ▷ A => do
+    let (Γs,γ_vars,n) ← Alg_Con Γ
+    -- let As_arg := (match γ_vars with | [s] => s | ss => foldArgs ss)
+    let (As,n') ← Alg_Ty n A γ_vars
+    let newVar := "X_" ++ threeRepr n'
+    (Γs ++ " × (" ++ newVar ++ " : " ++ As ++ ")", newVar::γ_vars,succ n')
+  def Alg_Ty : Nat → Ty → List String → Option (String × Nat)
+  | n,UU, _ => return ("Set",n)
+  | n,PI X Y, γs => do
+      let a_s ← Alg_Tm X γs
+      -- let as_arg := (match γ_vars with | [s] => s | ss => foldArgs ss)
+      let (Bs,n') ← Alg_Ty (succ n) Y  (("X_" ++ threeRepr n)::γs) --(γs ++ "," ++ )
+      return ("(X_" ++ threeRepr n ++ " : " ++ a_s ++ ") → " ++ Bs,n' )
+  | n, EL X, γs => do
+      let a_s ← Alg_Tm X γs
+      return (a_s,n)
+  | n,EQ t t', γs => do
+      let ts ← Alg_Tm t γs
+      let t's ← Alg_Tm t' γs
+      return (ts ++ " = " ++ t's,n)
+  | n,_,_ => return ("ERR",n)
+  def Alg_Tm (t : Tm) : List String → Option String
+  | γs => match deBruijn t with
+    | some n => nth n γs
+      -- Nat.repr n ++ "^A (" ++ (foldArgs γs) ++ ")"
+    | none => match t with
+    | (APP f) [ PAIR (ID _) t ]t => do
+      let fs ← Alg_Tm f γs
+      let ts ← Alg_Tm t γs
+      return (fs ++ " " ++ parenX ts)
+    | _ => return "XXX"
+end
+
+def Alg (Γ : Con) : Option String := do
+  let (res,_,_) ← Alg_Con Γ
+  return res
+
+def k := ⦃ Z : U, foo : Z ⇒ Z ⇒ Z, z : Z, lunit : (x : Z) ⇒ z ≡ foo x x⦄
+
+#eval Con_toString k
+#eval Alg k
 
 
 
