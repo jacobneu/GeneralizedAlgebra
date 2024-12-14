@@ -393,12 +393,7 @@ mutual
   | (ID _) => "id"
 end
 
-def foldArgs : List String → String
-| [] => ""
-| [s] => s
-| s::ss => (foldArgs ss) ++ "," ++ s
-
-def nth : Nat → List String → Option String
+def nth {α : Type}: Nat → List α → Option α
 | _, [] => none
 | 0, x::_ => return x
 | succ n, _::xs => nth n xs
@@ -406,64 +401,132 @@ def nth : Nat → List String → Option String
 def parenX (s:String):String :=
   if String.isNat (String.drop s 2) then s else "("++s++")"
 
+def twoRepr (n : Nat) : String :=
+  if n<10 then "0"++ Nat.repr n else
+  Nat.repr n
 def threeRepr (n : Nat) : String :=
   if n<10 then "00"++ Nat.repr n else
   if n<100 then "0"++ Nat.repr n else
   Nat.repr n
 
 mutual
-  -- expression, subargument
-  def Alg_Con : Con → Option (String × List String × Nat)
-  | EMPTY => return ("⊤",[],0)
-  | EMPTY ▷ UU => return ("(X_000 : Set)",["X_000"],1)
-  | EMPTY ▷ _ => none
+inductive Argument : Type where
+|  NonDep : List Token → Argument
+|  Dep : List Token → Argument
+inductive Token : Type where
+| printArg : Nat → Token
+| printVarName : Nat → Token
+| printStr : String → Token
+| BREAK : Token
+end
+open Argument Token
+
+def newVar ( ty : List Token) : StateT (List Argument) Option Nat := do
+  let vars ← get
+  let new := NonDep ty
+  set $ vars++[new]
+  pure $ List.length vars
+
+def countDepends : List Argument → Nat
+| [] => 0
+| (Dep _)::rest => 1 + countDepends rest
+| (NonDep _)::rest => countDepends rest
+
+def getDepends : List Argument → Nat → Option (Bool × Nat × List Token)
+| [] , _ => none
+| (Dep ts)::_, 0 => return (true,0,ts)
+| (NonDep ts)::_, 0 => return (false,0,ts)
+| (Dep _)::rest, succ n => do
+    let (bit,res,ts) ← getDepends rest n
+    return (bit,succ res,ts)
+| (NonDep _)::rest, succ n => getDepends rest n
+
+def foldTokens_core (REPR : Nat → String): Nat → List Argument → List Token → Option String
+| succ FUEL, args, (printStr s)::rest => do
+    let restStr ← foldTokens_core REPR FUEL args rest
+    return (s ++ restStr)
+| succ FUEL, args, (printArg n)::rest => do
+    let (doPrint, index, ts) ← getDepends args n
+    let printRest ← foldTokens_core REPR FUEL args rest
+    let argType ← foldTokens_core REPR FUEL args ts
+    if doPrint
+    then return ("(X_" ++ REPR index ++ " : " ++ argType ++ ")" ++ printRest)
+    else return (argType ++ printRest)
+| succ FUEL, args, (printVarName n)::rest => do
+    let (_, index, _) ← getDepends args n
+    let printRest ← foldTokens_core REPR FUEL args rest
+    return ("X_" ++ REPR index ++ printRest)
+| _,_,[] => some ""
+| _,_, _ => none
+
+def foldTokens (args : List Argument) :=
+  foldTokens_core (if countDepends args < 10 then twoRepr else threeRepr) 1000 args
+
+
+def pingNth_core : Nat → List Argument → Option (List Argument)
+| _,[] => none
+| 0,(NonDep ts)::rest => some ((Dep ts)::rest)
+| succ n, x::rest => do
+  let res ← pingNth_core n rest
+  return (x::res)
+| _,L => some L
+
+def pingNth (n :Nat) : StateT (List Argument) Option Unit := do
+  let current ← get
+  let new ← StateT.lift $ pingNth_core n current
+  set new
+
+def nthBackwards (n:Nat) (L : List Nat) : Option Nat := nth n (List.reverse L)
+
+
+mutual
+  def Alg_Con : Con → StateT (List Argument) Option (List Nat × List Token)
+  | EMPTY => pure $ ([],[printStr "⊤"])
+  | EMPTY ▷ UU => do
+      let theVar ← newVar [printStr "Set"]
+      pure ([theVar],[printArg theVar])
   | Γ ▷ A => do
-    let (Γs,γ_vars,n) ← Alg_Con Γ
-    -- let As_arg := (match γ_vars with | [s] => s | ss => foldArgs ss)
-    let (As,n') ← Alg_Ty n A γ_vars
-    let newVar := "X_" ++ threeRepr n'
-    (Γs ++ " × (" ++ newVar ++ " : " ++ As ++ ")", newVar::γ_vars,succ n')
-  def Alg_Ty : Nat → Ty → List String → Option (String × Nat)
-  | n,UU, _ => return ("Set",n)
-  | n,PI X Y, γs => do
-      let a_s ← Alg_Tm X γs
-      -- let as_arg := (match γ_vars with | [s] => s | ss => foldArgs ss)
-      let (Bs,n') ← Alg_Ty (succ n) Y  (("X_" ++ threeRepr n)::γs) --(γs ++ "," ++ )
-      return ("(X_" ++ threeRepr n ++ " : " ++ a_s ++ ") → " ++ Bs,n' )
-  | n, EL X, γs => do
-      let a_s ← Alg_Tm X γs
-      return (a_s,n)
-  | n,EQ t t', γs => do
-      let ts ← Alg_Tm t γs
-      let t's ← Alg_Tm t' γs
-      return (ts ++ " = " ++ t's,n)
-  | n,_,_ => return ("ERR",n)
-  def Alg_Tm (t : Tm) : List String → Option String
-  | γs => match deBruijn t with
-    | some n => nth n γs
-      -- Nat.repr n ++ "^A (" ++ (foldArgs γs) ++ ")"
-    | none => match t with
-    | (APP f) [ PAIR (ID _) t ]t => do
-      let fs ← Alg_Tm f γs
-      let ts ← Alg_Tm t γs
-      return (fs ++ " " ++ parenX ts)
-    | _ => return "XXX"
+    let (tel,res) ← Alg_Con Γ
+    let As ← Alg_Ty A tel
+    let theVar ← newVar As
+    pure (tel++[theVar],res ++ [printStr " × (", printArg theVar, printStr ")"])
+  def Alg_Ty : Ty → List Nat → StateT (List Argument) Option (List Token)
+  | UU,_ => pure [printStr "Set"]
+  | EL X, tel => Alg_Tm X tel
+  | PI X Y, tel => do
+      let Xs ← Alg_Tm X tel
+      let Xvar ← newVar Xs
+      let Ys ← Alg_Ty Y (tel++[Xvar])
+      pure $ [printArg Xvar, printStr " → "] ++ Ys
+  | EQ t t',tel => do
+      let ts ← Alg_Tm t tel
+      let t's ← Alg_Tm t' tel
+      pure $ ts ++ [printStr " = "] ++ t's
+
+  | _,_ => StateT.lift none
+  def Alg_Tm (t : Tm) (tel : List Nat) : StateT (List Argument) Option (List Token) :=
+  match t,deBruijn t with
+    | _,some n => do
+        let glob_n ← StateT.lift (nthBackwards n tel)
+        pingNth glob_n
+        pure $ [printVarName glob_n]
+    | (APP f) [ PAIR (ID _) t ]t,_ => do
+        let fs ← Alg_Tm f tel
+        let ts ← Alg_Tm t tel
+        pure $ fs ++ [printStr " "] ++ ts
+    | _,_ => none
+
 end
 
 def Alg (Γ : Con) : Option String := do
-  let (res,_,_) ← Alg_Con Γ
-  return res
+  let ((_,res),vars) ← StateT.run (Alg_Con Γ) ([])
+  foldTokens vars res
 
-def k := ⦃ Z : U, foo : Z ⇒ Z ⇒ Z, z : Z, lunit : (x : Z) ⇒ z ≡ foo x x⦄
-
-#eval Con_toString k
-#eval Alg k
-
-
-
-
-
-
+def f := ⦃ W : U ⦄
+def foo := ⦃ W : U, V : U⦄
+def foo' := ⦃ W : U, P : W ⇒ U, e : (x : W) ⇒ P x⦄
+#reduce StateT.run (Alg_Con foo') ([])
+#eval Alg foo'
 
 
 

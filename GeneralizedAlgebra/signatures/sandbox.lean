@@ -12,6 +12,8 @@ import GeneralizedAlgebra.signatures.category_plain
 #eval Con_toString ℭ𝔞𝔱
 #eval Alg 𝔓
 #eval Alg 𝔐𝔬𝔫
+#eval Alg 𝔯𝔔𝔲𝔦𝔳
+
 -- open preCon preSub preTy preTm
 
 -- -- pointed
