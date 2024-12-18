@@ -555,30 +555,32 @@ mutual
       pure ([theVar],[printArg theVar])
   | alg_comp::Alg_comp,Γ ▷ A => do
     let (tel,res) ← DAlg_Con Alg_comp Γ
-    let As ← DAlg_Ty tel alg_comp A
+    let As ← DAlg_Ty tel [printStr alg_comp] A
     let theVar ← newVar As
     pure (tel++[theVar],res ++ [printConstrSplit, printStr "(", printArg theVar, printStr ")"])
   | _,_ => none
-  def DAlg_Ty : List Nat → String → Ty → StateT (List Argument) Option (List Token)
-  | _,carrier,UU => pure [printStr carrier,printArrow,printStr "Set"]
+  def DAlg_Ty : List Nat → List Token → Ty → StateT (List Argument) Option (List Token)
+  | _,carrier,UU => pure $ carrier ++ [printArrow,printStr "Set"]
   | tel,alg_elt,EL X => DAlg_Tm tel alg_elt X
-  -- | PI X Y, tel => do
-  --     let Xs ← DAlg_Tm X tel
-  --     let Xvar ← newVar Xs
-  --     let Ys ← DAlg_Ty Y (tel++[Xvar])
-  --     pure $ [printArg Xvar, printStr " → "] ++ Ys
+  | tel,alg_fn,PI X Y => do
+      let alpha ← newVar [printStr "?"]
+      pingNth alpha
+      let Xs ← DAlg_Tm tel [printVarName alpha] X
+      let Xvar ← newVar Xs
+      let Ys ← DAlg_Ty (tel++[Xvar]) ([printStr "("]++alg_fn++[printStr " ",printVarName alpha,printStr ")"]) Y
+      pure $ [printArg alpha, printStr " → ",printArg Xvar, printStr " → "] ++ Ys
   -- | EQ t t',tel => do
   --     let ts ← DAlg_Tm t tel
   --     let t's ← DAlg_Tm t' tel
   --     pure $ ts ++ [printStr " = "] ++ t's
 
   | _,_,_ => StateT.lift none
-  def DAlg_Tm (tel : List Nat) (alg_elt : String) (t : Tm) : StateT (List Argument) Option (List Token) :=
+  def DAlg_Tm (tel : List Nat) (alg_elt : List Token) (t : Tm) : StateT (List Argument) Option (List Token) :=
   match t,deBruijn t with
     | _,some n => do
         let glob_n ← StateT.lift (nthBackwards n tel)
         pingNth glob_n
-        pure $ [printVarName glob_n,printStr " ",printStr alg_elt]
+        pure $ [printVarName glob_n,printStr " "]++alg_elt
   --   | (APP f) [ PAIR (ID _) t ]t,_ => do
   --       let fs ← DAlg_Tm f tel
   --       let ts ← DAlg_Tm t tel
@@ -606,10 +608,9 @@ def DAlg (Γ : Con) (Alg_comp_names : List String := []) (comp_names : List Stri
   else return algStr
 
 def f := ⦃ W : U ⦄
-def foo := ⦃ W : U, V : U, T : U, x : W⦄
+def foo := ⦃ W : U, V : U,  M : W ⇒ W ⇒ V⦄
 def foo' := ⦃ W : U, P : W ⇒ U, e : (x : W) ⇒ P x⦄
-#reduce StateT.run (Alg_Con foo') ([])
-#eval DAlg foo ["a","b","c","d","e"]
+#eval DAlg foo ["a","b","c"] ["aᴰ","bᴰ","α","β","cᴰ"] true
 
 #check List.take
 
