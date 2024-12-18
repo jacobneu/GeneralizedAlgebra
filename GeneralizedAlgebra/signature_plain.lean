@@ -447,33 +447,41 @@ def getDepends : List Argument → Nat → Option (Bool × Nat × List Token)
     return (bit,succ res,ts)
 | (NonDep _)::rest, succ n => getDepends rest n
 
-def foldTokens_core (constrSplit : String) (REPR : Nat → String) : Nat → List Argument → List Token → Option String
+def foldTokens_core (constrSplit : String) (varNames : List String) : Nat → List Argument → List Token → Option String
 | succ FUEL, args, printArrow::rest => do
-    let restStr ← foldTokens_core constrSplit REPR FUEL args rest
+    let restStr ← foldTokens_core constrSplit varNames FUEL args rest
     return (" → " ++ restStr)
 | succ FUEL, args, printConstrSplit::rest => do
-    let restStr ← foldTokens_core constrSplit REPR FUEL args rest
+    let restStr ← foldTokens_core constrSplit varNames FUEL args rest
     return (constrSplit ++ restStr)
 | succ FUEL, args, (printStr s)::rest => do
-    let restStr ← foldTokens_core constrSplit REPR FUEL args rest
+    let restStr ← foldTokens_core constrSplit varNames FUEL args rest
     return (s ++ restStr)
 | succ FUEL, args, (printArg n)::rest => do
     let (doPrint, index, ts) ← getDepends args n
-    let printRest ← foldTokens_core constrSplit REPR FUEL args rest
-    let argType ← foldTokens_core constrSplit REPR FUEL args ts
+    let printRest ← foldTokens_core constrSplit varNames FUEL args rest
+    let argType ← foldTokens_core constrSplit varNames FUEL args ts
+    let varName ← nth index varNames
     if doPrint
-    then return ("(X_" ++ REPR index ++ " : " ++ argType ++ ")" ++ printRest)
+    then return ("(" ++ varName ++ " : " ++ argType ++ ")" ++ printRest)
     else return (argType ++ printRest)
 | succ FUEL, args, (printVarName n)::rest => do
     let (_, index, _) ← getDepends args n
-    let printRest ← foldTokens_core constrSplit REPR FUEL args rest
-    return ("X_" ++ REPR index ++ printRest)
+    let printRest ← foldTokens_core constrSplit varNames FUEL args rest
+    let varName ← nth index varNames
+    return (varName ++ printRest)
 | _,_,[] => some ""
 | _,_, _ => none
 
-def foldTokens (constrSplit : String := " × ") (args : List Argument):=
-  foldTokens_core constrSplit (if countDepends args < 10 then twoRepr else threeRepr) 1000 args
+def foldTokens (constrSplit : String := " × ") (varNames : List String) (args : List Argument):=
+  foldTokens_core constrSplit varNames 1000 args
 
+def genVarNames_core (REPR : Nat → String) (varLetter : String) : Nat → List String → Nat → List String
+| 0, varNames,_ => varNames
+| succ n, varNames,index => genVarNames_core REPR varLetter n (varNames ++ [varLetter ++ REPR index]) (succ index)
+
+def genVarNames (n : Nat) (starterNames : List String) (varLetter := "X_"): List String :=
+  genVarNames_core (if n < 10 then twoRepr else threeRepr) varLetter (n - List.length starterNames) (List.take n starterNames) 0
 
 def pingNth_core : List Argument → Nat → Option (List Argument)
 | [],_ => none
@@ -529,10 +537,12 @@ mutual
     | _,_ => none
 end
 
-def Alg (Γ : Con) (recordNotation : Bool := false) : Option String := do
+def Alg (Γ : Con) (comp_names : List String := []) (recordNotation : Bool := false) : Option String := do
   let ((tel,res),vars) ← StateT.run (Alg_Con Γ) ([])
   let vars' ← if recordNotation then List.foldlM pingNth_core vars tel else some vars
-  let algStr ← foldTokens (if recordNotation then " \n    " else " × ") vars' res
+  let compSep := if recordNotation then " \n    " else " × "
+  let varNames := genVarNames (List.length vars') comp_names
+  let algStr ← foldTokens compSep varNames vars' res
   if recordNotation
   then return "record -Alg where\n    " ++ algStr
   else return algStr
@@ -584,11 +594,13 @@ def collapse : List String → String
 | [x] => x
 | x::L => "(" ++  List.foldl (λ s s' => s ++ "," ++ s' ) x L ++   ")"
 
-def DAlg (Γ : Con) (Alg_comp : List String) (recordNotation : Bool := false) : Option String := do
-  if len Γ ≠ List.length Alg_comp then none else do
+def DAlg (Γ : Con) (Alg_comp_names : List String := []) (comp_names : List String := []) (recordNotation : Bool := false) : Option String := do
+  let Alg_comp := genVarNames (len Γ) Alg_comp_names "Y_"
   let ((tel,res),vars) ← StateT.run (DAlg_Con (List.reverse Alg_comp) Γ) ([])
   let vars' ← if recordNotation then List.foldlM pingNth_core vars tel else some vars
-  let algStr ← foldTokens (if recordNotation then "\n    " else " × ") vars' res
+  let compSep := if recordNotation then "\n    " else " × "
+  let varNames := genVarNames (List.length vars') comp_names
+  let algStr ← foldTokens compSep varNames vars' res
   if recordNotation
   then return "record -DAlg " ++ collapse Alg_comp ++ " where\n    " ++ algStr
   else return algStr
@@ -597,7 +609,9 @@ def f := ⦃ W : U ⦄
 def foo := ⦃ W : U, V : U, T : U, x : W⦄
 def foo' := ⦃ W : U, P : W ⇒ U, e : (x : W) ⇒ P x⦄
 #reduce StateT.run (Alg_Con foo') ([])
-#eval DAlg foo ["foo", "bar", "baz","bat"] true
+#eval DAlg foo ["a","b","c","d","e"]
+
+#check List.take
 
 
 
