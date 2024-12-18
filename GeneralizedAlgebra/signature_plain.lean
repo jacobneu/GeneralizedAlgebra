@@ -35,6 +35,10 @@ open Con Subst Ty Tm
 infixl:10 " ▷ " => EXTEND
 notation t " [ " σ " ]t " => SUBST_Tm σ t
 
+def len : Con → Nat
+| EMPTY => 0
+| Γ ▷ _ => succ (len Γ)
+
 def wk (Γ : Con) (A : Ty) : Subst := PROJ1 (@ID (Γ ▷ A))
 def V0 (Γ : Con) (T0 : Ty) : Tm := PROJ2 (@ID (Γ ▷ T0))
 def V1 (Γ)(T1)(T0) := (@V0 Γ T0) [@wk (Γ ▷ T1) T0]t
@@ -418,6 +422,7 @@ inductive Token : Type where
 | printVarName : Nat → Token
 | printStr : String → Token
 | printConstrSplit : Token
+| printArrow : Token
 | BREAK : Token
 end
 open Argument Token
@@ -443,6 +448,9 @@ def getDepends : List Argument → Nat → Option (Bool × Nat × List Token)
 | (NonDep _)::rest, succ n => getDepends rest n
 
 def foldTokens_core (constrSplit : String) (REPR : Nat → String) : Nat → List Argument → List Token → Option String
+| succ FUEL, args, printArrow::rest => do
+    let restStr ← foldTokens_core constrSplit REPR FUEL args rest
+    return (" → " ++ restStr)
 | succ FUEL, args, printConstrSplit::rest => do
     let restStr ← foldTokens_core constrSplit REPR FUEL args rest
     return (constrSplit ++ restStr)
@@ -501,7 +509,7 @@ mutual
       let Xs ← Alg_Tm X tel
       let Xvar ← newVar Xs
       let Ys ← Alg_Ty Y (tel++[Xvar])
-      pure $ [printArg Xvar, printStr " → "] ++ Ys
+      pure $ [printArg Xvar, printArrow] ++ Ys
   | EQ t t',tel => do
       let ts ← Alg_Tm t tel
       let t's ← Alg_Tm t' tel
@@ -519,7 +527,6 @@ mutual
         let ts ← Alg_Tm t tel
         pure $ fs ++ [printStr " "] ++ ts
     | _,_ => none
-
 end
 
 def Alg (Γ : Con) (recordNotation : Bool := false) : Option String := do
@@ -527,14 +534,70 @@ def Alg (Γ : Con) (recordNotation : Bool := false) : Option String := do
   let vars' ← if recordNotation then List.foldlM pingNth_core vars tel else some vars
   let algStr ← foldTokens (if recordNotation then " \n    " else " × ") vars' res
   if recordNotation
-  then return "record   where \n    " ++ algStr
+  then return "record -Alg where\n    " ++ algStr
+  else return algStr
+
+mutual
+  def DAlg_Con : List String → Con → StateT (List Argument) Option (List Nat × List Token)
+  | _,EMPTY => pure $ ([],[printStr "⊤"])
+  | carrier::_,EMPTY ▷ UU => do
+      let theVar ← newVar [printStr carrier,printArrow,printStr "Set"]
+      pure ([theVar],[printArg theVar])
+  | alg_comp::Alg_comp,Γ ▷ A => do
+    let (tel,res) ← DAlg_Con Alg_comp Γ
+    let As ← DAlg_Ty alg_comp A
+    let theVar ← newVar As
+    pure (tel++[theVar],res ++ [printConstrSplit, printStr "(", printArg theVar, printStr ")"])
+  | _,_ => none
+  def DAlg_Ty : String → Ty → StateT (List Argument) Option (List Token)
+  | carrier,UU => pure [printStr carrier,printArrow,printStr "Set"]
+  -- | EL X, tel => DAlg_Tm X tel
+  -- | PI X Y, tel => do
+  --     let Xs ← DAlg_Tm X tel
+  --     let Xvar ← newVar Xs
+  --     let Ys ← DAlg_Ty Y (tel++[Xvar])
+  --     pure $ [printArg Xvar, printStr " → "] ++ Ys
+  -- | EQ t t',tel => do
+  --     let ts ← DAlg_Tm t tel
+  --     let t's ← DAlg_Tm t' tel
+  --     pure $ ts ++ [printStr " = "] ++ t's
+
+  | _,_ => StateT.lift none
+  -- def DAlg_Tm (t : Tm) (tel : List Nat) : StateT (List Argument) Option (List Token) :=
+  -- match t,deBruijn t with
+  --   | _,some n => do
+  --       let glob_n ← StateT.lift (nthBackwards n tel)
+  --       pingNth glob_n
+  --       pure $ [printVarName glob_n]
+  --   | (APP f) [ PAIR (ID _) t ]t,_ => do
+  --       let fs ← DAlg_Tm f tel
+  --       let ts ← DAlg_Tm t tel
+  --       pure $ fs ++ [printStr " "] ++ ts
+  --   | _,_ => none
+end
+
+-- def foldr1 (g : String → String → String) (z : String) : List String → String
+-- | [] => z
+
+def collapse : List String → String
+| [] => ""
+| [x] => x
+| x::L => "(" ++  List.foldl (λ s s' => s ++ "," ++ s' ) x L ++   ")"
+
+def DAlg (Γ : Con) (Alg_comp : List String) (recordNotation : Bool := false) : Option String := do
+  if len Γ ≠ List.length Alg_comp then none else do
+  let ((tel,res),vars) ← StateT.run (DAlg_Con (List.reverse Alg_comp) Γ) ([])
+  let vars' ← if recordNotation then List.foldlM pingNth_core vars tel else some vars
+  let algStr ← foldTokens (if recordNotation then "\n    " else " × ") vars' res
+  if recordNotation
+  then return "record -DAlg " ++ collapse Alg_comp ++ " where\n    " ++ algStr
   else return algStr
 
 def f := ⦃ W : U ⦄
-def foo := ⦃ W : U, V : U⦄
+def foo := ⦃ W : U, V : U, T : U, S:U⦄
 def foo' := ⦃ W : U, P : W ⇒ U, e : (x : W) ⇒ P x⦄
 #reduce StateT.run (Alg_Con foo') ([])
-#eval Alg foo' true
+#eval DAlg foo ["foo", "bar", "baz","bat"]
 
 
 
