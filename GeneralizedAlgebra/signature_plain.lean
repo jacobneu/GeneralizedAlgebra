@@ -417,6 +417,7 @@ inductive Token : Type where
 | printArg : Nat → Token
 | printVarName : Nat → Token
 | printStr : String → Token
+| printConstrSplit : Token
 | BREAK : Token
 end
 open Argument Token
@@ -441,39 +442,42 @@ def getDepends : List Argument → Nat → Option (Bool × Nat × List Token)
     return (bit,succ res,ts)
 | (NonDep _)::rest, succ n => getDepends rest n
 
-def foldTokens_core (REPR : Nat → String): Nat → List Argument → List Token → Option String
+def foldTokens_core (constrSplit : String) (REPR : Nat → String) : Nat → List Argument → List Token → Option String
+| succ FUEL, args, printConstrSplit::rest => do
+    let restStr ← foldTokens_core constrSplit REPR FUEL args rest
+    return (constrSplit ++ restStr)
 | succ FUEL, args, (printStr s)::rest => do
-    let restStr ← foldTokens_core REPR FUEL args rest
+    let restStr ← foldTokens_core constrSplit REPR FUEL args rest
     return (s ++ restStr)
 | succ FUEL, args, (printArg n)::rest => do
     let (doPrint, index, ts) ← getDepends args n
-    let printRest ← foldTokens_core REPR FUEL args rest
-    let argType ← foldTokens_core REPR FUEL args ts
+    let printRest ← foldTokens_core constrSplit REPR FUEL args rest
+    let argType ← foldTokens_core constrSplit REPR FUEL args ts
     if doPrint
     then return ("(X_" ++ REPR index ++ " : " ++ argType ++ ")" ++ printRest)
     else return (argType ++ printRest)
 | succ FUEL, args, (printVarName n)::rest => do
     let (_, index, _) ← getDepends args n
-    let printRest ← foldTokens_core REPR FUEL args rest
+    let printRest ← foldTokens_core constrSplit REPR FUEL args rest
     return ("X_" ++ REPR index ++ printRest)
 | _,_,[] => some ""
 | _,_, _ => none
 
-def foldTokens (args : List Argument) :=
-  foldTokens_core (if countDepends args < 10 then twoRepr else threeRepr) 1000 args
+def foldTokens (constrSplit : String := " × ") (args : List Argument):=
+  foldTokens_core constrSplit (if countDepends args < 10 then twoRepr else threeRepr) 1000 args
 
 
-def pingNth_core : Nat → List Argument → Option (List Argument)
-| _,[] => none
-| 0,(NonDep ts)::rest => some ((Dep ts)::rest)
-| succ n, x::rest => do
-  let res ← pingNth_core n rest
+def pingNth_core : List Argument → Nat → Option (List Argument)
+| [],_ => none
+| (NonDep ts)::rest,0 => some ((Dep ts)::rest)
+| x::rest,succ n => do
+  let res ← pingNth_core rest n
   return (x::res)
-| _,L => some L
+| L,_ => some L
 
 def pingNth (n :Nat) : StateT (List Argument) Option Unit := do
   let current ← get
-  let new ← StateT.lift $ pingNth_core n current
+  let new ← StateT.lift $ pingNth_core current n
   set new
 
 def nthBackwards (n:Nat) (L : List Nat) : Option Nat := nth n (List.reverse L)
@@ -489,7 +493,7 @@ mutual
     let (tel,res) ← Alg_Con Γ
     let As ← Alg_Ty A tel
     let theVar ← newVar As
-    pure (tel++[theVar],res ++ [printStr " × (", printArg theVar, printStr ")"])
+    pure (tel++[theVar],res ++ [printConstrSplit, printStr "(", printArg theVar, printStr ")"])
   def Alg_Ty : Ty → List Nat → StateT (List Argument) Option (List Token)
   | UU,_ => pure [printStr "Set"]
   | EL X, tel => Alg_Tm X tel
@@ -518,15 +522,19 @@ mutual
 
 end
 
-def Alg (Γ : Con) : Option String := do
-  let ((_,res),vars) ← StateT.run (Alg_Con Γ) ([])
-  foldTokens vars res
+def Alg (Γ : Con) (recordNotation : Bool := false) : Option String := do
+  let ((tel,res),vars) ← StateT.run (Alg_Con Γ) ([])
+  let vars' ← if recordNotation then List.foldlM pingNth_core vars tel else some vars
+  let algStr ← foldTokens (if recordNotation then " \n    " else " × ") vars' res
+  if recordNotation
+  then return "record   where \n    " ++ algStr
+  else return algStr
 
 def f := ⦃ W : U ⦄
 def foo := ⦃ W : U, V : U⦄
 def foo' := ⦃ W : U, P : W ⇒ U, e : (x : W) ⇒ P x⦄
 #reduce StateT.run (Alg_Con foo') ([])
-#eval Alg foo'
+#eval Alg foo' true
 
 
 
