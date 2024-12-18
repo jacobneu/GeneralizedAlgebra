@@ -545,13 +545,13 @@ mutual
       pure ([theVar],[printArg theVar])
   | alg_comp::Alg_comp,Γ ▷ A => do
     let (tel,res) ← DAlg_Con Alg_comp Γ
-    let As ← DAlg_Ty alg_comp A
+    let As ← DAlg_Ty tel alg_comp A
     let theVar ← newVar As
     pure (tel++[theVar],res ++ [printConstrSplit, printStr "(", printArg theVar, printStr ")"])
   | _,_ => none
-  def DAlg_Ty : String → Ty → StateT (List Argument) Option (List Token)
-  | carrier,UU => pure [printStr carrier,printArrow,printStr "Set"]
-  -- | EL X, tel => DAlg_Tm X tel
+  def DAlg_Ty : List Nat → String → Ty → StateT (List Argument) Option (List Token)
+  | _,carrier,UU => pure [printStr carrier,printArrow,printStr "Set"]
+  | tel,alg_elt,EL X => DAlg_Tm tel alg_elt X
   -- | PI X Y, tel => do
   --     let Xs ← DAlg_Tm X tel
   --     let Xvar ← newVar Xs
@@ -562,18 +562,18 @@ mutual
   --     let t's ← DAlg_Tm t' tel
   --     pure $ ts ++ [printStr " = "] ++ t's
 
-  | _,_ => StateT.lift none
-  -- def DAlg_Tm (t : Tm) (tel : List Nat) : StateT (List Argument) Option (List Token) :=
-  -- match t,deBruijn t with
-  --   | _,some n => do
-  --       let glob_n ← StateT.lift (nthBackwards n tel)
-  --       pingNth glob_n
-  --       pure $ [printVarName glob_n]
+  | _,_,_ => StateT.lift none
+  def DAlg_Tm (tel : List Nat) (alg_elt : String) (t : Tm) : StateT (List Argument) Option (List Token) :=
+  match t,deBruijn t with
+    | _,some n => do
+        let glob_n ← StateT.lift (nthBackwards n tel)
+        pingNth glob_n
+        pure $ [printVarName glob_n,printStr " ",printStr alg_elt]
   --   | (APP f) [ PAIR (ID _) t ]t,_ => do
   --       let fs ← DAlg_Tm f tel
   --       let ts ← DAlg_Tm t tel
   --       pure $ fs ++ [printStr " "] ++ ts
-  --   | _,_ => none
+    | _,_ => none
 end
 
 -- def foldr1 (g : String → String → String) (z : String) : List String → String
@@ -594,10 +594,10 @@ def DAlg (Γ : Con) (Alg_comp : List String) (recordNotation : Bool := false) : 
   else return algStr
 
 def f := ⦃ W : U ⦄
-def foo := ⦃ W : U, V : U, T : U, S:U⦄
+def foo := ⦃ W : U, V : U, T : U, x : W⦄
 def foo' := ⦃ W : U, P : W ⇒ U, e : (x : W) ⇒ P x⦄
 #reduce StateT.run (Alg_Con foo') ([])
-#eval DAlg foo ["foo", "bar", "baz","bat"]
+#eval DAlg foo ["foo", "bar", "baz","bat"] true
 
 
 
