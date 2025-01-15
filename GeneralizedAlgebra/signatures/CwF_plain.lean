@@ -1,18 +1,18 @@
 import GeneralizedAlgebra.signature_plain
 
-def ℭ𝔴𝔉 : Con := ⦃
+def ℭ𝔴𝔉_data := [namedGAT|
     Con : U,
     Sub : Con ⇒ Con ⇒ U,
-    id  : (X : Con) ⇒ Sub X X,
-    comp  : (X :Con) ⇒ (Y : Con) ⇒ (Z : Con) ⇒
-            Sub Y Z ⇒ Sub X Y ⇒ Sub X Z,
-    lunit : (X : Con) ⇒ (Y : Con) ⇒ (f : Sub X Y) ⇒
-            comp X Y Y (id Y) f ≡ f,
-    runit : (X : Con) ⇒ (Y : Con) ⇒ (f : Sub X Y) ⇒
-            comp X X Y f (id X) ≡ f,
-    assoc : (W:Con) ⇒ (X:Con) ⇒ (Y:Con) ⇒ (Z:Con) ⇒ (e : Sub W X) ⇒
-            (f : Sub X Y) ⇒ (g : Sub Y Z) ⇒
-            comp W X Z g (comp W X Y f e) ≡ comp W Y Z (comp X Y Z g f) e,
+    id  : ( Γ : Con) ⇒ Sub Γ Γ,
+    comp  : (Θ :Con) ⇒ (Δ : Con) ⇒ (Γ : Con) ⇒
+            Sub Δ Γ ⇒ Sub Θ Δ ⇒ Sub Θ Γ,
+    lunit : (Δ : Con) ⇒ (Γ : Con) ⇒ ( γ : Sub Δ Γ) ⇒
+            comp Δ Γ Γ (id Γ) γ ≡ γ,
+    runit : (Δ : Con) ⇒ (Γ : Con) ⇒ ( γ : Sub Δ Γ) ⇒
+            comp Δ Δ Γ γ (id Δ) ≡ γ,
+    assoc : (Ξ:Con) ⇒ (Θ:Con) ⇒ (Δ:Con) ⇒ (Γ:Con) ⇒ (ϑ : Sub Ξ Θ) ⇒
+            (δ : Sub Θ Δ) ⇒ (γ : Sub Δ Γ) ⇒
+            comp Ξ Θ Γ γ (comp Ξ Θ Δ ϑ δ) ≡ comp Ξ Δ Γ (comp Θ Δ Γ δ γ) ϑ,
     empty : Con,
     ε : (Γ : Con) ⇒ Sub Γ empty,
     ηε : (Γ : Con) ⇒ (f : Sub Γ empty) ⇒ f ≡ (ε Γ),
@@ -64,6 +64,23 @@ def ℭ𝔴𝔉 : Con := ⦃
               (σ : Sub Δ (ext Γ A)) ⇒
               pair Δ Γ A (π₁ Δ Γ A σ) (π₂ Δ Γ A σ)
               ≡ σ
-⦄
-#eval Con_toString ℭ𝔴𝔉
-#eval Alg ℭ𝔴𝔉
+]
+
+def ℭ𝔴𝔉 : Con := ℭ𝔴𝔉_data.1
+def CwF_names := ℭ𝔴𝔉_data.2.1
+def CwF_topnames := ℭ𝔴𝔉_data.2.2
+
+-- #eval Con_toString ℭ𝔴𝔉
+def Con_v : Nat → List String
+| 0 => ["Γ"]
+| 1 => "Δ" :: Con_v 0
+| 2 => "Θ" :: Con_v 1
+| 3 => "Ξ" :: Con_v 2
+| _ => []
+
+-- def twice (L : List String) := L ++ L
+-- def CwF_record_names := ["Con","Sub","Γ","id"] ++ Con_v 2 ++ ["comp"] ++ twice (Con_v 1 ++ ["γ"] ) ++ Con_v 3 ++ ["ϑ","δ","γ","empty","Γ","ε","Γ","f",]
+#eval CwF_names
+#eval List.length CwF_topnames
+#eval len ℭ𝔴𝔉
+#eval Alg ℭ𝔴𝔉 CwF_names true

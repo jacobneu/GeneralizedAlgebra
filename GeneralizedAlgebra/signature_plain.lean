@@ -91,6 +91,9 @@ declare_syntax_cat con_outer
 syntax "⦃" "⦄" : con_outer
 syntax "⦃" con_inner "⦄" : con_outer
 
+declare_syntax_cat con_named
+syntax "[namedGAT|" con_inner "]" : con_named
+
 declare_syntax_cat nouGAT_instr
 syntax "[nouGAT|" "]" : nouGAT_instr
 syntax "[nouGAT|" con_inner "]" : nouGAT_instr
@@ -121,12 +124,18 @@ partial def elabGATArg (ctx : Expr) (vars : String → MetaM Expr) : Syntax → 
   return ("",t)
 | _ => throwUnsupportedSyntax
 
-partial def elabGATTy (ctx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM Expr
+
+def stringCons := @List.cons String
+def stringNil  := @List.nil String
+def stringPure := @List.pure String
+
+partial def elabGATTy (ctx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM (Expr × Expr)
 | `(gat_ty| ( $g:gat_ty ) ) => elabGATTy ctx vars g
-| `(gat_ty| U ) => return .const ``UU []
+| `(gat_ty| U ) => return (.const ``stringNil [], .const ``UU [])
 | `(gat_ty| $x:gat_tm ) => do
   let t ← elabGATTm ctx vars x
-  mkAppM ``EL #[t]
+  let T ← mkAppM ``EL #[t]
+  return (.const ``stringNil [], T)
 | `(gat_ty| $T:gat_arg ⇒ $T':gat_ty) => do
   let (i,domain) ← elabGATArg ctx vars T
   let elDomain ← mkAppM ``EL #[domain]
@@ -139,18 +148,21 @@ partial def elabGATTy (ctx : Expr) (vars : String → MetaM Expr) : Syntax → M
       let ID ← mkAppM ``ID #[newCtx]
       let p ← mkAppM ``PROJ1 #[ID]
       mkAppM ``SUBST_Tm #[ p , old]
-  let codomain ← elabGATTy newCtx newVars T'
-  mkAppM  ``PI #[domain,codomain]
+  let (codNames,codomain) ← elabGATTy newCtx newVars T'
+  let result ← mkAppM  ``PI #[domain,codomain]
+  let Tnames ← mkAppM ``stringCons #[mkStrLit i,codNames]
+  return (Tnames,result)
 | `(gat_ty| $t1:gat_tm ≡ $t2:gat_tm) => do
   let tt1 ← elabGATTm ctx vars t1
   let tt2 ← elabGATTm ctx vars t2
-  mkAppM ``EQ #[tt1,tt2]
+  let T ← mkAppM ``EQ #[tt1,tt2]
+  return (.const ``stringNil [],T)
 | _ => throwUnsupportedSyntax
 
-partial def elabGATdecl (ctx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM (String × Expr)
+partial def elabGATdecl (ctx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM (String × Expr × Expr)
 | `(gat_decl| $i:ident : $g:gat_ty ) => do
-    let T ← elabGATTy ctx vars g
-    return (i.getId.toString,T)
+    let (Tnames,T) ← elabGATTy ctx vars g
+    return (i.getId.toString,Tnames,T)
 | _ => throwUnsupportedSyntax
 
 
@@ -176,13 +188,13 @@ partial def elabGATdecl (ctx : Expr) (vars : String → MetaM Expr) : Syntax →
 --       mkAppM ``SUBST_Tm #[ p , old]
 --   return (appendedCtx,newVars)
 -- | _ => throwUnsupportedSyntax
+def snoc (L : List String) x := L ++ [x]
 
-
-partial def elabGATCon_core (ctx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM (Expr × (String → MetaM Expr))
+partial def elabGATCon_core (ctx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM (Expr × Expr × Expr × (String → MetaM Expr))
 -- | `(gat_con| ⬝ ) => return (.const ``preEMPTY [] , λ _ => throwUnsupportedSyntax)
 | `(con_inner| $rest:con_inner , $d:gat_decl ) => do
-  let (C , restVars) ← elabGATCon_core ctx vars rest
-  let (i,T) ← elabGATdecl ctx restVars d
+  let (C , restNames, topnames, restVars) ← elabGATCon_core ctx vars rest
+  let (i,Tnames,T) ← elabGATdecl ctx restVars d
   let res ← mkAppM ``EXTEND #[C, T]
   let newVars := λ s =>
     if s=i
@@ -192,9 +204,12 @@ partial def elabGATCon_core (ctx : Expr) (vars : String → MetaM Expr) : Syntax
       let ID ← mkAppM ``ID #[res]
       let p ← mkAppM ``PROJ1 #[ID]
       mkAppM ``SUBST_Tm #[ p , old]
-  return (res, newVars)
+  let newNames ← mkAppM ``List.append #[restNames,Tnames]
+  let newNames' ← mkAppM ``snoc #[newNames, mkStrLit i]
+  let newTopnames ← mkAppM ``snoc #[topnames, mkStrLit i]
+  return (res, newNames',newTopnames,newVars)
 | `(con_inner| $d:gat_decl ) => do
-  let (i,T) ← elabGATdecl ctx vars d
+  let (i,Tnames,T) ← elabGATdecl ctx vars d
   let newVars := λ s =>
     if s=i
     then mkAppM ``V0 #[ ctx , T ]
@@ -204,7 +219,9 @@ partial def elabGATCon_core (ctx : Expr) (vars : String → MetaM Expr) : Syntax
       let p ← mkAppM ``PROJ1 #[ID]
       mkAppM ``SUBST_Tm #[ p , old]
   let res ← mkAppM ``EXTEND #[ctx, T]
-  return (res, newVars)
+  let resNames ← mkAppM ``snoc #[Tnames,mkStrLit i]
+  let topsingle ← mkAppM ``stringPure #[mkStrLit i]
+  return (res, resNames , topsingle, newVars)
 -- | `(gat_con| include $g:ident as ( $is:ident_list ); $rest:gat_con ) => do
 --   let (newCon,newVars) ← elab_ident_list ctx (.const g.getId []) vars is
 --   elabGATCon_core newCon newVars rest
@@ -217,6 +234,28 @@ partial def elabGATCon : Syntax → MetaM Expr
   let (res,_) ← elabGATCon_core (.const ``EMPTY []) (λ _ => throwUnsupportedSyntax) s
   return res
 | _ => throwUnsupportedSyntax
+
+def filterNilStr := List.filter (Bool.not ∘ String.isEmpty)
+
+def mk3 (x:Con) (y:List String) (z : List String) := (x,y,z)
+
+partial def elabnamedGAT : Syntax → MetaM Expr
+| `(con_outer| ⦃  ⦄ ) => return (.const ``EMPTY [])
+| `(con_named| [namedGAT| $s:con_inner ] ) => do
+  let (resCon,resList,topList,_) ← elabGATCon_core (.const ``EMPTY []) (λ _ => throwUnsupportedSyntax) s
+  -- ListStrToExpr resList
+  let filteredList ← mkAppM ``filterNilStr #[resList]
+  mkAppM ``mk3 #[resCon,filteredList,topList]
+  -- return resList
+| _ => throwUnsupportedSyntax
+
+-- #check Prod.pair
+
+elab g:con_outer : term => elabGATCon g
+elab g:con_named : term => elabnamedGAT g
+
+def foo := [namedGAT| Nat : U, zero : Nat, blah : Nat ⇒ Nat ⇒ U, suc : (x : Nat) ⇒ (y : Nat) ⇒ blah x y ]
+#eval foo.2
 
 inductive nouGAT_Tm : Type where
 | V : Nat → nouGAT_Tm
@@ -334,13 +373,12 @@ partial def elabnouGAT : Syntax → MetaM Expr
 | _ => throwUnsupportedSyntax
 
 
-elab g:con_outer : term => elabGATCon g
 elab g:nouGAT_instr : term => elabnouGAT g
 
-def G := ⦃M : U, x : M⦄
-def x := [nouGAT| include G as (_);
-  N : U, y : N ]
-#reduce x
+-- def G := ⦃M : U, x : M⦄
+-- def x := [nouGAT| include G as (_);
+--   N : U, y : N ]
+-- #reduce x
 
 
 
@@ -608,15 +646,15 @@ def DAlg (Γ : Con) (Alg_comp_names : List String := []) (comp_names : List Stri
   then return "record -DAlg " ++ collapse Alg_comp ++ " where\n    " ++ algStr
   else return algStr
 
-def f := ⦃ W : U ⦄
-def foo := ⦃ W : U, V : U,  M : W ⇒ W ⇒ V⦄
-def foo' := ⦃ W : U, P : W ⇒ U, e : (x : W) ⇒ P x⦄
-#eval DAlg foo ["a","b","c"] ["aᴰ","bᴰ","α","α'","cᴰ"] true
+-- def f := ⦃ W : U ⦄
+-- def foo := ⦃ W : U, V : U,  M : W ⇒ W ⇒ V⦄
+-- def foo' := ⦃ W : U, P : W ⇒ U, e : (x : W) ⇒ P x⦄
+-- #eval DAlg foo ["a","b","c"] ["aᴰ","bᴰ","α","α'","cᴰ"] true
 
-#check List.take
+-- #check List.take
 
 
-
+-- #eval DAlg (⦃ Nat : U , x : Nat, f : Nat ⇒ Nat ⦄) ["K","k₀","F"] ["Kᴰ","k","Fᴰ"]
 
 
 -- def v0 : preTm := prePROJ2 (preID (preEXTEND preEMPTY preUU))
