@@ -571,7 +571,7 @@ mutual
     | (APP f) [ PAIR (ID _) t ]t,_ => do
         let fs ← Alg_Tm f tel
         let ts ← Alg_Tm t tel
-        pure $ fs ++ [printStr " "] ++ ts
+        pure $ fs ++ [printStr " ("] ++ ts ++ [printStr ")"]
     | _,_ => none
 end
 

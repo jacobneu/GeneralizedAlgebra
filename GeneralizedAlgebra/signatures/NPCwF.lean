@@ -95,9 +95,6 @@ def 𝔑𝔓ℭ𝔴𝔉_data := [namedGAT|
     subst_isneut : (Δ:Con) ⇒ (Γ:Con) ⇒ (σ : Sub Δ Γ) ⇒ (A : Ty Γ) ⇒ isneut_Ty Γ A ⇒ isneut_Ty Δ (substTy Δ Γ σ A),
     ext_isneut : (Γ : Con) ⇒ (A : Ty Γ) ⇒ isneut_Con Γ ⇒ isneut_Ty Γ A ⇒ isneut_Con (ext Γ A),
 
-    minus : (Γ:Con) ⇒ (Γn : isneut_Con Γ) ⇒ (A : Ty Γ) ⇒ Tm Γ A ⇒ Tm Γ (neg_Ty Γ A),
-    minus_inv : (Γ:Con) ⇒ (Γn : isneut_Con Γ) ⇒ (A : Ty Γ) ⇒ (t : Tm Γ A) ⇒ minus Γ Γn (neg_Ty A) (minus Γ Γn A t) ≡ t,
-
     e : (Γ:Con) ⇒ isneut_Con Γ ⇒ Sub (neg_Con Γ) Γ,
     e_neg : (Γ:Con) ⇒ (Γn : isneut_Con Γ) ⇒ neg_Sub (e Γ Γn) ≡ e (neg_Con Γ) (neg_Con_isneut Γ Γn),
     e_β : (Γ : Con) ⇒ (Γn : isneut_Con Γ) ⇒ comp (neg_Con Γ) Γ (neg_Con Γ) (e Γ Γn) (neg_Sub (e Γ Γn)) ≡ id (neg_Con Γ),
@@ -107,9 +104,6 @@ def 𝔑𝔓ℭ𝔴𝔉_data := [namedGAT|
 
     ee1 : (Γ : Con) ⇒ (Γn : isneut_Con Γ) ⇒ (A₀ : Ty Γ) ⇒
         Sub (neg_Con (ext (neg_Con Γ) (substTy (neg_Con Γ) Γ (e Γ Γn) (neg_Ty A₀)))) (ext Γ A₀),
-    ee1_pair :
-        comp (ee1 Γ Γn A₀) (neg_Sub (pair (neg_Sub σ) (substTm Δ Γ σ (neg_Ty Γ A) (minus Δ Δn A t) (e Δ Δn)) ))
-        ≡ pair  ,
     ee2 : (Γ : Con) ⇒ (Γn : isneut_Con Γ) ⇒ (A₁ : Ty Γ) ⇒ (A₀ : Ty Γ) ⇒
         Sub
             (neg_Con
