@@ -125,15 +125,15 @@ mutual
     | _,_ => none
 end
 
-def Alg (Γ : Con) (comp_names : List String := []) (recordNotation : Bool := false) : Option String := do
+def Alg (Γ : Con) (comp_names : List String := []) (recordName : Option String := none) : Option String := do
   let ((tel,res),vars) ← StateT.run (Alg_Con Γ) ([])
-  let vars' ← if recordNotation then List.foldlM pingNth_core vars tel else some vars
-  let compSep := if recordNotation then " \n    " else " × "
+  let vars' ← if recordName.isSome then List.foldlM pingNth_core vars tel else some vars
+  let compSep := if recordName.isSome then " \n    " else " × "
   let varNames := genVarNames (List.length vars') comp_names
   let algStr ← foldTokens compSep varNames vars' res
-  if recordNotation
-  then return "record -Alg where\n    " ++ algStr
-  else return algStr
+  match recordName with
+  | (some name) => return "record " ++ name ++ "-Alg where\n    " ++ algStr
+  | none => return algStr
 
 mutual
   def DAlg_Con : List String → Con → StateT (List Argument) Option (List Nat × List Token)
@@ -177,13 +177,13 @@ mutual
     | _,_ => none
 end
 
-def DAlg (Γ : Con) (Alg_comp_names : List String := []) (comp_names : List String := []) (recordNotation : Bool := false) : Option String := do
+def DAlg (Γ : Con) (Alg_comp_names : List String := []) (comp_names : List String := []) (recordName : Option String := none) : Option String := do
   let Alg_comp := genVarNames (len Γ) Alg_comp_names "Y_"
   let ((tel,res),vars) ← StateT.run (DAlg_Con (List.reverse Alg_comp) Γ) ([])
-  let vars' ← if recordNotation then List.foldlM pingNth_core vars tel else some vars
-  let compSep := if recordNotation then "\n    " else " × "
+  let vars' ← if recordName.isSome then List.foldlM pingNth_core vars tel else some vars
+  let compSep := if recordName.isSome then "\n    " else " × "
   let varNames := genVarNames (List.length vars') comp_names
   let algStr ← foldTokens compSep varNames vars' res
-  if recordNotation
-  then return "record -DAlg " ++ collapse Alg_comp ++ " where\n    " ++ algStr
-  else return algStr
+  match recordName with
+  | (some name) => return "record " ++ name ++ "-DAlg " ++ collapse Alg_comp ++ " where\n    " ++ algStr
+  | none => return algStr
