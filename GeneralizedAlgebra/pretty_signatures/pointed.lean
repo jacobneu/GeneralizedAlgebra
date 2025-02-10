@@ -1,3 +1,3 @@
-import GeneralizedAlgebra.signature_plain
+import GeneralizedAlgebra.nouGAT
 
 def 𝔓 : GAT := ⦃ X : U, x : X ⦄

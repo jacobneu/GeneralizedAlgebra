@@ -1,4 +1,4 @@
-import GeneralizedAlgebra.signatures.quiver
+import GeneralizedAlgebra.pretty_signatures.quiver
 
 def 𝔯𝔔𝔲𝔦𝔳 : GAT := ⦃
   include 𝔔𝔲𝔦𝔳 as (V,E);
