@@ -21,6 +21,7 @@ syntax ident ":" gat_ty : gat_decl
 declare_syntax_cat gat_arg
 syntax "(" ident ":" gat_tm ")" : gat_arg
 syntax "(" "_" ":" gat_tm ")" : gat_arg
+syntax "{" ident ":" gat_tm "}" : gat_arg
 syntax gat_tm : gat_arg
 
 syntax gat_arg "⇒" gat_ty : gat_ty
@@ -57,6 +58,9 @@ partial def elabGATTm (ctx : Expr) (vars : String → MetaM Expr) : Syntax → M
 
 
 partial def elabGATArg (ctx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM (String × Expr)
+| `(gat_arg| { $i:ident : $g:gat_tm } ) => do
+  let t ← elabGATTm ctx vars g
+  return (i.getId.toString,t)
 | `(gat_arg| ( $i:ident : $g:gat_tm ) ) => do
   let t ← elabGATTm ctx vars g
   return (i.getId.toString,t)
