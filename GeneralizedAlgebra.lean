@@ -3,7 +3,9 @@ import GeneralizedAlgebra.ConPrinting
 
 import GeneralizedAlgebra.signatures.set
 import GeneralizedAlgebra.signatures.pointed
+import GeneralizedAlgebra.signatures.bipointed
 import GeneralizedAlgebra.signatures.nat
+import GeneralizedAlgebra.signatures.evenodd
 import GeneralizedAlgebra.signatures.quiver
 import GeneralizedAlgebra.signatures.refl_quiver
 import GeneralizedAlgebra.signatures.monoid
@@ -26,11 +28,23 @@ import GeneralizedAlgebra.signatures.PCwF
 #eval DAlg 𝔓 Pointed_names ["P"]
 #eval DAlg 𝔓 Pointed_names ["P","p₀"] (some "𝔓")
 
+-- Bipointed sets
+#eval Con_toString 𝔅
+#eval Alg 𝔅 Bipointed_names
+#eval DAlg 𝔅 Bipointed_names ["P"]
+#eval DAlg 𝔅 Bipointed_names ["P","p₀","p₁"] (some "𝔅")
+
 -- Natural numbers
 #eval Con_toString 𝔑
 #eval Alg 𝔑 Nat_names
 #eval DAlg 𝔑 Nat_names ["P","n"]
 #eval DAlg 𝔑 Nat_names ["P","base_case","n","ind_step"] (some "𝔑")
+
+-- Even/Odd Natural Numbers
+#eval Con_toString 𝔈𝔒
+#eval Alg 𝔈𝔒 EvenOdd_names
+#eval DAlg 𝔈𝔒 EvenOdd_names ["Pe","Po","n","m"]
+#eval DAlg 𝔈𝔒 EvenOdd_names ["Pe", "Po", "bc","n","ih","m","ih'"] (some "𝔑")
 
 -- Quivers
 #eval Con_toString 𝔔𝔲𝔦𝔳

@@ -62,14 +62,20 @@ Currently, signatures are given in a "pretty" and "plain" form. The "plain" form
 See [GeneralizedAlgebra.lean](GeneralizedAlgebra.lean) for a listing of all the example GATs and a demonstration of their `oneGAT` representation, algebras, displayed algebras, etc.
 
 - **Sets** — 𝔖𝔢𝔱
-    - *Pretty:* [pointed.lean](GeneralizedAlgebra/pretty_signatures/set.lean)
-    - *Plain*: [pointed.lean](GeneralizedAlgebra/signatures/set.lean)
+    - *Pretty:* [set.lean](GeneralizedAlgebra/pretty_signatures/set.lean)
+    - *Plain*: [set.lean](GeneralizedAlgebra/signatures/set.lean)
 - **Pointed sets** — 𝔓
     - *Pretty:* [pointed.lean](GeneralizedAlgebra/pretty_signatures/pointed.lean)
     - *Plain*: [pointed.lean](GeneralizedAlgebra/signatures/pointed.lean)
+- **Bipointed sets** — 𝔅
+    - *Pretty:* [bipointed.lean](GeneralizedAlgebra/pretty_signatures/bipointed.lean)
+    - *Plain*: [bipointed.lean](GeneralizedAlgebra/signatures/bipointed.lean)
 - **Natural Numbers** — 𝔑
-    - *Pretty: [nat.lean](GeneralizedAlgebra/pretty_signatures/nat.lean)*
+    - *Pretty*: [nat.lean](GeneralizedAlgebra/pretty_signatures/nat.lean)
     - *Plain*: [nat.lean](GeneralizedAlgebra/signatures/nat.lean)
+- **Even/Odd Natural Numbers** — 𝔈𝔒
+    - *Pretty*: [evenodd.lean](GeneralizedAlgebra/pretty_signatures/evenodd.lean)
+    - *Plain*: [evenodd.lean](GeneralizedAlgebra/signatures/evenodd.lean)
 - **Quivers** — 𝔔𝔲𝔦𝔳
     - *Pretty:* [quiver.lean](GeneralizedAlgebra/pretty_signatures/quiver.lean)
     - *Plain*: [quiver.lean](GeneralizedAlgebra/signatures/quiver.lean)
