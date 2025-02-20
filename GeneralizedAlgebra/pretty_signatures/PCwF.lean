@@ -1,7 +1,8 @@
--- import GeneralizedAlgebra.signatures.CwF
+import GeneralizedAlgebra.pretty_signatures.CwF
 
 def 𝔓ℭ𝔴𝔉 : GAT := ⦃
-  include ℭ𝔴𝔉 as (Con, Sub,comp,id,_,_,_,empty,_,_, Ty,substTy,...);
+  include ℭ𝔴𝔉 as (Con, Sub,comp,id,
+    empty,Ty,substTy,...);
     neg_Con    : Con ⇒ Con,
     neg_Sub    : ( Δ Γ : Con ) ⇒ Sub Δ Γ ⇒
         Sub (neg_Con Δ) (neg_Con Γ),
