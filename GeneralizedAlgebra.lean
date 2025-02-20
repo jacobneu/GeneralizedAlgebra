@@ -1,6 +1,7 @@
 import GeneralizedAlgebra.AlgPrinting
 import GeneralizedAlgebra.ConPrinting
 
+import GeneralizedAlgebra.signatures.set
 import GeneralizedAlgebra.signatures.pointed
 import GeneralizedAlgebra.signatures.nat
 import GeneralizedAlgebra.signatures.quiver
@@ -13,6 +14,11 @@ import GeneralizedAlgebra.signatures.groupoid
 import GeneralizedAlgebra.signatures.CwF
 import GeneralizedAlgebra.signatures.PCwF
 
+-- Sets
+#eval Con_toString 𝔖𝔢𝔱
+#eval Alg 𝔖𝔢𝔱 Set_names
+#eval DAlg 𝔖𝔢𝔱 Set_names ["P"]
+#eval DAlg 𝔖𝔢𝔱 Set_names ["P"] (some "𝔖𝔢𝔱")
 
 -- Pointed sets
 #eval Con_toString 𝔓

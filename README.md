@@ -61,6 +61,9 @@ Currently, signatures are given in a "pretty" and "plain" form. The "plain" form
 
 See [GeneralizedAlgebra.lean](GeneralizedAlgebra.lean) for a listing of all the example GATs and a demonstration of their `oneGAT` representation, algebras, displayed algebras, etc.
 
+- **Sets** — 𝔖𝔢𝔱
+    - *Pretty:* [pointed.lean](GeneralizedAlgebra/pretty_signatures/set.lean)
+    - *Plain*: [pointed.lean](GeneralizedAlgebra/signatures/set.lean)
 - **Pointed sets** — 𝔓
     - *Pretty:* [pointed.lean](GeneralizedAlgebra/pretty_signatures/pointed.lean)
     - *Plain*: [pointed.lean](GeneralizedAlgebra/signatures/pointed.lean)
