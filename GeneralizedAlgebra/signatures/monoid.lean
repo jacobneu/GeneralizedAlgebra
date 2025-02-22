@@ -9,5 +9,5 @@ def 𝔐𝔬𝔫_data := [namedGAT|
     assoc : (x : M) ⇒ (y : M) ⇒ (z : M) ⇒ m x (m y z) ≡ m (m x y) z
 ]
 def 𝔐𝔬𝔫 : GAT := 𝔐𝔬𝔫_data.1
-def Mon_names := 𝔐𝔬𝔫_data.2.1
-def Mon_topnames := 𝔐𝔬𝔫_data.2.2
+def Monoid_names := 𝔐𝔬𝔫_data.2.1
+def Monoid_topnames := 𝔐𝔬𝔫_data.2.2
