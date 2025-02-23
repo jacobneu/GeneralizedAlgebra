@@ -122,6 +122,9 @@ mutual
         let fs ← Alg_Tm f tel
         let ts ← Alg_Tm t tel
         pure $ fs ++ [printStr " ("] ++ ts ++ [printStr ")"]
+    | (TRANSP t _),_ => do Alg_Tm t tel
+        -- let es ← Alg_Tm e tel
+        -- pure $ [printStr "transp "] ++ es ++ [printStr " "] ++ ts
     | _,_ => none
 end
 
