@@ -10,6 +10,7 @@ def snoc (L : List String) x := L ++ [x]
 
 def filterNilStr := List.filter (Bool.not ∘ String.isEmpty)
 
+def mk2 (x:Con) (y:List String):= (x,y)
 def mk3 (x:Con) (y:List String) (z : List String) := (x,y,z)
 
 def paren (s:String):String :=
