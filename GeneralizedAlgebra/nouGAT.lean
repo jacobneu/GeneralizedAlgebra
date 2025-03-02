@@ -43,50 +43,46 @@ syntax "⦃" con_inner "⦄" : con_outer
 declare_syntax_cat con_named
 syntax "[namedGAT|" con_inner "]" : con_named
 
-inductive Arg : Type where
-| Impl : String → Expr → Arg
-| Expl : String → Expr → Arg
-| Anon : Expr → Arg
-open Arg
-def extractTy : Arg → Expr
-| Impl _ e => e
-| Expl _ e => e
-| Anon e => e
+inductive metaArg : Type where
+| metaImpl : String → Expr → metaArg
+| metaExpl : String → Expr → metaArg
+| metaAnon : Expr → metaArg
+open metaArg
+def extractMetaTy : metaArg → Expr
+| metaImpl _ e => e
+| metaExpl _ e => e
+| metaAnon e => e
 
-def argMatch (key : String) : Arg → Bool
-| Impl i _ => key=i
-| Expl i _ => key=i
-| Anon _ => false
+def argMatch (key : String) : metaArg → Bool
+| metaImpl i _ => key=i
+| metaExpl i _ => key=i
+| metaAnon _ => false
 
-def argToString : Arg → String
-| Impl i _ => "{" ++ i ++ "}"
-| Expl i _ => "(" ++ i ++ ")"
-| Anon _ => "*"
 
-def argEl : Arg → MetaM Arg
-| Impl i t => do
+def argEl : metaArg → MetaM metaArg
+| metaImpl i t => do
     let T ← mkAppM ``EL #[t]
-    return (Impl i T)
-| Expl i t => do
+    return (metaImpl i T)
+| metaExpl i t => do
     let T ← mkAppM ``EL #[t]
-    return (Expl i T)
-| Anon t => do
+    return (metaExpl i T)
+| metaAnon t => do
     let T ← mkAppM ``EL #[t]
-    return (Anon T)
+    return (metaAnon T)
 
 structure varStruct where
   (f : String → MetaM Expr)
   (topnames : List String)
-  (telescopes : List (List Arg))
+  (telescopes : List (List metaArg))
 
 structure varTel (VV : varStruct) where
   (f : String → MetaM Expr)
-  (args : List Arg)
+  (args : List metaArg)
 
 def varLookup (VV : varStruct) (key : String) : MetaM Expr
 := VV.f key
 
-def varExtend (VV : varStruct) (key : String) (ctx : Expr) (newType : Expr) (newCtx : Expr) (newTelescope : List Arg): varStruct :=
+def varExtend (VV : varStruct) (key : String) (ctx : Expr) (newType : Expr) (newCtx : Expr) (newTelescope : List metaArg): varStruct :=
 ⟨ λ s =>
     if s=key
     then mkAppM ``V0 #[ ctx , newType ]
@@ -106,10 +102,10 @@ def varTelEmpty (VV : varStruct) : varTel VV := ⟨ VV.f , [] ⟩
 def varTelLookup {VV : varStruct} (TT : varTel VV) (key : String) :=
   TT.f key
 
-def varTelExtend {VV : varStruct} (TT : varTel VV) (newArg : Arg) (ctx : Expr)  (newCtx : Expr) : varTel VV :=
+def varTelExtend {VV : varStruct} (TT : varTel VV) (newArg : metaArg) (ctx : Expr)  (newCtx : Expr) : varTel VV :=
 ⟨ λ s =>
     if argMatch s newArg
-    then mkAppM ``V0 #[ ctx , extractTy newArg ]
+    then mkAppM ``V0 #[ ctx , extractMetaTy newArg ]
     else do
       let old ← varTelLookup TT s
       let ID ← mkAppM ``ID #[newCtx]
@@ -134,19 +130,19 @@ partial def elabGATTm {vars : varStruct} (ctx : Expr) (TT : varTel vars) : Synta
 | _ => throwError "TmFail"
 
 
-partial def elabGATArg {vars : varStruct} (ctx : Expr) (TT : varTel vars) : Syntax → MetaM Arg
+partial def elabGATArg {vars : varStruct} (ctx : Expr) (TT : varTel vars) : Syntax → MetaM metaArg
 | `(gat_arg| { $i:ident : $g:gat_tm } ) => do
   let t ← elabGATTm ctx TT g
-  return (Impl i.getId.toString t)
+  return (metaImpl i.getId.toString t)
 | `(gat_arg| ( $i:ident : $g:gat_tm ) ) => do
   let t ← elabGATTm ctx TT g
-  return (Expl i.getId.toString t)
+  return (metaExpl i.getId.toString t)
 | `(gat_arg| ( _ : $g:gat_tm ) ) => do
   let t ← elabGATTm ctx TT g
-  return (Anon t)
+  return (metaAnon t)
 | `(gat_arg| $g:gat_tm ) => do
   let t ← elabGATTm ctx TT g
-  return (Anon t)
+  return (metaAnon t)
 | _ => throwError "ArgFail"
 
 
@@ -159,7 +155,7 @@ partial def elabGATTy {vars : varStruct} (ctx : Expr) (TT : varTel vars) : Synta
   return (TT, T)
 | `(gat_ty| $T:gat_arg ⇒ $T':gat_ty) => do
   let argT ← elabGATArg ctx TT T
-  let domain := extractTy argT
+  let domain := extractMetaTy argT
   let elDomain ← mkAppM ``EL #[domain]
   let elT ← argEl argT
   let newCtx ← mkAppM ``EXTEND #[ctx,elDomain]
@@ -208,25 +204,35 @@ partial def elabGATCon : Syntax → MetaM Expr
 | _ => throwError "ConFail"
 
 
+def LStr := List String
 def mkListStrLit : List String → MetaM Expr :=
   (mkListLit (.const `String [])) ∘ (List.map mkStrLit)
 
--- def mkArgLit : Arg → MetaM Expr
--- | Impl i t => return mkStrLit $ "{" ++ i ++ "}" --mkAppM `Arg.Impl #[mkStrLit i,t]
--- | Expl i t => return mkStrLit $ "(" ++ i ++ ")" --mkAppM `Arg.Expl #[mkStrLit i,t]
--- | Anon t => return mkStrLit $ "@" --mkAppM `Arg.Anon #[t]
+def mkListListStrLit (LL : List (List String)) : MetaM Expr :=
+  List.mapM mkListStrLit LL >>= mkListLit (.const `LStr [])
 
--- def mkListArgLit (L : List Arg) : MetaM Expr :=
---   List.mapM mkArgLit L >>= mkListLit (.const `Arg [])
+
 
 -- def mkListArgLit (L : List Arg) : MetaM Expr :=
 --   List.mapM mkArgLit L >>= mkListLit (.const `String [])
 
--- def LArg := List Arg
--- def LStr := List String
+inductive Arg : Type where
+| Impl : String → Ty → Arg
+| Expl : String → Ty → Arg
+| Anon : Ty → Arg
+open Arg
+def LArg := List Arg
 
--- def mkListListArgLit (LL : List (List Arg)) : MetaM Expr :=
---   List.mapM mkListArgLit LL >>=  mkListLit (.const `LArg [])
+def mkArgLit : metaArg → MetaM Expr
+| metaImpl i t => mkAppM `Arg.Impl #[mkStrLit i,t]
+| metaExpl i t => mkAppM `Arg.Expl #[mkStrLit i,t]
+| metaAnon t => mkAppM `Arg.Anon #[t]
+
+def mkListArgLit (L : List metaArg) : MetaM Expr :=
+  List.mapM mkArgLit L >>= mkListLit (.const `Arg [])
+
+def mkListListArgLit (LL : List (List metaArg)) : MetaM Expr :=
+  List.mapM mkListArgLit LL >>=  mkListLit (.const `LArg [])
 
 -- def mkListListArgLit (LL : List (List Arg)) : MetaM Expr :=
 --   List.mapM mkListArgLit LL >>=  mkListLit (.const `String [])
@@ -236,7 +242,7 @@ partial def elabnamedGAT : Syntax → MetaM Expr
 | `(con_named| [namedGAT| $s:con_inner ] ) => do
   let (resCon,VV) ← elabGATCon_core (.const ``EMPTY []) varEmpty s
   let topList ← mkListStrLit VV.topnames
-  let telescopes ← mkListStrLit (List.map argToString (List.join VV.telescopes))
+  let telescopes ← mkListListArgLit VV.telescopes
   mkAppM ``mk3 #[resCon,topList,telescopes]
 | _ => throwError "namedGATFail"
 
