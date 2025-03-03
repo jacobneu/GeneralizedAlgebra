@@ -2,6 +2,7 @@ import GeneralizedAlgebra.signature
 
 open Nat
 open Con Subst Ty Tm
+open GAT
 
 
 mutual
@@ -125,10 +126,11 @@ mutual
     | _,_ => none
 end
 
-def Alg (Γ : Con) (comp_names : List String := []) (recordName : Option String := none) : Option String := do
-  let ((tel,res),vars) ← StateT.run (Alg_Con Γ) ([])
+def Alg (𝔊 : GAT) (recordName : Option String := none) (comp_names : List String := []) : Option String := do
+  let ((tel,res),vars) ← StateT.run (Alg_Con (GAT.con 𝔊)) ([])
   let vars' ← if recordName.isSome then List.foldlM pingNth_core vars tel else some vars
   let compSep := if recordName.isSome then " \n    " else " × "
+  let comp_names := if comp_names.isEmpty then GAT.subnames 𝔊 else comp_names
   let varNames := genVarNames (List.length vars') comp_names
   let algStr ← foldTokens compSep varNames vars' res
   match recordName with
@@ -177,9 +179,10 @@ mutual
     | _,_ => none
 end
 
-def DAlg (Γ : Con) (Alg_comp_names : List String := []) (comp_names : List String := []) (recordName : Option String := none) : Option String := do
-  let Alg_comp := genVarNames (len Γ) Alg_comp_names "Y_"
-  let ((tel,res),vars) ← StateT.run (DAlg_Con (List.reverse Alg_comp) Γ) ([])
+def DAlg (𝔊 : GAT) (recordName : Option String := none) (comp_names : List String := []) (Alg_comp_names : List String := []) : Option String := do
+  let Alg_comp_names := if Alg_comp_names.isEmpty then 𝔊.topnames else Alg_comp_names
+  let Alg_comp := genVarNames (len 𝔊.con) Alg_comp_names "Y_"
+  let ((tel,res),vars) ← StateT.run (DAlg_Con (List.reverse Alg_comp) 𝔊.con) ([])
   let vars' ← if recordName.isSome then List.foldlM pingNth_core vars tel else some vars
   let compSep := if recordName.isSome then "\n    " else " × "
   let varNames := genVarNames (List.length vars') comp_names

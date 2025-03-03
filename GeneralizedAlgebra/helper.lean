@@ -10,6 +10,12 @@ def snoc (L : List String) x := L ++ [x]
 
 def filterNilStr := List.filter (Bool.not ∘ String.isEmpty)
 
+def mappartial {α β} (f : α → Option β) : List α → List β
+| [] => []
+| x::xs => match f x with
+  | some y => y::mappartial f xs
+  | none => mappartial f xs
+
 def mk2 (x:Con) (y:List String):= (x,y)
 def mk3 {α : Type} (x:Con) (y:List String) (z : α) := (x,y,z)
 

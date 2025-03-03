@@ -40,9 +40,6 @@ declare_syntax_cat con_outer
 syntax "⦃" "⦄" : con_outer
 syntax "⦃" con_inner "⦄" : con_outer
 
-declare_syntax_cat con_named
-syntax "[namedGAT|" con_inner "]" : con_named
-
 inductive metaArg : Type where
 | metaImpl : String → Expr → metaArg
 | metaExpl : String → Expr → metaArg
@@ -139,6 +136,12 @@ partial def elabGATTm {vars : varStruct} (ctx : Expr) (TT : varTel vars) : Synta
       let Appt1 ← mkAppM ``APP #[t1]
       let (t2,args2)← elabGATTm ctx TT g2
       failIfExplicitArgs "Insufficient Args #0" args2
+      -- let actualT2 ← reduce t2
+      -- let expectedT2 ← reduce (extractMetaTy A)
+      -- let tyMatch ← isDefEq actualT2 expectedT2
+      -- if (not tyMatch) then
+      --   throwError "X"
+      -- else do
       let ID ← mkAppM ``ID #[ctx]
       let substt2 ← mkAppM ``PAIR #[ID,t2]
       let resT ← mkAppM ``SUBST_Tm #[substt2,Appt1]
@@ -220,12 +223,6 @@ partial def elabGATCon_core (ctx : Expr) (vars : varStruct) : Syntax → MetaM (
 | _ => throwError "Con_coreFail"
 
 
-partial def elabGATCon : Syntax → MetaM Expr
-| `(con_outer| ⦃  ⦄ ) => return (.const ``EMPTY [])
-| `(con_outer| ⦃ $s:con_inner  ⦄ ) => do
-  let (res,_) ← elabGATCon_core (.const ``EMPTY []) varEmpty s
-  return res
-| _ => throwError "ConFail"
 
 
 def LStr := List String
@@ -240,11 +237,6 @@ def mkListListStrLit (LL : List (List String)) : MetaM Expr :=
 -- def mkListArgLit (L : List Arg) : MetaM Expr :=
 --   List.mapM mkArgLit L >>= mkListLit (.const `String [])
 
-inductive Arg : Type where
-| Impl : String → Ty → Arg
-| Expl : String → Ty → Arg
-| Anon : Ty → Arg
-open Arg
 def LArg := List Arg × Ty
 
 def mkArgLit : metaArg → MetaM Expr
@@ -252,29 +244,25 @@ def mkArgLit : metaArg → MetaM Expr
 | metaExpl i t => mkAppM `Arg.Expl #[mkStrLit i,t]
 | metaAnon t => mkAppM `Arg.Anon #[t]
 
-#check Prod.mk
-
 def mkListArgLit (tele : List metaArg × Expr) : MetaM Expr := do
   let teleArgs ← List.mapM mkArgLit tele.1
   let teleExpr ← mkListLit (.const `Arg []) teleArgs
   mkAppM ``Prod.mk #[teleExpr,tele.2]
-  --  L >>=
 
 def mkListListArgLit (LL : List (List metaArg × Expr)) : MetaM Expr :=
   List.mapM mkListArgLit LL >>=  mkListLit (.const `LArg [])
 
--- def mkListListArgLit (LL : List (List Arg)) : MetaM Expr :=
---   List.mapM mkListArgLit LL >>=  mkListLit (.const `String [])
-
-partial def elabnamedGAT : Syntax → MetaM Expr
-| `(con_outer| ⦃  ⦄ ) => return (.const ``EMPTY [])
-| `(con_named| [namedGAT| $s:con_inner ] ) => do
+partial def elabGATCon : Syntax → MetaM Expr
+| `(con_outer| ⦃  ⦄ ) => do
+  let emptyStrList ← mkListStrLit []
+  let emptyLArgList ← mkListListArgLit []
+  mkAppM ``GAT.mk  #[.const ``EMPTY [],emptyStrList,emptyLArgList]
+| `(con_outer| ⦃ $s:con_inner  ⦄ ) => do
   let (resCon,VV) ← elabGATCon_core (.const ``EMPTY []) varEmpty s
   let topList ← mkListStrLit VV.topnames
   let telescopes ← mkListListArgLit VV.telescopes
-  mkAppM ``mk3 #[resCon,topList,telescopes]
-| _ => throwError "namedGATFail"
+  mkAppM ``GAT.mk #[resCon,topList,telescopes]
+| _ => throwError "ConFail"
 
 
 elab g:con_outer : term => elabGATCon g
-elab g:con_named : term => elabnamedGAT g
