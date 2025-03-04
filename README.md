@@ -61,6 +61,8 @@ Currently, signatures are given in a "pretty" and "plain" form. The "plain" form
 
 See [GeneralizedAlgebra.lean](GeneralizedAlgebra.lean) for a listing of all the example GATs and a demonstration of their `oneGAT` representation, algebras, displayed algebras, etc.
 
+### Basic structures
+
 - **Sets** — 𝔖𝔢𝔱
     - *Pretty:* [set.lean](GeneralizedAlgebra/pretty_signatures/set.lean)
     - *Plain*: [set.lean](GeneralizedAlgebra/signatures/set.lean)
@@ -76,15 +78,21 @@ See [GeneralizedAlgebra.lean](GeneralizedAlgebra.lean) for a listing of all the 
 - **Even/Odd Natural Numbers** — 𝔈𝔒
     - *Pretty*: [evenodd.lean](GeneralizedAlgebra/pretty_signatures/evenodd.lean)
     - *Plain*: [evenodd.lean](GeneralizedAlgebra/signatures/evenodd.lean)
+- **Monoids** — 𝔐𝔬𝔫
+    - *Pretty:* [monoid.lean](GeneralizedAlgebra/pretty_signatures/monoid.lean)
+    - *Plain*: [monoid.lean](GeneralizedAlgebra/signatures/monoid.lean)
+- **Groups** — 𝔊𝔯𝔭
+    - *Pretty:* [group.lean](GeneralizedAlgebra/pretty_signatures/group.lean)
+    - *Plain*: [group.lean](GeneralizedAlgebra/signatures/group.lean)
+
+### Quiver-like structures
+
 - **Quivers** — 𝔔𝔲𝔦𝔳
     - *Pretty:* [quiver.lean](GeneralizedAlgebra/pretty_signatures/quiver.lean)
     - *Plain*: [quiver.lean](GeneralizedAlgebra/signatures/quiver.lean)
 - **Reflexive Quivers** — 𝔯𝔔𝔲𝔦𝔳
     - *Pretty:* [refl_quiver.lean](GeneralizedAlgebra/pretty_signatures/refl_quiver.lean)
     - *Plain*: [refl_quiver.lean](GeneralizedAlgebra/signatures/refl_quiver.lean)
-- **Monoids** — 𝔐𝔬𝔫
-    - *Pretty:* [monoid.lean](GeneralizedAlgebra/pretty_signatures/monoid.lean)
-    - *Plain*: [monoid.lean](GeneralizedAlgebra/signatures/monoid.lean)
 - **Preorders** — 𝔓𝔯𝔢𝔒𝔯𝔡
     - *Pretty:* [preorder.lean](GeneralizedAlgebra/pretty_signatures/preorder.lean)
     - *Plain*: [preorder.lean](GeneralizedAlgebra/signatures/preorder.lean)
@@ -97,9 +105,15 @@ See [GeneralizedAlgebra.lean](GeneralizedAlgebra.lean) for a listing of all the 
 - **Groupoids** — 𝔊𝔯𝔭𝔡
     - *Pretty:* [groupoid.lean](GeneralizedAlgebra/pretty_signatures/groupoid.lean)
     - *Plain*: [groupoid.lean](GeneralizedAlgebra/signatures/groupoid.lean)
+
+### Models of Type Theory
+
 - **Categories with Families (CwFs)** — ℭ𝔴𝔉
     - *Pretty:* [CwF.lean](GeneralizedAlgebra/pretty_signatures/CwF.lean)
     - *Plain*: [CwF.lean](GeneralizedAlgebra/signatures/CwF.lean)
+- **CwFs supporting unit type** — ℭ𝔴𝔉+1
+    - *Pretty:* [CwF_unit.lean](GeneralizedAlgebra/pretty_signatures/CwF_unit.lean)
+    - *Plain*: [CwF_unit.lean](GeneralizedAlgebra/signatures/CwF_unit.lean)
 - **Polarized Categories with Families (PCwFs)** — 𝔓ℭ𝔴𝔉
     - *Pretty:* [PCwF.lean](GeneralizedAlgebra/pretty_signatures/PCwF.lean)
     - *Plain*: [PCwF.lean](GeneralizedAlgebra/signatures/PCwF.lean)
