@@ -16,9 +16,9 @@ def 𝔊𝔯𝔭𝔡_data := [namedGAT|
         ≡ comp W Y Z (comp X Y Z g f) e,
     inv : (X:Obj) ⇒ (Y:Obj) ⇒ Mor X Y ⇒ Mor Y X,
     linv :  (X : Obj) ⇒ (Y : Obj) ⇒ (f : Mor X Y) ⇒
-        comp (inv f) f ≡ id Y,
+        comp (inv f) f ≡ id X,
     rinv :  (X : Obj) ⇒ (Y : Obj) ⇒ (f : Mor X Y) ⇒
-        comp f (inv f) ≡ id X
+        comp f (inv f) ≡ id Y
 ]
 def 𝔊𝔯𝔭𝔡 : GAT := 𝔊𝔯𝔭𝔡_data.1
 def Grpd_names := 𝔊𝔯𝔭𝔡_data.2.1
