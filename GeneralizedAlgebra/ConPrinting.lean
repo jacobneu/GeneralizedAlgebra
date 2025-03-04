@@ -31,3 +31,6 @@ mutual
   | COMP σ τ => (Subst_toString σ) ++ " ∘ " ++ (Subst_toString τ)
   | (ID _) => "id"
 end
+
+instance GATRepr : Repr GAT :=
+⟨ λ 𝔊 _ => Con_toString 𝔊.con⟩

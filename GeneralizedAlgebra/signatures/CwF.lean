@@ -1,6 +1,6 @@
 import GeneralizedAlgebra.nouGAT
 
-def ℭ𝔴𝔉_data := [namedGAT|
+def ℭ𝔴𝔉 : GAT := ⦃
     Con : U,
     Sub : Con ⇒ Con ⇒ U,
     id  : ( Γ : Con) ⇒ Sub Γ Γ,
@@ -46,7 +46,7 @@ def ℭ𝔴𝔉_data := [namedGAT|
               (t : Tm Δ (substTy Δ Γ γ A)) ⇒
               (δ : Sub Θ Δ) ⇒
               comp Θ Δ (ext Γ A) (pair Δ Γ A γ t) δ
-              ≡ pair Θ Γ A (comp γ δ) (substTm Θ Δ (substTy Δ Γ γ A) δ t),
+              ≡ pair Θ Γ A (comp Θ Δ Γ γ δ) (substTm Θ Δ (substTy Δ Γ γ A) δ t),
     π₁      : (Δ:Con)⇒ (Γ : Con) ⇒ (A : Ty Γ) ⇒
               Sub Δ (ext Γ A) ⇒ Sub Δ Γ,
     π₂      : (Δ:Con) ⇒ (Γ : Con) ⇒ (A : Ty Γ) ⇒
@@ -64,11 +64,7 @@ def ℭ𝔴𝔉_data := [namedGAT|
               (σ : Sub Δ (ext Γ A)) ⇒
               pair Δ Γ A (π₁ Δ Γ A σ) (π₂ Δ Γ A σ)
               ≡ σ
-]
-
-def ℭ𝔴𝔉 : Con := ℭ𝔴𝔉_data.1
-def CwF_names := ℭ𝔴𝔉_data.2.1
-def CwF_topnames := ℭ𝔴𝔉_data.2.2
+⦄
 
 def CwF_inlinenames := [
     "Con",

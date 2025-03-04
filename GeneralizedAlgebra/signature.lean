@@ -46,4 +46,31 @@ def deBruijn : Tm → Option Nat
 def wk (Γ : Con) (A : Ty) : Subst := PROJ1 (@ID (Γ ▷ A))
 def V0 (Γ : Con) (T0 : Ty) : Tm := PROJ2 (@ID (Γ ▷ T0))
 
-def GAT : Type := Con
+
+-- namespace GAT
+
+inductive Arg : Type where
+| Impl : String → Ty → Arg
+| Expl : String → Ty → Arg
+| Anon : Ty → Arg
+open Arg
+
+def getName : Arg → Option String
+| Impl i _ => some i
+| Expl i _ => some i
+| Anon _ => none
+
+structure GAT where
+  (con : Con)
+  (topnames : List String)
+  (telescopes : List (List Arg × Ty))
+
+-- #check Listappend
+def GAT.subnames (𝔊 : GAT) : List String :=
+  List.join $
+  List.map (λ (L,s) => L ++ [s]) $
+  List.zip
+    (List.map ((mappartial getName) ∘ Prod.fst) (GAT.telescopes 𝔊))
+    (GAT.topnames 𝔊)
+
+-- end GAT
