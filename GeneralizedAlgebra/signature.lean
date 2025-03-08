@@ -70,7 +70,7 @@ mutual
   | wfWkTm : {Γ : preCon} → {A B : preTy} → {t : preTm} →
       wfTm Γ A t → wfTy Γ B → wfTm (B::Γ) (preWkTy A) (preWkTm t)
   | wfAPP : {Γ : preCon} → {X : preTm} → {Y : preTy} → {f t : preTm} →
-      wfTy Γ (prePI X Y) → wfTm Γ (prePI X Y) f → wfTm Γ (preEL X) t → wfTm Γ (preSubstTy Y t) (preAPP f t)
+      wfTm Γ (prePI X Y) f → wfTm Γ (preEL X) t → wfTm Γ (preSubstTy Y t) (preAPP f t)
   | wfTRANSP : {Γ : preCon} → {X eq t t' z: preTm} → {Y : preTy} →
       {_ : wfTm Γ preUU X} → {_ : wfTy (preEL X::Γ) Y} →
       {_ : wfTm Γ (preEL X) t} → {_ : wfTm Γ (preEL X) t'} →
@@ -91,16 +91,59 @@ def EMPTY : Con := ⟨[], wfNil⟩
 def EXTEND (Γ : Con) (A : Ty Γ) : Con := ⟨ A.1 :: Γ.1 , wfCons A.2 Γ.2 ⟩
 
 def UU {Γ : Con} : Ty Γ := ⟨ preUU , wfUU ⟩
-def EL {Γ : Con} (X : Tm Γ UU) : Ty Γ := ⟨ preEL X.1 , wfEL X.2 ⟩
-def PI {Γ : Con} (X : Tm Γ UU) (Y : Ty (EXTEND Γ (EL X))) : Ty Γ :=
+def EL (Γ : Con) (X : Tm Γ UU) : Ty Γ := ⟨ preEL X.1 , wfEL X.2 ⟩
+def PI (Γ : Con) (X : Tm Γ UU) (Y : Ty (EXTEND Γ (EL Γ X))) : Ty Γ :=
     ⟨ prePI X.1 Y.1 , wfPI X.2 Y.2 ⟩
-def EQ {Γ : Con} (X : Tm Γ UU) (t t' : Tm Γ (EL X)) : Ty Γ :=
+def EQ (Γ : Con) (X : Tm Γ UU) (t t' : Tm Γ (EL Γ X)) : Ty Γ :=
     ⟨ preEQ X.1 t.1 t'.1 , wfEQ X.2 t.2 t'.2 ⟩
 
-def wkTy {Γ : Con}{B : Ty Γ}(A : Ty Γ) : Ty (EXTEND Γ B) :=
+def wkTy (Γ : Con)(B : Ty Γ)(A : Ty Γ) : Ty (EXTEND Γ B) :=
     ⟨ preWkTy A.1 , wfWkTy A.2 ⟩
+def substTy (Γ : Con)(B : Ty Γ)(A : Ty (EXTEND Γ B))(t : Tm Γ B) : Ty Γ :=
+    ⟨ preSubstTy A.1 t.1, wfSubstTy B.2 A.2 t.2 ⟩
+def APP (Γ : Con)(X : Tm Γ UU)(Y : Ty (EXTEND Γ (EL Γ X)))(f : Tm Γ (PI Γ X Y))(t : Tm Γ (EL Γ X)) : Tm Γ (substTy Γ (EL Γ X) Y t) :=
+    ⟨ preAPP f.1 t.1, wfAPP f.2 t.2 ⟩
 
-def ZERO {Γ : Con}{A : Ty Γ} : Tm (EXTEND Γ A) (wkTy A) :=
+def ZERO (Γ : Con)(A : Ty Γ) : Tm (EXTEND Γ A) (wkTy Γ A A) :=
     ⟨ preVAR 0, wfVAR0 A.2 ⟩
-def SUCC {Γ : Con}{B : Ty Γ}{A : Ty Γ} (t : Tm Γ A) : Tm (EXTEND Γ B) (wkTy A):=
+def SUCC (Γ : Con)(B : Ty Γ)(A : Ty Γ) (t : Tm Γ A) : Tm (EXTEND Γ B) (wkTy Γ B A):=
     ⟨ preWkTm t.1 , wfWkTm t.2 B.2 ⟩
+
+def len : Con → Nat := λ Γ => List.length Γ.1
+
+-- #eval len $ EXTEND (EXTEND (EXTEND (EXTEND EMPTY UU) (PI ZERO (PI (SUCC ZERO) (EL $ SUCC $ SUCC $ ZERO)))) (EL $ SUCC $ ZERO)) (PI (SUCC $ SUCC $ ZERO) (EQ (SUCC $ SUCC $ SUCC $ ZERO) ZERO ZERO))
+
+
+infixl:10 " ▷ " => EXTEND
+notation "⋄" => EMPTY
+
+-- def ONE := SUCC ZERO
+def UUnil := @UU ⋄
+def P := ⋄ ▷ UUnil
+def Q := P ▷ EL P (ZERO ⋄ UUnil)
+def P' := P ▷ PI P (ZERO ⋄ UUnil) (PI Q (SUCC P _ _ (ZERO ⋄ UUnil)) UU)
+def Q' := P' ▷ EL _ (SUCC _ _ _ (ZERO _ _))
+def Q'' := Q' ▷ EL _ (SUCC _ _ _ (SUCC _ _ _ (ZERO _ _)))
+def P'' := P' ▷ PI _ (SUCC _ _ _ (ZERO _ _))
+    (EL _ (APP Q' (SUCC P' _ _ (SUCC P _ _ (ZERO ⋄ _))) UU
+        (APP Q' (SUCC _ _ _ (SUCC _ _ _ (ZERO _ _))) _
+            _
+            (ZERO _ _))
+        (ZERO _ _)
+      )
+    )
+    --
+
+-- def x := @APP P''' (SUCC $ SUCC ZERO) UU (SUCC ZERO) (ZERO)
+-- def Q := P'' ▷ PI (SUCC ZERO) (@EL P''' (@APP P''' _ _ _ _))
+-- #reduce P'''
+
+-- #eval len $
+--     ⋄ ▷ UU ▷ PI ZERO UU
+    -- ▷ PI (SUCC ZERO) (EL (@APP P''' (SUCC $ SUCC ZERO) UU (SUCC ZERO) (ZERO)))
+    --▷ (PI (SUCC ZERO) (EL (APP (SUCC ZERO) _ )))
+    -- ▷ (PI ZERO (PI (SUCC ZERO) (EL $ SUCC $ SUCC $ ZERO)))
+    -- ▷ (PI (SUCC ZERO) (EQ (SUCC $ SUCC ZERO) (APP (SUCC $ ZERO) (APP _ _)) ZERO))
+    -- ▷ (EL $ SUCC $ ZERO)
+    -- ▷ (PI (SUCC $ SUCC $ ZERO) (EQ (SUCC $ SUCC $ SUCC $ ZERO) ZERO (APP (APP (_) ZERO) (SUCC ZERO))))
+-- notation t " [ " σ " ]t " => SUBST_Tm σ t
