@@ -129,12 +129,12 @@ end
 def Alg (𝔊 : GAT) (recordName : Option String := none) (comp_names : List String := []) : Option String := do
   let ((tel,res),vars) ← StateT.run (Alg_Con (GAT.con 𝔊)) ([])
   let vars' ← if recordName.isSome then List.foldlM pingNth_core vars tel else some vars
-  let compSep := if recordName.isSome then " \n    " else " × "
+  let compSep := if recordName.isSome then s!" {NEWLINE}    " else " × "
   let comp_names := if comp_names.isEmpty then GAT.subnames 𝔊 else comp_names
   let varNames := genVarNames (List.length vars') comp_names
   let algStr ← foldTokens compSep varNames vars' res
   match recordName with
-  | (some name) => return "record " ++ name ++ "-Alg where\n    " ++ algStr
+  | (some name) => return "record " ++ name ++ "-Alg where" ++ NEWLINE ++ "    " ++ algStr
   | none => return algStr
 
 mutual
@@ -184,9 +184,9 @@ def DAlg (𝔊 : GAT) (recordName : Option String := none) (comp_names : List St
   let Alg_comp := genVarNames (len 𝔊.con) Alg_comp_names "Y_"
   let ((tel,res),vars) ← StateT.run (DAlg_Con (List.reverse Alg_comp) 𝔊.con) ([])
   let vars' ← if recordName.isSome then List.foldlM pingNth_core vars tel else some vars
-  let compSep := if recordName.isSome then "\n    " else " × "
+  let compSep := if recordName.isSome then s!"{NEWLINE}    " else s!"{NEWLINE}× "
   let varNames := genVarNames (List.length vars') comp_names
   let algStr ← foldTokens compSep varNames vars' res
   match recordName with
-  | (some name) => return "record " ++ name ++ "-DAlg " ++ collapse Alg_comp ++ " where\n    " ++ algStr
+  | (some name) => return "record " ++ name ++ "-DAlg " ++ collapse Alg_comp ++ s!" where{NEWLINE}    " ++ algStr
   | none => return algStr

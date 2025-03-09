@@ -6,7 +6,7 @@ open Con Subst Ty Tm
 mutual
   def Con_toString : Con → String
   | EMPTY => "⋄"
-  | Γ ▷ A => (Con_toString Γ) ++ " ▷ " ++ (Ty_toString A)
+  | Γ ▷ A => (Con_toString Γ) ++ s!"{NEWLINE}▷ " ++ (Ty_toString A)
   def Ty_toString : Ty → String
   | UU => "U"
   | EL X => "El " ++ paren (Tm_toString X)

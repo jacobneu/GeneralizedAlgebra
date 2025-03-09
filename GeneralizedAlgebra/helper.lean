@@ -5,6 +5,7 @@ def stringCons := @List.cons String
 def stringNil  := @List.nil String
 def stringPure := @List.pure String
 
+def NEWLINE := Char.toString $ Char.ofNat 10
 
 def snoc (L : List String) x := L ++ [x]
 

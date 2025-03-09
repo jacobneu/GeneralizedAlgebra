@@ -1,106 +1,154 @@
-import GeneralizedAlgebra.AlgPrinting
-import GeneralizedAlgebra.ConPrinting
+import «GeneralizedAlgebra».AlgPrinting
+import «GeneralizedAlgebra».ConPrinting
 
-import GeneralizedAlgebra.signatures.set
-import GeneralizedAlgebra.signatures.pointed
-import GeneralizedAlgebra.signatures.bipointed
-import GeneralizedAlgebra.signatures.nat
-import GeneralizedAlgebra.signatures.evenodd
-import GeneralizedAlgebra.signatures.quiver
-import GeneralizedAlgebra.signatures.refl_quiver
-import GeneralizedAlgebra.signatures.monoid
-import GeneralizedAlgebra.signatures.group
-import GeneralizedAlgebra.signatures.preorder
-import GeneralizedAlgebra.signatures.setoid
-import GeneralizedAlgebra.signatures.category
-import GeneralizedAlgebra.signatures.groupoid
-import GeneralizedAlgebra.signatures.CwF
-import GeneralizedAlgebra.signatures.PCwF
+import «GeneralizedAlgebra».signatures.set
+import «GeneralizedAlgebra».signatures.pointed
+import «GeneralizedAlgebra».signatures.bipointed
+import «GeneralizedAlgebra».signatures.nat
+import «GeneralizedAlgebra».signatures.evenodd
+import «GeneralizedAlgebra».signatures.quiver
+import «GeneralizedAlgebra».signatures.refl_quiver
+import «GeneralizedAlgebra».signatures.monoid
+import «GeneralizedAlgebra».signatures.group
+import «GeneralizedAlgebra».signatures.preorder
+import «GeneralizedAlgebra».signatures.setoid
+import «GeneralizedAlgebra».signatures.category
+import «GeneralizedAlgebra».signatures.groupoid
+import «GeneralizedAlgebra».signatures.CwF
+import «GeneralizedAlgebra».signatures.PCwF
 
+structure printData where
+  (gat : GAT)
+  (gatName : String)
+  (gatNamePlain : String)
+  (inlineDAlgNames : Option (List String))
+  (recordDAlgNames : Option (List String))
+  (recordAlgNamesAlt : Option (List String))
+
+def printDAlgInline (X : printData) := match X.inlineDAlgNames with
+  | none => none
+  | some nameList => DAlg X.gat none nameList
+def printDAlgRecord (X : printData) := match X.recordDAlgNames, X.recordAlgNamesAlt with
+  | none,_ => none
+  | some nameList, none => DAlg X.gat (some X.gatName) nameList
+  | some nameList, some nameDList => DAlg X.gat (some X.gatName) nameList nameDList
+
+def allGATs : List printData := [
+  ⟨𝔖𝔢𝔱,"𝔖𝔢𝔱","set",["P"],["P"],none⟩,
+  ⟨𝔓,"𝔓","pointed",["P"],["P","p₀"],some ["X","x₀"]⟩,
+  ⟨𝔅,"𝔅","bipointed",["P"],["P","p₀","p₁"],none⟩,
+  ⟨𝔑,"𝔑","nat",["P","n"],["P","base_case","n","ind_step"],some ["N","z","s"]⟩,
+  ⟨𝔈𝔒,"𝔈𝔒","evenodd",["Pe","Po","n","m"],["Pe", "Po", "bc","n","ih","m","ih'"],none⟩,
+  ⟨𝔐𝔬𝔫,"𝔐𝔬𝔫","monoid",none,none,none⟩,
+  ⟨𝔊𝔯𝔭,"𝔊𝔯𝔭","group",none,none,none⟩,
+  ⟨𝔔𝔲𝔦𝔳,"𝔔𝔲𝔦𝔳","quiver",none,none,none⟩,
+  ⟨𝔯𝔔𝔲𝔦𝔳,"𝔯𝔔𝔲𝔦𝔳","refl-quiver",none,none,none⟩,
+  ⟨𝔓𝔯𝔢𝔒𝔯𝔡,"𝔓𝔯𝔢𝔒𝔯𝔡","preorder",none,none,none⟩,
+  ⟨𝔖𝔢𝔱𝔬𝔦𝔡,"𝔖𝔢𝔱𝔬𝔦𝔡","setoid",none,none,none⟩,
+  ⟨ℭ𝔞𝔱,"ℭ𝔞𝔱","category",none,none,none⟩,
+  ⟨𝔊𝔯𝔭𝔡,"𝔊𝔯𝔭𝔡","groupoid",none,none,none⟩,
+  ⟨ℭ𝔴𝔉,"ℭ𝔴𝔉","CwF",none,none,none⟩,
+  ⟨𝔓ℭ𝔴𝔉,"𝔓ℭ𝔴𝔉","PCwF",none,none,none⟩
+]
 
 /-
 ## Basic structures
 -/
 -- Sets
-#eval 𝔖𝔢𝔱
-#eval Alg 𝔖𝔢𝔱
-#eval DAlg 𝔖𝔢𝔱 none ["P"]
-#eval DAlg 𝔖𝔢𝔱 (some "𝔖𝔢𝔱") ["P"]
+def SET := allGATs[0]
+#eval SET.gat
+#eval Alg SET.gat
+#eval Alg SET.gat (some SET.gatName)
+#eval printDAlgInline SET
+#eval printDAlgRecord SET
 
 -- Pointed sets
-#eval 𝔓
-#eval Alg 𝔓
-#eval DAlg 𝔓 none ["P"]
-#eval DAlg 𝔓 (some "𝔓") ["P","p₀"] ["X","x₀"]
+def POINTED := allGATs[1]
+#eval POINTED.gat
+#eval Alg POINTED.gat
+#eval Alg POINTED.gat (some POINTED.gatName)
+#eval printDAlgInline POINTED
+#eval printDAlgRecord POINTED
 
 -- Bipointed sets
-#eval 𝔅
-#eval Alg 𝔅
-#eval DAlg 𝔅 none ["P"]
-#eval DAlg 𝔅 (some "𝔅") ["P","p₀","p₁"]
+def BIPOINTED := allGATs[2]
+#eval BIPOINTED.gat
+#eval Alg BIPOINTED.gat
+#eval Alg BIPOINTED.gat (some BIPOINTED.gatName)
+#eval printDAlgInline BIPOINTED
+#eval printDAlgRecord BIPOINTED
 
 -- Natural numbers
-#eval 𝔑
-#eval Alg 𝔑
-#eval DAlg 𝔑 none ["P","n"] ["N","z","s"]
-#eval DAlg 𝔑 (some "𝔑") ["P","base_case","n","ind_step"]
+def NAT := allGATs[3]
+#eval NAT.gat
+#eval Alg NAT.gat
+#eval Alg NAT.gat (some NAT.gatName)
+#eval printDAlgInline NAT
+#eval printDAlgRecord NAT
 
 -- Even/Odd Natural Numbers
-#eval 𝔈𝔒
-#eval Alg 𝔈𝔒
-#eval DAlg 𝔈𝔒 none ["Pe","Po","n","m"]
-#eval DAlg 𝔈𝔒 (some "𝔑") ["Pe", "Po", "bc","n","ih","m","ih'"]
+def EO := allGATs[4]
+#eval EO.gat
+#eval Alg EO.gat
+#eval Alg EO.gat (some EO.gatName)
+#eval printDAlgInline EO
+#eval printDAlgRecord EO
 
 -- Monoids
-#eval 𝔐𝔬𝔫
--- #eval Alg 𝔐𝔬𝔫 none
-#eval Alg 𝔐𝔬𝔫 (some "𝔐𝔬𝔫")
+def MON := allGATs[5]
+#eval MON.gat
+#eval Alg MON.gat (some MON.gatName)
 
 -- Groups
-#eval 𝔊𝔯𝔭
--- #eval Alg 𝔊𝔯𝔭 none
-#eval Alg 𝔊𝔯𝔭 (some "𝔊𝔯𝔭")
+def GRP := allGATs[6]
+#eval GRP.gat
+#eval Alg GRP.gat (some GRP.gatName)
+
 
 /-
 ## Quiver-like structures
 -/
 -- Quivers
-#eval 𝔔𝔲𝔦𝔳
-#eval Alg 𝔔𝔲𝔦𝔳
+def QUIV := allGATs[7]
+#eval QUIV.gat
+#eval Alg QUIV.gat (some QUIV.gatName)
 
 -- -- Reflexive quivers
-#eval 𝔯𝔔𝔲𝔦𝔳
-#eval Alg 𝔯𝔔𝔲𝔦𝔳
-
--- -- Monoids
-#eval 𝔐𝔬𝔫
-#eval Alg 𝔐𝔬𝔫 (some "𝔐𝔬𝔫")
+def RQUIV := allGATs[8]
+#eval RQUIV.gat
+#eval Alg RQUIV.gat (some RQUIV.gatName)
 
 -- -- Preorders
-#eval 𝔓𝔯𝔢𝔒𝔯𝔡
-#eval Alg 𝔓𝔯𝔢𝔒𝔯𝔡 (some "𝔓𝔯𝔢𝔒𝔯𝔡")
+def PREORD := allGATs[9]
+#eval PREORD.gat
+#eval Alg PREORD.gat (some PREORD.gatName)
 
 -- -- Setoids
-#eval 𝔖𝔢𝔱𝔬𝔦𝔡
-#eval Alg 𝔖𝔢𝔱𝔬𝔦𝔡 (some "𝔖𝔢𝔱𝔬𝔦𝔡")
+def SETOID := allGATs[10]
+#eval SETOID.gat
+#eval Alg SETOID.gat (some SETOID.gatName)
 
 -- -- Categories
-#eval ℭ𝔞𝔱
-#eval Alg ℭ𝔞𝔱 (some "ℭ𝔞𝔱")
+def CAT := allGATs[11]
+#eval CAT.gat
+#eval Alg CAT.gat (some CAT.gatName)
 
 -- -- Groupoids
-#eval 𝔊𝔯𝔭𝔡
-#eval Alg 𝔊𝔯𝔭𝔡 (some "𝔊𝔯𝔭𝔡")
+def GRPD := allGATs[12]
+#eval GRPD.gat
+#eval Alg GRPD.gat (some GRPD.gatName)
 
 
 /-
 ## Models of Type Theory
 -/
 -- Categories with Families
-#eval ℭ𝔴𝔉
-#eval Alg ℭ𝔴𝔉 (some "ℭ𝔴𝔉")
-#eval Alg ℭ𝔴𝔉 none CwF_inlinenames
+def CWF := allGATs[13]
+#eval CWF.gat
+#eval Alg CWF.gat (some CWF.gatName)
+#eval Alg CWF.gat none CwF_inlinenames
 
 -- -- Polarized Categories with Families
-#eval 𝔓ℭ𝔴𝔉
-#eval Alg 𝔓ℭ𝔴𝔉 (some "𝔓ℭ𝔴𝔉")
+def PCWF := allGATs[14]
+#eval PCWF.gat
+#eval Alg PCWF.gat (some PCWF.gatName)
