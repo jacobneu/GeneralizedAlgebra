@@ -1,0 +1,15 @@
+set
+pointed
+bipointed
+nat
+evenodd
+quiver
+refl-quiver
+monoid
+group
+preorder
+setoid
+category
+groupoid
+CwF
+PCwF
