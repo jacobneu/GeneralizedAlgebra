@@ -22,91 +22,85 @@ import GeneralizedAlgebra.signatures.PCwF
 ## Basic structures
 -/
 -- Sets
-#eval Con_toString 𝔖𝔢𝔱
-#eval Alg 𝔖𝔢𝔱 Set_names
-#eval DAlg 𝔖𝔢𝔱 Set_names ["P"]
-#eval DAlg 𝔖𝔢𝔱 Set_names ["P"] (some "𝔖𝔢𝔱")
+#eval 𝔖𝔢𝔱
+#eval Alg 𝔖𝔢𝔱
+#eval DAlg 𝔖𝔢𝔱 none ["P"]
+#eval DAlg 𝔖𝔢𝔱 (some "𝔖𝔢𝔱") ["P"]
 
 -- Pointed sets
-#eval Con_toString 𝔓
-#eval Alg 𝔓 Pointed_names
-#eval DAlg 𝔓 Pointed_names ["P"]
-#eval DAlg 𝔓 Pointed_names ["P","p₀"] (some "𝔓")
+#eval 𝔓
+#eval Alg 𝔓
+#eval DAlg 𝔓 none ["P"]
+#eval DAlg 𝔓 (some "𝔓") ["P","p₀"] ["X","x₀"]
 
 -- Bipointed sets
-#eval Con_toString 𝔅
-#eval Alg 𝔅 Bipointed_names
-#eval DAlg 𝔅 Bipointed_names ["P"]
-#eval DAlg 𝔅 Bipointed_names ["P","p₀","p₁"] (some "𝔅")
+#eval 𝔅
+#eval Alg 𝔅
+#eval DAlg 𝔅 none ["P"]
+#eval DAlg 𝔅 (some "𝔅") ["P","p₀","p₁"]
 
 -- Natural numbers
-#eval Con_toString 𝔑
-#eval Alg 𝔑 Nat_names
-#eval DAlg 𝔑 Nat_names ["P","n"]
-#eval DAlg 𝔑 Nat_names ["P","base_case","n","ind_step"] (some "𝔑")
+#eval 𝔑
+#eval Alg 𝔑
+#eval DAlg 𝔑 none ["P","n"] ["N","z","s"]
+#eval DAlg 𝔑 (some "𝔑") ["P","base_case","n","ind_step"]
 
 -- Even/Odd Natural Numbers
-#eval Con_toString 𝔈𝔒
-#eval Alg 𝔈𝔒 EvenOdd_names
-#eval DAlg 𝔈𝔒 EvenOdd_names ["Pe","Po","n","m"]
-#eval DAlg 𝔈𝔒 EvenOdd_names ["Pe", "Po", "bc","n","ih","m","ih'"] (some "𝔑")
+#eval 𝔈𝔒
+#eval Alg 𝔈𝔒
+#eval DAlg 𝔈𝔒 none ["Pe","Po","n","m"]
+#eval DAlg 𝔈𝔒 (some "𝔑") ["Pe", "Po", "bc","n","ih","m","ih'"]
 
 -- Monoids
-#eval Con_toString 𝔐𝔬𝔫
--- #eval Alg 𝔐𝔬𝔫 Monoid_names
-#eval Alg 𝔐𝔬𝔫 Monoid_names (some "𝔐𝔬𝔫")
--- #eval DAlg 𝔐𝔬𝔫 Monoid_names
+#eval 𝔐𝔬𝔫
+-- #eval Alg 𝔐𝔬𝔫 none
+#eval Alg 𝔐𝔬𝔫 (some "𝔐𝔬𝔫")
 
 -- Groups
-#eval Con_toString 𝔊𝔯𝔭
--- #eval Alg 𝔊𝔯𝔭 Group_names
-#eval Alg 𝔊𝔯𝔭 Group_names (some "𝔊𝔯𝔭")
--- #eval DAlg 𝔊𝔯𝔭 Group_names
+#eval 𝔊𝔯𝔭
+-- #eval Alg 𝔊𝔯𝔭 none
+#eval Alg 𝔊𝔯𝔭 (some "𝔊𝔯𝔭")
 
 /-
 ## Quiver-like structures
 -/
 -- Quivers
-#eval Con_toString 𝔔𝔲𝔦𝔳
-#eval Alg 𝔔𝔲𝔦𝔳 Quiv_names
--- #eval DAlg 𝔔𝔲𝔦𝔳 Quiv_names
+#eval 𝔔𝔲𝔦𝔳
+#eval Alg 𝔔𝔲𝔦𝔳
 
--- Reflexive quivers
-#eval Con_toString 𝔯𝔔𝔲𝔦𝔳
-#eval Alg 𝔯𝔔𝔲𝔦𝔳 rQuiv_names
--- #eval DAlg 𝔯𝔔𝔲𝔦𝔳 rQuiv_names
+-- -- Reflexive quivers
+#eval 𝔯𝔔𝔲𝔦𝔳
+#eval Alg 𝔯𝔔𝔲𝔦𝔳
 
--- Preorders
-#eval Con_toString 𝔓𝔯𝔢𝔒𝔯𝔡
-#eval Alg 𝔓𝔯𝔢𝔒𝔯𝔡 PreOrd_names (some "𝔓𝔯𝔢𝔒𝔯𝔡")
--- #eval DAlg 𝔓𝔯𝔢𝔒𝔯𝔡 PreOrd_names
+-- -- Monoids
+#eval 𝔐𝔬𝔫
+#eval Alg 𝔐𝔬𝔫 (some "𝔐𝔬𝔫")
 
--- Setoids
-#eval Con_toString 𝔖𝔢𝔱𝔬𝔦𝔡
-#eval Alg 𝔖𝔢𝔱𝔬𝔦𝔡 Setoid_names (some "𝔖𝔢𝔱𝔬𝔦𝔡")
--- #eval DAlg 𝔖𝔢𝔱𝔬𝔦𝔡 Setoid_names
+-- -- Preorders
+#eval 𝔓𝔯𝔢𝔒𝔯𝔡
+#eval Alg 𝔓𝔯𝔢𝔒𝔯𝔡 (some "𝔓𝔯𝔢𝔒𝔯𝔡")
 
--- Categories
-#eval Con_toString ℭ𝔞𝔱
-#eval Alg ℭ𝔞𝔱 Cat_names (some "ℭ𝔞𝔱")
--- #eval DAlg ℭ𝔞𝔱 Cat_names
+-- -- Setoids
+#eval 𝔖𝔢𝔱𝔬𝔦𝔡
+#eval Alg 𝔖𝔢𝔱𝔬𝔦𝔡 (some "𝔖𝔢𝔱𝔬𝔦𝔡")
 
--- Groupoids
-#eval Con_toString 𝔊𝔯𝔭𝔡
-#eval Alg 𝔊𝔯𝔭𝔡 Grpd_names (some "𝔊𝔯𝔭𝔡")
--- #eval DAlg 𝔊𝔯𝔭𝔡 Grpd_names
+-- -- Categories
+#eval ℭ𝔞𝔱
+#eval Alg ℭ𝔞𝔱 (some "ℭ𝔞𝔱")
+
+-- -- Groupoids
+#eval 𝔊𝔯𝔭𝔡
+#eval Alg 𝔊𝔯𝔭𝔡 (some "𝔊𝔯𝔭𝔡")
 
 
 /-
 ## Models of Type Theory
 -/
 -- Categories with Families
-#eval Con_toString ℭ𝔴𝔉
-#eval Alg ℭ𝔴𝔉 CwF_names (some "ℭ𝔴𝔉")
-#eval Alg ℭ𝔴𝔉 CwF_inlinenames
--- #eval DAlg ℭ𝔴𝔉 CwF_names
+#eval ℭ𝔴𝔉
+#eval Alg ℭ𝔴𝔉 (some "ℭ𝔴𝔉")
+#eval Alg ℭ𝔴𝔉 none CwF_inlinenames
 
--- Polarized Categories with Families
-#eval Con_toString 𝔓ℭ𝔴𝔉
-#eval Alg 𝔓ℭ𝔴𝔉 PCwF_names (some "𝔓ℭ𝔴𝔉")
--- #eval DAlg 𝔓ℭ𝔴𝔉 PCwF_names
+-- -- Polarized Categories with Families
+#eval 𝔓ℭ𝔴𝔉
+#eval Alg 𝔓ℭ𝔴𝔉 (some "𝔓ℭ𝔴𝔉")
