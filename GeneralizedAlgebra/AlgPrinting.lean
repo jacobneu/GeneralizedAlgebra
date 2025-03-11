@@ -153,12 +153,12 @@ mutual
   | _,carrier::_,UU => pure $ carrier ++ [printArrow,printStr "Set"]
   | tel,alg_elt::_,EL X => DAlg_Tm tel alg_elt X
   | tel,alg_fn::alg_rest,PI X Y => do
-      let Atype ← (deBruijn X >>= λ n => nth n alg_rest) <|> some [printStr "?"]
+      let Atype ← (deBruijn X >>= λ n => nth n (alg_rest)) <|> some [printStr "?"]
       let alpha ← newVar Atype
       pingNth alpha
       let Xs ← DAlg_Tm tel [printVarName alpha] X
       let Xvar ← newVar Xs
-      let Ys ← DAlg_Ty (tel++[Xvar]) (([printStr "("]++alg_fn++[printStr " ",printVarName alpha,printStr ")"])::alg_rest) Y
+      let Ys ← DAlg_Ty (tel++[Xvar]) (([printStr "("]++alg_fn++[printStr " ",printVarName alpha,printStr ")"])::alg_fn::alg_rest) Y
       pure $ [printArg alpha, printStr " → ",printArg Xvar, printStr " → "] ++ Ys
   -- | EQ t t',tel => do
   --     let ts ← DAlg_Tm t tel
@@ -172,10 +172,15 @@ mutual
         let glob_n ← StateT.lift (nthBackwards n tel)
         pingNth glob_n
         pure $ [printVarName glob_n,printStr " "]++alg_elt
-  --   | (APP f) [ PAIR (ID _) t ]t,_ => do
-  --       let fs ← DAlg_Tm f tel
-  --       let ts ← DAlg_Tm t tel
-  --       pure $ fs ++ [printStr " "] ++ ts
+    | (APP f) [ PAIR (ID _) t' ]t,_ =>
+      match deBruijn t' with
+        | some n => do
+          let fs ← DAlg_Tm tel alg_elt f
+          let ts ← nth n alg_elt
+          let glob_n ← StateT.lift (nthBackwards n tel)
+          pingNth glob_n
+          pure $ fs ++ [printStr "l "] ++ [ts, printStr "j ",printVarName glob_n,printStr "k "]
+        | _ => none
     | _,_ => none
 end
 
