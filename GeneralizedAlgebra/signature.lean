@@ -3,142 +3,138 @@ import GeneralizedAlgebra.helper
 open Nat
 
 mutual
-  inductive preTm : Type where
-  | preVAR : Nat → preTm
-  | preAPP : preTm → preTm → preTm
-  | preTRANSP : preTy → preTm → preTm → preTm
+  inductive Tm : Type where
+  | VAR : Nat → Tm
+  | APP : Tm → Tm → Tm
+  | TRANSP : Tm → Tm → Tm → Ty → Tm → Tm → Tm
 
-  inductive preTy : Type where
-  | preUU : preTy
-  | preEL : preTm → preTy
-  | prePI : preTm → preTy → preTy
-  | preEQ : preTm → preTm → preTm → preTy
+  inductive Ty : Type where
+  | UU : Ty
+  | EL : Tm → Ty
+  | PI : Tm → Ty → Ty
+  | EQ : Tm → Tm → Tm → Ty
 end
-open preTm preTy
+open Tm Ty
 
 -- Written backwards!
-def preCon : Type := List preTy
+def Con : Type := List Ty
+instance : GetElem Con Nat Ty fun (Γ : Con) (i : Nat) => i < Γ.length := List.instGetElemNatLtLength
 
 mutual
-  def preWkArrTy : preTy → Nat → preTy
-  | preUU, _ => preUU
-  | preEL X, a => preEL (preWkArrTm X a)
-  | prePI X Y, a => prePI (preWkArrTm X a) (preWkArrTy Y (succ a))
-  | preEQ A t t', a => preEQ (preWkArrTm A a) (preWkArrTm t a) (preWkArrTm t' a)
-  def preWkArrTm : preTm → Nat → preTm
-  | preVAR n, a => if n ≥ a then preVAR (succ n) else preVAR n
-  | preAPP f t, a => preAPP (preWkArrTm f a) (preWkArrTm t a)
-  | preTRANSP A eq t, a => preTRANSP (preWkArrTy A a) (preWkArrTm eq a) (preWkArrTm t a)
+  def WkArrTy : Ty → Nat → Ty
+  | UU, _ => UU
+  | EL X, a => EL (WkArrTm X a)
+  | PI X Y, a => PI (WkArrTm X a) (WkArrTy Y (succ a))
+  | EQ A t t', a => EQ (WkArrTm A a) (WkArrTm t a) (WkArrTm t' a)
+  def WkArrTm : Tm → Nat → Tm
+  | VAR n, a => if n ≥ a then VAR (succ n) else VAR n
+  | APP f t, a => APP (WkArrTm f a) (WkArrTm t a)
+  | TRANSP X s s' Y eq t, a => TRANSP (WkArrTm X a) (WkArrTm s a) (WkArrTm s' a) (WkArrTy Y a) (WkArrTm eq a) (WkArrTm t a)
 end
 
-def preWkTy (A : preTy) : preTy := preWkArrTy A 0
-def preWkTm (t : preTm) : preTm := preWkArrTm t 0
+def WkTy : (Γ : Con) → (n : Nat) → n < Γ.length → Ty
+| Γ,0,h => WkArrTy (Γ[0]'h) 0
+| _::Γ,succ n,h => WkArrTy (WkTy Γ n (lt_of_succ_lt_succ h)) 0
+
+def WkTm (t : Tm) : Tm := WkArrTm t 0
+
+inductive order where
+| LESS : order
+| EQUAL : order
+| GREATER : Nat → order
+open order
+def GRsucc : order → order
+| LESS => LESS
+| EQUAL => EQUAL
+| GREATER m => GREATER (succ m)
+
+def comparePred : Nat → Nat → order
+| 0, 0 => EQUAL
+| 0, succ _ => LESS
+| succ m, 0 => GREATER m
+| succ m, succ n => GRsucc $ comparePred m n
 
 mutual
-  def preSubstTy : preTy → preTm → preTy
-  | preUU, _ => preUU
-  | preEL X, z => preEL (preSubstTm X z)
-  | prePI X Y, z => prePI (preSubstTm X z) (preSubstTy Y z)
-  | preEQ A t t', z => preEQ (preSubstTm A z) (preSubstTm t z) (preSubstTm t' z)
-  def preSubstTm : preTm → preTm → preTm
-  | preVAR 0, z => z
-  | preVAR (succ n), _ => preVAR n
-  | preAPP f t, z => preAPP (preSubstTm f z) (preSubstTm t z)
-  | preTRANSP A eq t, z => preTRANSP (preSubstTy A z) (preSubstTm eq z) (preSubstTm t z) -- ?
+  def SubstArrTy : Ty → Tm → Nat → Ty
+  | UU, _,_ => UU
+  | EL X, z, a => EL (SubstArrTm X z a)
+  | PI X Y, z, a => PI (SubstArrTm X z a) (SubstArrTy Y z (succ a))
+  | EQ A t t', z, a => EQ (SubstArrTm A z a) (SubstArrTm t z a) (SubstArrTm t' z a)
+  def SubstArrTm : Tm → Tm → Nat → Tm
+  | VAR m, z, a => match comparePred m a with
+    | LESS => VAR m
+    | EQUAL => z
+    | GREATER m' => VAR m'
+  | APP f t, z, a => APP (SubstArrTm f z a) (SubstArrTm t z a)
+  | TRANSP X s s' Y eq t, z, a => TRANSP (SubstArrTm X z a) (SubstArrTm s z a) (SubstArrTm s' z a) (SubstArrTy Y z (succ a)) (SubstArrTm eq z a) (SubstArrTm t z a)
 end
 
+def SubstTy := λ T t => SubstArrTy T t 0
+def SubstTm := λ t t' => SubstArrTm t t' 0
+
+
+structure indData where
+    (Con_D : Con → Type)
+    (Ty_D : (Γ : Con) → Con_D Γ → Ty → Type)
+    (Tm_D : (Γ : Con) → (Γ_D : Con_D Γ) → (A : Ty) → Ty_D Γ Γ_D A → Tm → Type)
+    (nil_D : Con_D [])
+    (cons_D : (Γ : Con) → (Γ_D : Con_D Γ) → (A : Ty) → (A_D : Ty_D Γ Γ_D A) → Con_D (A::Γ))
+    (UU_D : (Γ : Con) → (Γ_D : Con_D Γ) → Ty_D Γ Γ_D UU)
+    (EL_D : (Γ : Con) → (Γ_D : Con_D Γ) →
+            (X : Tm) → Tm_D Γ Γ_D UU (UU_D Γ Γ_D) X →
+            Ty_D Γ Γ_D (EL X))
+    (PI_D : (Γ : Con) → (Γ_D : Con_D Γ) →
+            (X : Tm) → (X_D : Tm_D Γ Γ_D UU (UU_D Γ Γ_D) X) →
+            (Y : Ty) → Ty_D (EL X :: Γ) (cons_D Γ Γ_D (EL X) (EL_D Γ Γ_D X X_D)) Y →
+            Ty_D Γ Γ_D (PI X Y))
+    (EQ_D : (Γ : Con) → (Γ_D : Con_D Γ) →
+            (X : Tm) → (X_D : Tm_D Γ Γ_D UU (UU_D Γ Γ_D) X) →
+            (s : Tm) → (s_D : Tm_D Γ Γ_D (EL X) (EL_D Γ Γ_D X X_D) s) →
+            (s' : Tm) → (s'_D : Tm_D Γ Γ_D (EL X) (EL_D Γ Γ_D X X_D) s') →
+            Ty_D Γ Γ_D (EQ X s s'))
+    (VAR_D :(Γ : Con) → (Γ_D : Con_D Γ) →
+            (n : Nat) → (h : n < List.length Γ) →
+            (A_D : Ty_D Γ Γ_D (WkTy Γ n h)) →
+            Tm_D Γ Γ_D (WkTy Γ n h) A_D (VAR n))
+    (APP_D :(Γ : Con) → (Γ_D : Con_D Γ) →
+            (X : Tm) → (X_D : Tm_D Γ Γ_D UU (UU_D Γ Γ_D) X) →
+            (Y : Ty) → (Y_D : Ty_D (EL X :: Γ) (cons_D Γ Γ_D (EL X) (EL_D Γ Γ_D X X_D)) Y) →
+            (f : Tm) → (f_D : Tm_D Γ Γ_D (PI X Y) (PI_D Γ Γ_D X X_D Y Y_D) f) →
+            (t : Tm) → (t_D : Tm_D Γ Γ_D (EL X) (EL_D Γ Γ_D X X_D) t) →
+            (Yt_D : Ty_D Γ Γ_D (SubstTy Y t)) →
+            Tm_D Γ Γ_D (SubstTy Y t) Yt_D (APP f t))
+    (TRANSP_D :(Γ : Con) → (Γ_D : Con_D Γ) →
+            (X : Tm) → (X_D : Tm_D Γ Γ_D UU (UU_D Γ Γ_D) X) →
+            (s : Tm) → (s_D : Tm_D Γ Γ_D (EL X) (EL_D Γ Γ_D X X_D) s) →
+            (s' : Tm) → (s'_D : Tm_D Γ Γ_D (EL X) (EL_D Γ Γ_D X X_D) s') →
+            (Y : Ty) → (Y_D : Ty_D (EL X :: Γ) (cons_D Γ Γ_D (EL X) (EL_D Γ Γ_D X X_D)) Y) →
+            (Ys_D : Ty_D Γ Γ_D (SubstTy Y s)) → (Ys'_D : Ty_D Γ Γ_D (SubstTy Y s')) →
+            (p : Tm) → (p_D : Tm_D Γ Γ_D (EQ X s s') (EQ_D Γ Γ_D X X_D s s_D s' s'_D) p) →
+            (k : Tm) → Tm_D Γ Γ_D (SubstTy Y s) Ys_D k →
+            Tm_D Γ Γ_D (SubstTy Y s') Ys'_D (TRANSP X s s' Y eq k))
 
 mutual
-  inductive wfCon : preCon → Prop where
-  | wfNil : wfCon []
-  | wfCons : {Γ : preCon} → {A : preTy} → wfTy Γ A → (_ : wfCon Γ) → wfCon (A::Γ)
+    def elim (P : indData) : (Γ : Con) → P.Con_D Γ
+    | [] => P.nil_D
+    | A::Γ => P.cons_D _ (elim _ _) _ (elimTy _ _ _ _)
 
-  inductive wfTy : preCon → preTy → Prop
-  | wfWkTy : {Γ : preCon} → {A B : preTy} → wfTy Γ A → wfTy (B::Γ) (preWkTy A)
-  | wfUU : {Γ : preCon} → wfTy Γ preUU
-  | wfEL : {Γ : preCon} → {X : preTm} → wfTm Γ preUU X → wfTy Γ (preEL X)
-  | wfPI : {Γ : preCon} → {X : preTm} → {Y : preTy} →
-      wfTm Γ preUU X → wfTy (preEL X::Γ) Y → wfTy Γ (prePI X Y)
-  | wfEQ : {Γ : preCon} → {X t t' : preTm} →
-      wfTm Γ preUU X → wfTm Γ (preEL X) t → wfTm Γ (preEL X) t' → wfTy Γ (preEQ X t t')
-  | wfSubstTy : {Γ : preCon} → {A B : preTy} → {t : preTm} →
-      wfTy Γ B → wfTy (B::Γ) A → wfTm Γ B t → wfTy Γ (preSubstTy A t)
+    def elimTy (P : indData) (Γ : Con) (Γ_D : P.Con_D Γ) : (A : Ty) → P.Ty_D Γ Γ_D A
+    | UU => P.UU_D Γ Γ_D
+    | EL X => P.EL_D _ _ _ (elimTm _ _ _ _ _ _)
+    | PI X Y => P.PI_D _ _ _ (elimTm _ _ _ _ _ _) _ (elimTy _ _ _ _)
+    | EQ X s s' => P.EQ_D _ _ _ (elimTm _ _ _ _ _ _) _ (elimTm _ _ _ _ _ _) _ (elimTm _ _ _ _ _ _)
 
-  inductive wfTm : preCon → preTy → preTm → Prop
-  | wfVAR0 : {Γ : preCon} → {A : preTy} →
-      wfTy Γ A → wfTm (A::Γ) (preWkTy A) (preVAR 0)
-  | wfWkTm : {Γ : preCon} → {A B : preTy} → {t : preTm} →
-      wfTm Γ A t → wfTy Γ B → wfTm (B::Γ) (preWkTy A) (preWkTm t)
-  | wfAPP : {Γ : preCon} → {X : preTm} → {Y : preTy} → {f t : preTm} →
-      wfTm Γ (prePI X Y) f → wfTm Γ (preEL X) t → wfTm Γ (preSubstTy Y t) (preAPP f t)
-  | wfTRANSP : {Γ : preCon} → {X eq t t' z: preTm} → {Y : preTy} →
-      {_ : wfTm Γ preUU X} → {_ : wfTy (preEL X::Γ) Y} →
-      {_ : wfTm Γ (preEL X) t} → {_ : wfTm Γ (preEL X) t'} →
-      wfTm Γ (preEQ X t t') eq →
-      wfTm Γ (preSubstTy Y t) z →
-      wfTm Γ (preSubstTy Y t') (preTRANSP Y eq z)
-  | wfSubstTm : {Γ : preCon} → {A B : preTy} → {t t': preTm} →
-      wfTm Γ B t → wfTm (B::Γ) A t' → wfTm Γ (preSubstTy A t) (preSubstTm t' t)
+    def elimTm (P : indData) (Γ : Con) (Γ_D : P.Con_D Γ) (A : Ty) (A_D : P.Ty_D Γ Γ_D A) : (t : Tm) → P.Tm_D Γ Γ_D A A_D t
+    | APP f t => P.APP_D Γ Γ_D _ _ _ _ _ _ _ (elimTm _ _ _ _ _ _) _
+    | TRANSP X s s' Y eq k => _ --P.TRANSP_D Γ Γ_D _ _ _ _ _ _ _ _ (elimTy _ _ _ _) (elimTy _ _ _ _) _ _ _ _
+    | VAR n => _
 end
-
-open wfCon wfTy wfTm
-
-def Con : Type := { Γ : preCon // wfCon Γ }
-def Ty (Γ : Con) : Type := { A : preTy // wfTy Γ.1 A}
-def Tm (Γ : Con) (A : Ty Γ) : Type := { t : preTm // wfTm Γ.1 A.1 t}
-
-def EMPTY : Con := ⟨[], wfNil⟩
-def EXTEND (Γ : Con) (A : Ty Γ) : Con := ⟨ A.1 :: Γ.1 , wfCons A.2 Γ.2 ⟩
-
-def UU {Γ : Con} : Ty Γ := ⟨ preUU , wfUU ⟩
-def EL (Γ : Con) (X : Tm Γ UU) : Ty Γ := ⟨ preEL X.1 , wfEL X.2 ⟩
-def PI (Γ : Con) (X : Tm Γ UU) (Y : Ty (EXTEND Γ (EL Γ X))) : Ty Γ :=
-    ⟨ prePI X.1 Y.1 , wfPI X.2 Y.2 ⟩
-def EQ (Γ : Con) (X : Tm Γ UU) (t t' : Tm Γ (EL Γ X)) : Ty Γ :=
-    ⟨ preEQ X.1 t.1 t'.1 , wfEQ X.2 t.2 t'.2 ⟩
-
-def wkTy (Γ : Con)(B : Ty Γ)(A : Ty Γ) : Ty (EXTEND Γ B) :=
-    ⟨ preWkTy A.1 , wfWkTy A.2 ⟩
-def substTy (Γ : Con)(B : Ty Γ)(A : Ty (EXTEND Γ B))(t : Tm Γ B) : Ty Γ :=
-    ⟨ preSubstTy A.1 t.1, wfSubstTy B.2 A.2 t.2 ⟩
-def APP (Γ : Con)(X : Tm Γ UU)(Y : Ty (EXTEND Γ (EL Γ X)))(f : Tm Γ (PI Γ X Y))(t : Tm Γ (EL Γ X)) : Tm Γ (substTy Γ (EL Γ X) Y t) :=
-    ⟨ preAPP f.1 t.1, wfAPP f.2 t.2 ⟩
-
-def ZERO (Γ : Con)(A : Ty Γ) : Tm (EXTEND Γ A) (wkTy Γ A A) :=
-    ⟨ preVAR 0, wfVAR0 A.2 ⟩
-def SUCC (Γ : Con)(B : Ty Γ)(A : Ty Γ) (t : Tm Γ A) : Tm (EXTEND Γ B) (wkTy Γ B A):=
-    ⟨ preWkTm t.1 , wfWkTm t.2 B.2 ⟩
-
-def len : Con → Nat := λ Γ => List.length Γ.1
-
--- #eval len $ EXTEND (EXTEND (EXTEND (EXTEND EMPTY UU) (PI ZERO (PI (SUCC ZERO) (EL $ SUCC $ SUCC $ ZERO)))) (EL $ SUCC $ ZERO)) (PI (SUCC $ SUCC $ ZERO) (EQ (SUCC $ SUCC $ SUCC $ ZERO) ZERO ZERO))
-
-
-infixl:10 " ▷ " => EXTEND
-notation "⋄" => EMPTY
-
--- def ONE := SUCC ZERO
-def UUnil := @UU ⋄
-def P := ⋄ ▷ UUnil
-def Q := P ▷ EL P (ZERO ⋄ UUnil)
-def P' := P ▷ PI P (ZERO ⋄ UUnil) (PI Q (SUCC P _ _ (ZERO ⋄ UUnil)) UU)
-def Q' := P' ▷ EL _ (SUCC _ _ _ (ZERO _ _))
-def Q'' := Q' ▷ EL _ (SUCC _ _ _ (SUCC _ _ _ (ZERO _ _)))
-def P'' := P' ▷ PI _ (SUCC _ _ _ (ZERO _ _))
-    (EL _ (APP Q' (SUCC P' _ _ (SUCC P _ _ (ZERO ⋄ _))) UU
-        (APP Q' (SUCC _ _ _ (SUCC _ _ _ (ZERO _ _))) _
-            _
-            (ZERO _ _))
-        (ZERO _ _)
-      )
-    )
-    --
 
 -- def x := @APP P''' (SUCC $ SUCC ZERO) UU (SUCC ZERO) (ZERO)
 -- def Q := P'' ▷ PI (SUCC ZERO) (@EL P''' (@APP P''' _ _ _ _))
 -- #reduce P'''
 
--- #eval len $
+-- #eval len
 --     ⋄ ▷ UU ▷ PI ZERO UU
     -- ▷ PI (SUCC ZERO) (EL (@APP P''' (SUCC $ SUCC ZERO) UU (SUCC ZERO) (ZERO)))
     --▷ (PI (SUCC ZERO) (EL (APP (SUCC ZERO) _ )))

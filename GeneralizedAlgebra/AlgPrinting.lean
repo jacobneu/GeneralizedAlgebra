@@ -1,8 +1,8 @@
 import GeneralizedAlgebra.signature
 
 open Nat
-open Con Subst Ty Tm
-open GAT
+open Ty Tm
+-- open GAT
 
 
 mutual
