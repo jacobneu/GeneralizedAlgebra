@@ -112,22 +112,57 @@ structure indData where
             (p : Tm) → (p_D : Tm_D Γ Γ_D (EQ X s s') (EQ_D Γ Γ_D X X_D s s_D s' s'_D) p) →
             (k : Tm) → Tm_D Γ Γ_D (SubstTy Y s) Ys_D k →
             Tm_D Γ Γ_D (SubstTy Y s') Ys'_D (TRANSP X s s' Y eq k))
+mutual
+  inductive goodCon : Con → Type where
+  | goodNil : goodCon []
+  | goodCons : ∀ {Γ : Con}{A : Ty}, goodTy Γ A → goodCon Γ → goodCon (A::Γ)
+
+  inductive goodTy : Con → Ty → Type where
+  | goodUU : ∀ {Γ : Con}, goodTy Γ UU
+  | goodEL : ∀ {Γ : Con}{X : Tm}, goodTm Γ UU X → goodTy Γ (EL X)
+  | goodPI : ∀ {Γ : Con}{X : Tm}{Y : Ty}, goodTm Γ UU X → goodTy (EL X::Γ) Y → goodTy Γ (PI X Y)
+  | goodEQ : ∀ {Γ : Con}{X : Tm}{t t' : Tm}, goodTm Γ UU X → goodTm Γ (EL X) t → goodTm Γ (EL X) t' → goodTy Γ (EQ X t t')
+  -- | goodSubst : ∀ {Γ : Con}{X : Tm}{Y : Ty}{t : Tm}, goodTm Γ UU X → goodTy (EL X::Γ) Y → goodTm Γ (EL X) t → goodTy Γ (SubstTy Y t)
+
+  inductive goodTm : Con → Ty → Tm → Type where
+  | goodVAR : ∀ {Γ : Con}(n : Nat), (h : n < Γ.length) → goodTm Γ (WkTy Γ n h) (VAR n)
+  | goodAPP : ∀ {Γ : Con}{X : Tm}{Y : Ty}{f t : Tm}, goodTm Γ UU X → goodTy (EL X::Γ) Y → goodTm Γ (PI X Y) f → goodTm Γ (EL X) t → goodTm Γ (SubstTy Y t) (APP f t)
+  | goodTRANSP : ∀ {Γ : Con}{X : Tm}{s s' : Tm}{Y : Ty}{eq t : Tm},
+      goodTm Γ UU X → goodTm Γ (EL X) s → goodTm Γ (EL X) s' → goodTy (EL X::Γ) Y → goodTm Γ (EQ X s s') eq → goodTm Γ (SubstTy Y s) t → goodTm Γ (SubstTy Y s') (TRANSP X s s' Y eq t)
+
+end
+open goodTm goodTy goodCon
+
+def goodSubstArr : ∀ {Γ : Con}{X : Tm}{s : Tm}{Y : Ty}, (a : Nat) → goodTm Γ UU X → goodTm Γ (EL X) s → goodTy (EL X::Γ) Y → goodTy Γ (SubstArrTy Y s a) := _
+
+def goodSubst : ∀ {Γ : Con}{X : Tm}{s : Tm}{Y : Ty}, goodTm Γ UU X → goodTm Γ (EL X) s → goodTy (EL X::Γ) Y → goodTy Γ (SubstTy Y s) := goodSubstArr 0
 
 mutual
-    def elim (P : indData) : (Γ : Con) → P.Con_D Γ
-    | [] => P.nil_D
-    | A::Γ => P.cons_D _ (elim _ _) _ (elimTy _ _ _ _)
+    def elim (P : indData) : (Γ : Con) → goodCon Γ → P.Con_D Γ
+    | [],_ => P.nil_D
+    | A::Γ,goodCons gA gΓ => P.cons_D _ (elim _ _ gΓ) _ (elimTy _ _ _ _ gΓ gA)
 
-    def elimTy (P : indData) (Γ : Con) (Γ_D : P.Con_D Γ) : (A : Ty) → P.Ty_D Γ Γ_D A
-    | UU => P.UU_D Γ Γ_D
-    | EL X => P.EL_D _ _ _ (elimTm _ _ _ _ _ _)
-    | PI X Y => P.PI_D _ _ _ (elimTm _ _ _ _ _ _) _ (elimTy _ _ _ _)
-    | EQ X s s' => P.EQ_D _ _ _ (elimTm _ _ _ _ _ _) _ (elimTm _ _ _ _ _ _) _ (elimTm _ _ _ _ _ _)
+    -- def dispGetElem (P : indData) (Γ : Con) (n : Nat) (h : n < List.length Γ) :
+    --     Σ (Γ_D : P.Con_D Γ), P.Ty_D Γ Γ_D (WkTy Γ n h) :=  ⟨elim _ _,elimTy _ _ _ _ _⟩
 
-    def elimTm (P : indData) (Γ : Con) (Γ_D : P.Con_D Γ) (A : Ty) (A_D : P.Ty_D Γ Γ_D A) : (t : Tm) → P.Tm_D Γ Γ_D A A_D t
-    | APP f t => P.APP_D Γ Γ_D _ _ _ _ _ _ _ (elimTm _ _ _ _ _ _) _
-    | TRANSP X s s' Y eq k => _ --P.TRANSP_D Γ Γ_D _ _ _ _ _ _ _ _ (elimTy _ _ _ _) (elimTy _ _ _ _) _ _ _ _
-    | VAR n => _
+    -- def dispWkTy : (P : indData) →
+    --     (Γ : Con) → (Γ_D : P.Con_D Γ) →
+    --     (A : Ty) → (A_D : P.Ty_D Γ Γ_D A) →
+    --     (n : Nat) → (h : n < List.length Γ) →
+    --     P.Ty_D Γ Γ_D (WkTy Γ n h) →
+    --     P.Ty_D (A::Γ) (P.cons_D _ Γ_D _ A_D) (WkTy (A::Γ) (succ n) (succ_lt_succ h)) := _
+
+
+    def elimTy (P : indData) (Γ : Con) (Γ_D : P.Con_D Γ) : (A : Ty) → goodCon Γ → goodTy Γ A → P.Ty_D Γ Γ_D A
+    | UU,_,goodUU => P.UU_D Γ Γ_D
+    | EL X,gΓ,goodEL gX => P.EL_D _ _ _ (elimTm _ _ _ _ _ _ gΓ goodUU gX)
+    | PI X Y,gΓ,goodPI gX gY => P.PI_D _ _ _ (elimTm _ _ _ _ _ _ gΓ goodUU gX) _ (elimTy _ _ _ _ (goodCons (goodEL gX) gΓ) gY)
+    | EQ X s s',gΓ,goodEQ gX gs gs' => P.EQ_D _ _ _ (elimTm _ _ _ _ _ _ gΓ goodUU gX) _ (elimTm _ _ _ _ _ _ gΓ (goodEL gX) gs) _ (elimTm _ _ _ _ _ _ gΓ (goodEL gX) gs')
+
+    def elimTm (P : indData) (Γ : Con) (Γ_D : P.Con_D Γ) : (A : Ty) → (A_D : P.Ty_D Γ Γ_D A) → (t : Tm) → goodCon Γ → goodTy Γ A → goodTm Γ A t → P.Tm_D Γ Γ_D A A_D t
+    | _,_,APP f t,gΓ,_, @goodAPP _ X Y _ _ gX gY gf gt => P.APP_D Γ Γ_D X (elimTm _ _ _ _ _ _ gΓ goodUU gX) _ (elimTy _ _ _ _ (goodCons (goodEL gX) gΓ) gY) _ (elimTm _ _ _ _ _ _ gΓ (goodPI gX gY) gf) _ (elimTm _ _ _ _ _ _ gΓ (goodEL gX) gt) _
+    | _,_,TRANSP X s s' Y eq k,gΓ,_,goodTRANSP gX gs gs' gY geq gk => P.TRANSP_D Γ Γ_D _ (elimTm _ _ _ _ _ _ gΓ goodUU gX) _ (elimTm _ _ _ _ _ _ gΓ (goodEL gX) gs) _ (elimTm _ _ _ _ _ _ gΓ (goodEL gX) gs') _ (elimTy _ _ _ _ (goodCons (goodEL gX) gΓ) gY) (elimTy _ _ _ _ gΓ (goodSubst gX gs gY)) _ _ (elimTm _ _ _ _ _ _ gΓ (goodEQ gX gs gs') geq) _ (elimTm _ _ _ _ (elimTy _ _ _ _ _ _) _ gΓ (goodSubst gX gs gY) gk)
+    | _,_,VAR n, gΓ,_, (goodVAR _ h) => P.VAR_D Γ Γ_D n _ _
 end
 
 -- def x := @APP P''' (SUCC $ SUCC ZERO) UU (SUCC ZERO) (ZERO)
