@@ -19,6 +19,8 @@ open Tm Ty
 -- Written backwards!
 def Con : Type := List Ty
 instance : GetElem Con Nat Ty fun (Γ : Con) (i : Nat) => i < Γ.length := List.instGetElemNatLtLength
+def EXTEND (Γ : Con) (A : Ty) := A :: Γ
+def EMPTY : Con := []
 
 mutual
   def WkArrTy : Ty → Nat → Ty
@@ -36,8 +38,17 @@ def WknTy : (Γ : Con) → (n : Nat) → n < Γ.length → Ty
 | Γ,0,h => WkArrTy (Γ[0]'h) 0
 | _::Γ,succ n,h => WkArrTy (WknTy Γ n (lt_of_succ_lt_succ h)) 0
 
-def WkTy (T : Ty) : Ty := WkArrTy T 0
-def WkTm (t : Tm) : Tm := WkArrTm t 0
+mutual
+  def WkTy : Ty → Ty
+  | UU => UU
+  | EL X => EL (WkTm X)
+  | EQ A t t' => EQ (WkTm A) (WkTm t) (WkTm t')
+  | T =>  WkArrTy T 0
+  def WkTm : Tm →  Tm
+  | VAR n => VAR (succ n)
+  | TRANSP X s s' Y eq t => TRANSP (WkTm X) (WkTm s) (WkTm s') (WkTy Y) (WkTm eq) (WkTm t)
+  | t => WkArrTm t 0
+end
 
 inductive order where
 | LESS : order
@@ -118,7 +129,7 @@ def SubstTm := λ t t' => SubstArrTm t t' 0
 
 -- open goodTm goodTy goodCon
 
--- theorem UU_stable : UU = WkTy UU := Eq.refl _
+theorem UU_stable : UU = WkTy UU := Eq.refl _
 
 -- def good_Set : goodCon [UU] := by
 --   apply goodCons
@@ -203,6 +214,7 @@ structure indData where
     (Tm_D : (Γ : Con) → (Γ_D : Con_D Γ) → (A : Ty) → Ty_D Γ Γ_D A → Tm → Type)
     (nil_D : Con_D [])
     (cons_D : (Γ : Con) → (Γ_D : Con_D Γ) → (A : Ty) → (A_D : Ty_D Γ Γ_D A) → Con_D (A::Γ))
+    (WkTy_D : (Γ : Con) → (Γ_D : Con_D Γ) → (A : Ty) → (A_D : Ty_D Γ Γ_D A) → Ty_D (A::Γ) (cons_D Γ Γ_D A A_D) (WkTy A))
     (UU_D : (Γ : Con) → (Γ_D : Con_D Γ) → Ty_D Γ Γ_D UU)
     (EL_D : (Γ : Con) → (Γ_D : Con_D Γ) →
             (X : Tm) → Tm_D Γ Γ_D UU (UU_D Γ Γ_D) X →
@@ -216,10 +228,18 @@ structure indData where
             (s : Tm) → (s_D : Tm_D Γ Γ_D (EL X) (EL_D Γ Γ_D X X_D) s) →
             (s' : Tm) → (s'_D : Tm_D Γ Γ_D (EL X) (EL_D Γ Γ_D X X_D) s') →
             Ty_D Γ Γ_D (EQ X s s'))
-    (VAR_D :(Γ : Con) → (Γ_D : Con_D Γ) →
-            (n : Nat) → (h : n < List.length Γ) →
-            (A_D : Ty_D Γ Γ_D (WknTy Γ n h)) →
-            Tm_D Γ Γ_D (WknTy Γ n h) A_D (VAR n))
+    -- (VAR_D :(Γ : Con) → (Γ_D : Con_D Γ) →
+    --         (n : Nat) → (h : n < List.length Γ) →
+    --         (A_D : Ty_D Γ Γ_D (WknTy Γ n h)) →
+    --         Tm_D Γ Γ_D (WknTy Γ n h) A_D (VAR n))
+    (VAR0_D : (Γ : Con) → (Γ_D : Con_D Γ) →
+            (A : Ty) → (A_D : Ty_D Γ Γ_D A) → (A'_D : Ty_D (A::Γ) (cons_D Γ Γ_D A A_D) (WkTy A)) →
+            Tm_D (A::Γ) (cons_D Γ Γ_D A A_D) (WkTy A) A'_D (VAR 0)
+            )
+    (VARSUCC_D : (Γ : Con) → (Γ_D : Con_D Γ) →
+            (A : Ty) → (A_D : Ty_D Γ Γ_D A) → (t : Tm) →
+            (B : Ty) → (B_D : Ty_D (A::Γ) (cons_D Γ Γ_D A A_D) B) →
+            Tm_D Γ Γ_D A A_D t → Tm_D (A::Γ) (cons_D Γ Γ_D A A_D) B B_D (WkTm t))
     (APP_D :(Γ : Con) → (Γ_D : Con_D Γ) →
             (X : Tm) → (X_D : Tm_D Γ Γ_D UU (UU_D Γ Γ_D) X) →
             (Y : Ty) → (Y_D : Ty_D (EL X :: Γ) (cons_D Γ Γ_D (EL X) (EL_D Γ Γ_D X X_D)) Y) →
@@ -237,6 +257,36 @@ structure indData where
             (k : Tm) → Tm_D Γ Γ_D (SubstTy Y s) Ys_D k →
             Tm_D Γ Γ_D (SubstTy Y s') Ys'_D (TRANSP X s s' Y eq k))
 
+
+-- def VAR0_D {P : indData}
+
+inductive Arg : Type where
+| Impl : String → Ty → Arg
+| Expl : String → Ty → Arg
+| Anon : Ty → Arg
+open Arg
+
+def getName : Arg → Option String
+| Impl i _ => some i
+| Expl i _ => some i
+| Anon _ => none
+
+
+structure GATdata where
+  (con : Con)
+  (topnames : List String)
+  (telescopes : List (List Arg × Ty))
+
+structure GAT extends GATdata where
+  (elim : (P : indData) → P.Con_D con)
+
+-- #check Listappend
+def GAT.subnames (𝔊 : GAT) : List String :=
+  List.join $
+  List.map (λ (L,s) => L ++ [s]) $
+  List.zip
+    (List.map ((mappartial getName) ∘ Prod.fst) (𝔊.telescopes))
+    (𝔊.topnames)
 
 -- mutual
 --     def elim (P : indData) : (Γ : Con) → goodCon Γ → P.Con_D Γ
