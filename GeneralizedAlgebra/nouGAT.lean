@@ -12,6 +12,7 @@ declare_syntax_cat gat_tm
 syntax ident     : gat_tm
 syntax "(" gat_tm ")" : gat_tm
 syntax:60 gat_tm:60 gat_tm:61 : gat_tm
+syntax:58 gat_tm:58  "#⟨" gat_tm:59 "⟩" : gat_tm
 syntax gat_tm : gat_ty
 syntax gat_tm " ≡ " gat_tm : gat_ty
 
@@ -66,6 +67,18 @@ def argEl : metaArg → MetaM metaArg
 | metaAnon t => do
     let T ← mkAppM ``EL #[t]
     return (metaAnon T)
+
+-- partial def elabGATTm (ctx : Expr) (vars : String → MetaM Expr) : Syntax → MetaM Expr
+-- | `(gat_tm| ( $g:gat_tm ) ) => elabGATTm ctx vars g
+-- | `(gat_tm| $g1:gat_tm $g2:gat_tm ) => do
+--       let t1 ← elabGATTm ctx vars g1
+--       let Appt1 ← mkAppM ``APP #[t1]
+--       let t2 ← elabGATTm ctx vars g2
+--       let ID ← mkAppM ``ID #[ctx]
+--       let substt2 ← mkAppM ``PAIR #[ID,t2]
+--       mkAppM ``SUBST_Tm #[substt2,Appt1]
+-- | `(gat_tm| $i:ident ) => vars i.getId.toString
+-- | _ => throwUnsupportedSyntax
 
 structure varStruct where
   (f : String → MetaM Expr)
@@ -131,7 +144,7 @@ partial def elabGATTm {vars : varStruct} (ctx : Expr) (TT : varTel vars) : Synta
 | `(gat_tm| ( $g:gat_tm ) ) => elabGATTm ctx TT g
 | `(gat_tm| $g1:gat_tm $g2:gat_tm ) => do
       let (t1,args1) ← elabGATTm ctx TT g1
-      let (A,args1') ← splitArgList "Too many args #0" args1
+      let (_,args1') ← splitArgList "Too many args #0" args1
         -- TODO: Check the type of A against the type of t2
       let Appt1 ← mkAppM ``APP #[t1]
       let (t2,args2)← elabGATTm ctx TT g2
@@ -148,6 +161,11 @@ partial def elabGATTm {vars : varStruct} (ctx : Expr) (TT : varTel vars) : Synta
       return (resT,args1')
 | `(gat_tm| $i:ident ) => do
       varTelLookup TT i.getId.toString
+| `(gat_tm| $g1 #⟨ $g2 ⟩ ) => do
+      let (t1,args1) ← elabGATTm ctx TT g1
+      let (t2,_) ← elabGATTm ctx TT g2
+      let resT ← mkAppM ``TRANSP #[t1,t2]
+      return (resT,args1)
       -- let args ← vars.getArgs i.getI
 | _ => throwError "TmFail"
 
