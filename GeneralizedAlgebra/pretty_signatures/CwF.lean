@@ -10,7 +10,7 @@ def ℭ𝔴𝔉 : GAT := ⦃
     idTy    : {Γ : Con} ⇒ (A : Ty Γ) ⇒
               substTy (id Γ) A ≡ A,
     compTy  : {Θ Δ Γ : Con} ⇒ (A : Ty Γ)
-              (δ : Sub Θ Δ) ⇒ (γ : Sub Δ Γ) ⇒
+              (γ : Sub Δ Γ) ⇒ (δ : Sub Θ Δ) ⇒
               substTy Δ Γ γ (substTy Θ Δ δ A)
               ≡ substTy Θ Γ (comp γ δ) A,
     Tm      : ( Γ : Con) ⇒ Ty Γ ⇒ U,
@@ -18,11 +18,13 @@ def ℭ𝔴𝔉 : GAT := ⦃
               (γ : Sub Δ Γ) ⇒
               Tm Γ A ⇒ Tm Δ (substTy Δ Γ γ A),
     idTm    : {Γ : Con} ⇒ {A : Ty Γ} ⇒ (t : Tm Γ A)
-              substTm (id Γ) t ≡ t,
+              substTm (id Γ) t      #⟨idTy A⟩
+              ≡ t,
     compTm  : {Θ Δ Γ : Con} ⇒
               {A : Ty Γ} ⇒ (t : Tm Γ A) ⇒
               (δ : Sub Θ Δ) ⇒ (γ : Sub Δ Γ) ⇒
-              substTm γ (substTm δ t) ≡ substTm (comp γ δ) t,
+              substTm γ (substTm δ t)     #⟨compTy A γ δ⟩
+              ≡ substTm (comp γ δ) t,
     ext     : ( Γ : Con) ⇒ Ty Γ ⇒ Con,
     pair    : {Δ Γ : Con} ⇒ {A : Ty Γ} ⇒
               (γ : Sub Δ Γ) ⇒
@@ -33,22 +35,19 @@ def ℭ𝔴𝔉 : GAT := ⦃
               (t : Tm Δ (substTy γ A)) ⇒
               (δ : Sub Θ Δ) ⇒
               comp (pair γ t) δ
-              ≡ pair (comp γ δ) (substTm δ t),
-    π₁      : ( Δ Γ : Con) ⇒ (A : Ty Γ) ⇒
-              Sub Δ (ext Γ A) ⇒ Sub Δ Γ,
-    π₂      : ( Δ Γ : Con) ⇒ (A : Ty Γ) ⇒
-              (σ : Sub Δ (ext Γ A)) ⇒
-              Tm Δ (substTy Δ Γ (pi1 Δ Γ A σ) A),
-    ext_β₁  : ( Δ Γ : Con) ⇒ (A : Ty Γ) ⇒
+              ≡ pair (comp γ δ) (substTm δ t  #⟨compTy A γ δ⟩),
+    p       : {Γ : Con} ⇒ (A : Ty Γ) ⇒ Sub (ext Γ A) Γ,
+    v       : {Γ : Con} ⇒ (A : Ty Γ) ⇒
+              Tm (ext Γ A) (substTy (p A) A),
+    ext_β₁  : {Δ : Con} ⇒ {Γ : Con} ⇒ {A : Ty Γ} ⇒
               (γ : Sub Δ Γ) ⇒
-              (t : Tm Δ (substTy Δ Γ γ A)) ⇒
-              π₁ Δ Γ A (pair Δ Γ A γ t) ≡ γ,
-    ext_β₂  : ( Δ Γ : Con) ⇒ (A : Ty Γ) ⇒
+              (t : Tm Δ (substTy γ A)) ⇒
+              comp (p A) (pair γ t) ≡ γ,
+    ext_β₂  : {Δ : Con} ⇒ {Γ : Con} ⇒ {A : Ty Γ} ⇒
               (γ : Sub Δ Γ) ⇒
-              (t : Tm Δ (substTy Δ Γ γ A)) ⇒
-              π₂ Δ Γ A (pair Δ Γ A γ t) ≡ t,
-    ext_η   : (Δ Γ : Con) ⇒ (A : Ty Γ) ⇒
-              (σ : Sub Δ (ext Γ A)) ⇒
-              pair Δ Γ A (π₁ Δ Γ A σ) (π₂ Δ Γ A σ)
-              ≡ σ
+              (t : Tm Δ (substTy γ A)) ⇒
+              substTm (pair γ t) (v A)  #⟨compTy A (p A) (pair γ t); ext_β₁ γ t⟩
+              ≡ t,
+    ext_η   : (Γ : Con) ⇒ (A : Ty Γ) ⇒
+              pair (p Γ A) (v Γ A) ≡ id (ext Γ A)
 ⦄
