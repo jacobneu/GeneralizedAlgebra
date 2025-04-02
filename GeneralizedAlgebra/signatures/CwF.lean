@@ -21,7 +21,7 @@ def ℭ𝔴𝔉 : GAT := ⦃
     idTy    : (Γ : Con) ⇒ (A : Ty Γ) ⇒
               substTy Γ Γ (id Γ) A ≡ A,
     compTy  : (Θ:Con)⇒ (Δ:Con)⇒  (Γ : Con) ⇒ (A : Ty Γ) ⇒
-              (γ : Sub Δ Γ) ⇒ (δ : Sub Θ Δ) ⇒
+              (δ : Sub Θ Δ) ⇒ (γ : Sub Δ Γ) ⇒
               substTy Δ Γ γ (substTy Θ Δ δ A)
               ≡ substTy Θ Γ (comp Θ Δ Γ γ δ) A,
     Tm      : (Γ : Con) ⇒ Ty Γ ⇒ U,
