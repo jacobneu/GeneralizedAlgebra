@@ -1,7 +1,7 @@
 import GeneralizedAlgebra.pretty_signatures.category
 
 def ℭ𝔴𝔉 : GAT := ⦃
-  include ℭ𝔞𝔱 as (Con,Sub,comp,id);
+  include ℭ𝔞𝔱 as (Con,Sub,comp,id,_,_,_);
     empty   : Con,
     ε       : (Γ : Con) ⇒ Sub Γ empty,
     ε_η     : (Γ : Con) ⇒ (f : Sub Γ empty) ⇒

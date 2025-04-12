@@ -12,4 +12,6 @@ setoid
 category
 groupoid
 CwF
+CwF+unit
+CwF+bool
 PCwF

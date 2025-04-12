@@ -15,6 +15,9 @@ import «GeneralizedAlgebra».signatures.setoid
 import «GeneralizedAlgebra».signatures.category
 import «GeneralizedAlgebra».signatures.groupoid
 import «GeneralizedAlgebra».signatures.CwF
+import «GeneralizedAlgebra».signatures.CwF_unit
+import «GeneralizedAlgebra».signatures.CwF_bool
+import «GeneralizedAlgebra».signatures.CwF_Pi
 import «GeneralizedAlgebra».signatures.PCwF
 
 structure printData where
@@ -48,6 +51,9 @@ def allGATs : List printData := [
   ⟨ℭ𝔞𝔱,"ℭ𝔞𝔱","category",none,none,none⟩,
   ⟨𝔊𝔯𝔭𝔡,"𝔊𝔯𝔭𝔡","groupoid",none,none,none⟩,
   ⟨ℭ𝔴𝔉,"ℭ𝔴𝔉","CwF",none,none,none⟩,
+  ⟨ℭ𝔴𝔉₁,"ℭ𝔴𝔉₁","CwF+unit",none,none,none⟩,
+  ⟨ℭ𝔴𝔉₂,"ℭ𝔴𝔉₂","CwF+bool",none,none,none⟩,
+  ⟨ℭ𝔴𝔉pi,"ℭ𝔴𝔉pi","CwF+Pi",none,none,none⟩,
   ⟨𝔓ℭ𝔴𝔉,"𝔓ℭ𝔴𝔉","PCwF",none,none,none⟩
 ]
 
@@ -147,8 +153,22 @@ def CWF := allGATs[13]
 #eval CWF.gat
 #eval Alg CWF.gat (some CWF.gatName)
 #eval Alg CWF.gat none CwF_inlinenames
+-- Categories with Families + unit
+def CWF₁ := allGATs[14]
+#eval CWF₁.gat
+#eval Alg CWF₁.gat (some CWF₁.gatName)
+
+-- Categories with Families + bool
+def CWF₂ := allGATs[15]
+#eval CWF₂.gat
+#eval Alg CWF₂.gat (some CWF₂.gatName)
+
+-- Categories with Families + Pi
+def CWFpi := allGATs[16]
+#eval CWFpi.gat
+#eval Alg CWFpi.gat (some CWFpi.gatName)
 
 -- -- Polarized Categories with Families
-def PCWF := allGATs[14]
+def PCWF := allGATs[17]
 #eval PCWF.gat
 #eval Alg PCWF.gat (some PCWF.gatName)
