@@ -207,14 +207,18 @@ theorem UU_stable : UU = WkTy UU := Eq.refl _
 
 -- def extractGoodVar {Γ : Con}{A : Ty}{n : Nat} : goodTm Γ A (VAR n) →
 --   ∃ (h : n < Γ.length), A = WknTy Γ n h := sorry
+universe u v w
 
 structure indData where
-    (Con_D : Con → Type)
-    (Ty_D : (Γ : Con) → Con_D Γ → Ty → Type)
-    (Tm_D : (Γ : Con) → (Γ_D : Con_D Γ) → (A : Ty) → Ty_D Γ Γ_D A → Tm → Type)
+    (Con_D : Con → Type u)
+    (Ty_D : (Γ : Con) → Con_D Γ → Ty → Type v)
+    (Tm_D : (Γ : Con) → (Γ_D : Con_D Γ) → (A : Ty) → Ty_D Γ Γ_D A → Tm → Type w)
     (nil_D : Con_D [])
     (cons_D : (Γ : Con) → (Γ_D : Con_D Γ) → (A : Ty) → (A_D : Ty_D Γ Γ_D A) → Con_D (A::Γ))
-    (WkTy_D : (Γ : Con) → (Γ_D : Con_D Γ) → (A : Ty) → (A_D : Ty_D Γ Γ_D A) → Ty_D (A::Γ) (cons_D Γ Γ_D A A_D) (WkTy A))
+    -- (WkTy_D : (Γ : Con) → (Γ_D : Con_D Γ) →
+    --           (A : Ty) → (A_D : Ty_D Γ Γ_D A) →
+    --           (A' : Ty) → (A'_D : Ty_D Γ Γ_D A') →
+    --           Ty_D (A'::Γ) (cons_D Γ Γ_D A' A'_D) (WkTy A))
     (UU_D : (Γ : Con) → (Γ_D : Con_D Γ) → Ty_D Γ Γ_D UU)
     (EL_D : (Γ : Con) → (Γ_D : Con_D Γ) →
             (X : Tm) → Tm_D Γ Γ_D UU (UU_D Γ Γ_D) X →
@@ -237,9 +241,11 @@ structure indData where
             Tm_D (A::Γ) (cons_D Γ Γ_D A A_D) (WkTy A) A'_D (VAR 0)
             )
     (VARSUCC_D : (Γ : Con) → (Γ_D : Con_D Γ) →
-            (A : Ty) → (A_D : Ty_D Γ Γ_D A) → (t : Tm) →
-            (B : Ty) → (B_D : Ty_D (A::Γ) (cons_D Γ Γ_D A A_D) B) →
-            Tm_D Γ Γ_D A A_D t → Tm_D (A::Γ) (cons_D Γ Γ_D A A_D) B B_D (WkTm t))
+            (A : Ty) → (A_D : Ty_D Γ Γ_D A) →
+            (t : Tm) → Tm_D Γ Γ_D A A_D t →
+            (A' : Ty) → (A'_D : Ty_D Γ Γ_D A') →
+            (WkA_D : Ty_D (A'::Γ) (cons_D Γ Γ_D A' A'_D) (WkTy A)) →
+            Tm_D (A'::Γ) (cons_D Γ Γ_D A' A'_D) (WkTy A) WkA_D (WkTm t))
     (APP_D :(Γ : Con) → (Γ_D : Con_D Γ) →
             (X : Tm) → (X_D : Tm_D Γ Γ_D UU (UU_D Γ Γ_D) X) →
             (Y : Ty) → (Y_D : Ty_D (EL X :: Γ) (cons_D Γ Γ_D (EL X) (EL_D Γ Γ_D X X_D)) Y) →

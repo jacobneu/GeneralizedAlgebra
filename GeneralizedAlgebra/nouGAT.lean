@@ -105,17 +105,15 @@ def varTelLookup {VV : varStruct} (TT : varTel VV) (key : String) : MetaM (Expr 
   let args ← (VV.getArgs key) <|> return []
   return (T,args)
 
--- def varTelExtend {VV : varStruct} (TT : varTel VV) (newArg : metaArg) (ctx : Expr)  (newCtx : Expr) : varTel VV :=
--- ⟨ λ s =>
---     if argMatch s newArg
---     then mkAppM ``V0 #[ ctx , extractMetaTy newArg ]
---     else do
---       let (old,_) ← varTelLookup TT s
---       let ID ← mkAppM ``ID #[newCtx]
---       let p ← mkAppM ``PROJ1 #[ID]
---       mkAppM ``SUBST_Tm #[ p , old],
---   TT.args ++ [newArg],
--- ⟩
+def varTelExtend {VV : varStruct} (TT : varTel VV) (newArg : metaArg) (ctx : Expr)  (newCtx : Expr) : varTel VV :=
+⟨ λ s =>
+    if argMatch s newArg
+    then mkAppM ``VAR #[ mkNatLit 0 ]
+    else do
+      let (old,_) ← varTelLookup TT s
+      mkAppM ``WkTm #[ old ],
+  TT.args ++ [newArg],
+⟩
 
 partial def splitArgList (message : String) : List metaArg → MetaM (metaArg × List metaArg)
 | [] => throwError message
@@ -182,16 +180,16 @@ partial def elabGATTy {vars : varStruct} (ctx : Expr) (TT : varTel vars) : Synta
   let t ← elabClosedGATTm ctx TT x
   let T ← mkAppM ``EL #[t]
   return (TT, T, T)
--- | `(gat_ty| $T:gat_arg ⇒ $T':gat_ty) => do
---   let argT ← elabGATArg ctx TT T
---   let domain := extractMetaTy argT
---   let elDomain ← mkAppM ``EL #[domain]
---   let elT ← argEl argT
---   let newCtx ← mkAppM ``EXTEND #[ctx,elDomain]
---   let newTT := varTelExtend TT elT ctx newCtx
---   let (newnewTT,codomain,resT) ← elabGATTy newCtx newTT T'
---   let result ← mkAppM  ``PI #[domain,codomain]
---   return (newnewTT,result,resT)
+| `(gat_ty| $T:gat_arg ⇒ $T':gat_ty) => do
+  let argT ← elabGATArg ctx TT T
+  let domain := extractMetaTy argT
+  let elDomain ← mkAppM ``EL #[domain]
+  let elT ← argEl argT
+  let newCtx ← mkAppM ``EXTEND #[ctx,elDomain]
+  let newTT := varTelExtend TT elT ctx newCtx
+  let (newnewTT,codomain,resT) ← elabGATTy newCtx newTT T'
+  let result ← mkAppM  ``PI #[domain,codomain]
+  return (newnewTT,result,resT)
 | `(gat_ty| $t1:gat_tm ≡ $t2:gat_tm) => do
   let tt1 ← elabClosedGATTm ctx TT t1
   let tt2 ← elabClosedGATTm ctx TT t2
