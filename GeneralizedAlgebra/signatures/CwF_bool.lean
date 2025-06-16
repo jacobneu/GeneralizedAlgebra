@@ -81,6 +81,12 @@ def ℭ𝔴𝔉₂ : GAT := ⦃
         Tm Γ (substTy Γ (ext Γ (bool Γ)) (pair Γ Γ (bool Γ) (id Γ) (tt Γ)) M) ⇒
         Tm Γ (substTy Γ (ext Γ (bool Γ)) (pair Γ Γ (bool Γ) (id Γ) (ff Γ)) M) ⇒
         Tm (ext Γ (bool Γ)) M,
+    bool_elim_stab : (Δ : Con) ⇒ (Γ : Con) ⇒ (σ : Sub Δ Γ) ⇒
+        (M : Ty (ext Γ (bool Γ))) ⇒
+        (mtt : Tm Γ (substTy Γ (ext Γ (bool Γ)) (pair Γ Γ (bool Γ) (id Γ) (tt Γ)) M)) ⇒
+        (mff : Tm Γ (substTy Γ (ext Γ (bool Γ)) (pair Γ Γ (bool Γ) (id Γ) (ff Γ)) M)) ⇒
+        substTm (ext Δ (bool Δ)) (ext Γ (bool Γ)) M (pair (ext Δ (bool Δ)) Γ (bool Γ) (comp (ext Δ (bool Δ)) Δ Γ σ (p Δ (bool Δ))) (v Γ (bool Γ))) (bool_elim Γ M mtt mff)
+        ≡ bool_elim Δ (substTy),
     bool_β_tt : (Γ : Con) ⇒
         (M : Ty (ext Γ (bool Γ))) ⇒
         (mtt : Tm Γ (substTy Γ (ext Γ (bool Γ)) (pair Γ Γ (bool Γ) (id Γ) (tt Γ)) M)) ⇒
