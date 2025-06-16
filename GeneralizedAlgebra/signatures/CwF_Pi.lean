@@ -83,7 +83,8 @@ def ℭ𝔴𝔉pi : GAT := ⦃
     lam : (Γ : Con) ⇒ (A : Ty Γ) ⇒ (B : Ty (ext Γ A)) ⇒
         Tm (ext Γ A) B ⇒ Tm Γ (Pi Γ A B),
     app : (Γ : Con) ⇒ (A : Ty Γ) ⇒ (B : Ty (ext Γ A)) ⇒
-        Tm Γ (Pi Γ A B) ⇒ Tm (ext Γ A) B,
+        Tm Γ (Pi Γ A B) ⇒ (t : Tm Γ A) ⇒
+        Tm Γ (substTy Γ (ext Γ A) (pair Γ Γ A (id Γ) (t #⟨⁻¹ idTy Γ A⟩)) B),
     lam_stab : (Δ : Con) ⇒ (Γ : Con) ⇒ (σ : Sub Δ Γ) ⇒
         (A : Ty Γ) ⇒ (B : Ty (ext Γ A)) ⇒
         (t : Tm (ext Γ A) B) ⇒
@@ -94,9 +95,25 @@ def ℭ𝔴𝔉pi : GAT := ⦃
                     (pair (ext Δ (substTy Δ Γ σ A)) Γ A (comp (ext Δ (substTy Δ Γ σ A)) Δ Γ σ (p Δ (substTy Δ Γ σ A))) (v Δ (substTy Δ Γ σ A)))
                 B t)),
     Pi_β : (Γ : Con) ⇒ (A : Ty Γ) ⇒ (B : Ty (ext Γ A)) ⇒
-        (t : Tm (ext Γ A) B) ⇒
-        app Γ A B (lam Γ A B t) ≡ t,
+        (F : Tm (ext Γ A) B) ⇒ (t : Tm Γ A) ⇒
+        app Γ A B (lam Γ A B F) t ≡ substTm Γ (ext Γ A) B (pair Γ Γ A (id Γ) (t #⟨⁻¹ idTy Γ A⟩)) F,
     Pi_η : (Γ : Con) ⇒ (A : Ty Γ) ⇒ (B : Ty (ext Γ A)) ⇒
         (f : Tm Γ (Pi Γ A B)) ⇒
-        lam Γ A B (app Γ A B f) ≡ f
+        lam Γ A B (app      (ext Γ A)
+                            (substTy (ext Γ A) Γ (p Γ A) A) -- : Ty (ext Γ A)
+
+                (substTy
+                    (ext (ext Γ A) (substTy (ext Γ A) Γ (p Γ A) A))
+                    (ext Γ A)
+                    (pair
+                        (ext (ext Γ A) (substTy (ext Γ A) Γ (p Γ A) A))
+                        Γ
+                        A
+                        (comp (ext (ext Γ A) (substTy (ext Γ A) Γ (p Γ A) A)) (ext Γ A) Γ (p Γ A) (p (ext Γ A) (substTy (ext Γ A) Γ (p Γ A) A)))
+                        (v (ext Γ A) (substTy (ext Γ A) Γ (p Γ A) A)))
+                    B) -- : Ty (ext (ext Γ A) (substTy (ext Γ A) Γ (p Γ A) A))
+                            ((substTm (ext Γ A) Γ (p Γ A) (Pi Γ A B) f)  #⟨ Pi_stab (ext Γ A) Γ (p Γ A) A B ⟩) -- Tm (ext Γ A) (Pi (substTy (ext Γ A) Γ (p Γ A) A) )
+                            (v Γ A) -- : Tm (ext Γ A) (substTy (ext Γ A) Γ (p Γ A) A)
+                  )
+        ≡ f
 ⦄

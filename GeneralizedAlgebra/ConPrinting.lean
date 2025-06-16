@@ -24,6 +24,7 @@ mutual
     | APP f => "App " ++ paren (Tm_toString f)
     | t [ σ ]t => paren (Tm_toString t) ++ " [ " ++ (Subst_toString σ) ++ " ]t "
     | (TRANSP t e) => "transp (" ++ (Tm_toString e) ++ ") (" ++ (Tm_toString t) ++ ")"
+    | (TRANSPop t e) => "transp⁻¹ (" ++ (Tm_toString e) ++ ") (" ++ (Tm_toString t) ++ ")"
   def Subst_toString : Subst → String
   | PROJ1 (ID _) => "wk"
   | PROJ1 σ => "π₁ " ++ (Subst_toString σ)

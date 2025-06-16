@@ -27,6 +27,7 @@ mutual
   | PROJ2 : Subst → Tm
   | APP : Tm → Tm
   | TRANSP : Tm → Tm → Tm
+  | TRANSPop : Tm → Tm → Tm
 end
 
 open Con Subst Ty Tm

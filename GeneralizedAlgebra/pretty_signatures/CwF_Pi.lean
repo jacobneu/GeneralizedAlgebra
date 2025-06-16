@@ -17,11 +17,13 @@ def ℭ𝔴𝔉pi : GAT := ⦃
         Tm (ext Γ A) B ⇒ Tm Γ (Pi A B),
     app : {Γ : Con} ⇒
         {A : Ty Γ} ⇒ {B : Ty (ext Γ A)} ⇒
-        Tm Γ (Pi A B) ⇒ Tm (ext Γ A) B,
+        Tm Γ (Pi A B) ⇒ (t : Tm Γ A) ⇒
+        Tm Γ (substTy
+            (pair (id Γ) (t #⟨⁻¹ idTy A⟩)) B),
     lam_stab : {Δ Γ : Con} ⇒ (σ : Sub Δ Γ) ⇒
         {A : Ty Γ} ⇒ {B : Ty (ext Γ A)} ⇒
         (t : Tm (ext Γ A) B) ⇒
-        substTm σ (Pi A B) (lam t)
+        substTm σ (lam t)
             #⟨Pi_stab σ A B⟩
         ≡ (lam (substTm
                     (pair (comp σ (p (substTy σ A)))
@@ -30,8 +32,13 @@ def ℭ𝔴𝔉pi : GAT := ⦃
           ),
     Pi_β : {Γ : Con} ⇒
         {A : Ty Γ} ⇒ {B : Ty (ext Γ A)} ⇒
-        (t : Tm (ext Γ A) B) ⇒ app (lam t) ≡ t,
+        (F : Tm (ext Γ A) B) ⇒ (t : Tm Γ A) ⇒
+        app (lam F) t
+        ≡ substTm (pair (id Γ) (t #⟨⁻¹ idTy A⟩)) F,
     Pi_η : {Γ : Con} ⇒
         {A : Ty Γ} ⇒ {B : Ty (ext Γ A)} ⇒
-        (f : Tm Γ (Pi A B)) ⇒ lam (app f) ≡ f
+        (f : Tm Γ (Pi A B)) ⇒
+        lam (app (substTm (p A) f #⟨ Pi_stab (p A) A B⟩) (v A))
+            #⟨⁻¹ lam_stab⟩
+        ≡ f
 ⦄

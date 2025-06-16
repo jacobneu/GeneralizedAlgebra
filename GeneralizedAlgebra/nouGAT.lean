@@ -13,6 +13,7 @@ syntax ident     : gat_tm
 syntax "(" gat_tm ")" : gat_tm
 syntax:60 gat_tm:60 gat_tm:61 : gat_tm
 syntax:58 gat_tm:58  "#⟨" gat_tm:59 "⟩" : gat_tm
+syntax:58 gat_tm:58  "#⟨⁻¹" gat_tm:59 "⟩" : gat_tm
 syntax gat_tm : gat_ty
 syntax gat_tm " ≡ " gat_tm : gat_ty
 
@@ -165,6 +166,11 @@ partial def elabGATTm {vars : varStruct} (ctx : Expr) (TT : varTel vars) : Synta
       let (t1,args1) ← elabGATTm ctx TT g1
       let (t2,_) ← elabGATTm ctx TT g2
       let resT ← mkAppM ``TRANSP #[t1,t2]
+      return (resT,args1)
+| `(gat_tm| $g1 #⟨⁻¹ $g2 ⟩ ) => do
+      let (t1,args1) ← elabGATTm ctx TT g1
+      let (t2,_) ← elabGATTm ctx TT g2
+      let resT ← mkAppM ``TRANSPop #[t1,t2]
       return (resT,args1)
       -- let args ← vars.getArgs i.getI
 | _ => throwError "TmFail"
