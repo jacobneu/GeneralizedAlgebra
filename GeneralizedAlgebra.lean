@@ -1,5 +1,5 @@
 import GeneralizedAlgebra.AlgPrinting
--- import GeneralizedAlgebra.ConPrinting
+import GeneralizedAlgebra.ConPrinting
 
 import GeneralizedAlgebra.signatures.set
 import GeneralizedAlgebra.signatures.pointed
@@ -21,8 +21,8 @@ import GeneralizedAlgebra.signatures.nat
 /-
 ## Basic structures
 -/
-
-#eval 𝔓.elim AlgStr
+#eval 𝔑
+#eval 𝔑.elim AlgStr
 -- Sets
 -- #eval 𝔖𝔢𝔱
 -- #eval Alg 𝔖𝔢𝔱

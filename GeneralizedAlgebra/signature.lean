@@ -277,6 +277,30 @@ def getName : Arg → Option String
 | Expl i _ => some i
 | Anon _ => none
 
+mutual
+def Tmrepr : Tm → String
+| APP X Y f t => "APP (" ++ (Tmrepr X) ++ ") (" ++ (Tyrepr Y) ++ ") (" ++ (Tmrepr f) ++ ") (" ++ (Tmrepr t) ++ ")"
+| VAR n => Nat.repr n
+| TRANSP X s s' Y eq t => "transp " ++ (Tmrepr eq) ++ " " ++ (Tmrepr t)
+
+def Tyrepr : Ty → String
+| UU => "U"
+| EQ X s t => "Eq " ++ (Tmrepr X) ++ " " ++ (Tmrepr s)  ++ " " ++ (Tmrepr t)
+| EL X => "El (" ++ (Tmrepr X) ++ ")"
+| PI X Y => "Π (" ++ (Tmrepr X) ++ ") (" ++ (Tyrepr Y) ++ ")"
+end
+
+def Argrepr : Arg → String
+| Impl i T => "iArg(" ++ i ++ "," ++ Tyrepr T ++ ")"
+| Expl i T => "eArg(" ++ i ++ "," ++ Tyrepr T ++ ")"
+| Anon T =>  "aArg(" ++ Tyrepr T ++ ")"
+
+instance : Repr Tm where
+  reprPrec := λ t _ => Tmrepr t
+instance : Repr Ty where
+  reprPrec := λ t _ => Tyrepr t
+instance : Repr Arg where
+  reprPrec := λ A _ => Argrepr A
 
 structure GATdata where
   (con : Con)

@@ -129,13 +129,14 @@ partial def failIfExplicitArgs (message : String) : List metaArg → MetaM Unit
 
 partial def elabGATTm {vars : varStruct} (ctx : Expr) (TT : varTel vars) : Syntax → MetaM (Expr × List metaArg)
 | `(gat_tm| ( $g:gat_tm ) ) => elabGATTm ctx TT g
--- | `(gat_tm| $g1:gat_tm $g2:gat_tm ) => do
---       let (t1,args1) ← elabGATTm ctx TT g1
---       let (A,args1') ← splitArgList "Too many args #0" args1
+| `(gat_tm| $g1:gat_tm $g2:gat_tm ) => do
+      let (t1,args1) ← elabGATTm ctx TT g1
+      let (A,args1') ← splitArgList "Too many args #0" args1
+      let domain := extractMetaTy A
 --         -- TODO: Check the type of A against the type of t2
---       let Appt1 ← mkAppM ``APP #[t1]
---       let (t2,args2)← elabGATTm ctx TT g2
---       failIfExplicitArgs "Insufficient Args #0" args2
+      -- let Appt1 ← mkAppM ``APP #[t1]
+      let (t2,args2)← elabGATTm ctx TT g2
+      failIfExplicitArgs "Insufficient Args #0" args2
 --       -- let actualT2 ← reduce t2
 --       -- let expectedT2 ← reduce (extractMetaTy A)
 --       -- let tyMatch ← isDefEq actualT2 expectedT2
@@ -144,8 +145,8 @@ partial def elabGATTm {vars : varStruct} (ctx : Expr) (TT : varTel vars) : Synta
 --       -- else do
 --       let ID ← mkAppM ``ID #[ctx]
 --       let substt2 ← mkAppM ``PAIR #[ID,t2]
---       let resT ← mkAppM ``SUBST_Tm #[substt2,Appt1]
---       return (resT,args1')
+      let resT ← mkAppM ``APP #[t1,domain,t1,t2]
+      return (resT,args1')
 | `(gat_tm| $i:ident ) => do
       varTelLookup TT i.getId.toString
       -- let args ← vars.getArgs i.getI
