@@ -1,26 +1,26 @@
 import GeneralizedAlgebra.signature
 
 open Nat
-open Ty Tm
+open preTy preTm
 
 
 
 
 
-instance AlgStr : indData where
-  Con_D := λ _ => String
-  Ty_D := λ _ _ _ => String
-  Tm_D := λ _ _ _ _ _ => String
-  nil_D := "⋄"
-  cons_D := λ 𝔊 𝔊s A As => 𝔊s ++ " × " ++ As
-  UU_D := λ _ _ => "Set"
-  EL_D := λ _ 𝔊s _ Xs => 𝔊s ++ "-" ++ Xs
-  PI_D := λ _ _ _ _ _ _ => "w"
-  EQ_D := λ _ _ _ _ _ _ _ _ => "v"
-  VAR0_D := λ _ 𝔊s _ As A's => "(" ++ As ++ "|" ++ A's ++ ")"
-  VARSUCC_D := λ _ _ _ _ _ _ _ _ _ => "t"
-  APP_D := λ _ _ _ _ _ _ _ _ _ _ _ => "s"
-  TRANSP_D := λ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ => "r"
+-- instance AlgStr_method : indData where
+--   Con_D := λ _ => String
+--   Ty_D := λ _ _ _ => String
+--   Tm_D := λ _ _ _ _ _ => String
+--   nil_D := "⋄"
+--   cons_D := λ 𝔊 𝔊s A As => 𝔊s ++ " × " ++ As
+--   UU_D := λ _ _ => "Set"
+--   EL_D := λ _ 𝔊s _ Xs => 𝔊s ++ "-" ++ Xs
+--   PI_D := λ _ _ _ _ _ _ => "w"
+--   EQ_D := λ _ _ _ _ _ _ _ _ => "v"
+--   VAR0_D := λ _ 𝔊s _ As A's => "(" ++ As ++ "|" ++ A's ++ ")"
+--   VARSUCC_D := λ _ _ _ _ _ _ _ _ _ => "t"
+--   APP_D := λ _ _ _ _ _ _ _ _ _ _ _ => "s"
+--   TRANSP_D := λ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ => "r"
 
 -- instance Alg : indData where
 --   Con_D := λ _ => Type 1
