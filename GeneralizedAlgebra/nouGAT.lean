@@ -257,13 +257,14 @@ partial def elabGATCon : Syntax → MetaM Expr
 | `(con_outer| ⦃  ⦄ ) => do
   let emptyStrList ← mkListStrLit []
   let emptyLArgList ← mkListListArgLit []
-  mkAppM ``GATdata.mk  #[.const ``preEMPTY [],emptyStrList,emptyLArgList]
+  let gatdata ← mkAppM ``GAT.mk  #[.const ``preEMPTY [],emptyStrList,emptyLArgList]
+  mkAppM ``GAT.mk #[gatdata]
 | `(con_outer| ⦃ $s:con_inner  ⦄ ) => do
   let (resCon,VV) ← elabGATCon_core (.const ``preEMPTY []) varEmpty s
   let topList ← mkListStrLit VV.topnames
   let telescopes ← mkListListArgLit VV.telescopes
-  mkAppM ``GATdata.mk #[resCon,topList,telescopes]
+  let gatdata ← mkAppM ``GATdata.mk #[resCon,topList,telescopes]
+  mkAppM ``GAT.mk #[gatdata]
 | _ => throwError "ConFail"
-
 
 elab g:con_outer : term => elabGATCon g

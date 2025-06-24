@@ -1,7 +1,7 @@
 import GeneralizedAlgebra.signature
 
 open Nat
-open Ty Tm
+open preTy preTm
 
 -- mutual
 --   def Con_toString : Con → String
@@ -41,20 +41,43 @@ match s.toNat? with
 | (some n) => Nat.repr (succ n)
 | _ => s ++ "[wk]"
 
-instance ConStr_method : indData where
-  Con_D := λ _ => String
-  Ty_D := λ _ _ _ => String
-  Tm_D := λ _ _ _ _ _ => String
-  nil_D := "⋄"
-  cons_D := λ _ 𝔊s _ As => 𝔊s ++ " ▷ " ++ As
-  UU_D := λ _ _ => "U"
-  EL_D := λ _ _ _ Xs => "El " ++ (mkParen Xs)
-  PI_D := λ _ _ _ Xs _ Ys => "Π " ++ (mkParen Xs) ++ " " ++ (mkParen Ys)
-  EQ_D := λ _ _ _ Xs _ ss _ ts => "Eq " ++ Xs ++ " " ++ ss ++ " " ++ ts
-  VAR0_D := λ _ _ _ _ _ => "0"
-  VARSUCC_D := λ _ _ _ _ _ ts _ _ _ => wkStr ts
-  APP_D := λ _ _ _ _ _ _ _ fs _ xs _ => fs ++ " @ " ++ xs
-  TRANSP_D := λ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ => "r"
+-- instance ConStr_method : indData where
+--   Con_D := λ _ => String
+--   Ty_D := λ _ _ _ => String
+--   Tm_D := λ _ _ _ _ _ => String
+--   nil_D := "⋄"
+--   cons_D := λ _ 𝔊s _ As => 𝔊s ++ " ▷ " ++ As
+--   UU_D := λ _ _ => "U"
+--   EL_D := λ _ _ _ Xs => "El " ++ (mkParen Xs)
+--   PI_D := λ _ _ _ Xs _ Ys => "Π " ++ (mkParen Xs) ++ " " ++ (mkParen Ys)
+--   EQ_D := λ _ _ _ Xs _ ss _ ts => "Eq " ++ Xs ++ " " ++ ss ++ " " ++ ts
+--   VAR0_D := λ _ _ _ _ _ => "0"
+--   VARSUCC_D := λ _ _ _ _ _ ts _ _ _ => wkStr ts
+--   APP_D := λ _ _ _ _ _ _ _ fs _ xs _ => fs ++ " @ " ++ xs
+--   TRANSP_D := λ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ => "r"
+
+def preTmrepr : preTm → String
+| preAPP f t =>   mkParen (preTmrepr f) ++ " @ " ++ mkParen (preTmrepr t)
+| preVAR n => Nat.repr n
+| preTRANSP eq y => "transp " ++ mkParen (preTmrepr eq) ++ " " ++ mkParen (preTmrepr y)
+
+def preTyrepr : preTy → String
+| preUU => "U"
+| preEQ s t => "Eq " ++ mkParen (preTmrepr s)  ++ " " ++ mkParen (preTmrepr t)
+| preEL X => "El " ++ mkParen (preTmrepr X)
+| prePI X Y => "Π " ++ mkParen (preTmrepr X) ++ " " ++ mkParen (preTyrepr Y)
+
+
+
+instance : Repr preTm where
+  reprPrec := λ t _ => preTmrepr t
+instance : Repr preTy where
+  reprPrec := λ t _ => preTyrepr t
+
+#eval List.foldr (λ x y => y ++ "-" ++ x) "x" ["a","b","c"]
+
+def preConrepr : preCon → String :=
+(List.foldr (λ x y => y ++ " ▷ " ++ x) "◇") ∘ (List.map preTyrepr)
 
 instance GATRepr : Repr GAT :=
-⟨ λ 𝔊 _ => 𝔊.elim ConStr_method ⟩
+⟨ λ 𝔊 _ =>  preConrepr 𝔊.con ⟩

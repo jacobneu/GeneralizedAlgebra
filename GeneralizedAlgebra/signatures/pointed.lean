@@ -16,9 +16,10 @@ import GeneralizedAlgebra.signatures.set
 
 
 
-def 𝔓 : GAT := ⟨
-  ⦃ X : U, x : X ⦄,
-  λ P => P.cons_D _ (𝔖𝔢𝔱.elim P) _ (P.EL_D _ _ _ (P.VAR0_D _ _ _ _ _))
+def 𝔓 : GAT :=
+  ⦃ X : U, x : X ⦄
+  -- ,
+  -- λ P => P.cons_D _ (𝔖𝔢𝔱.elim P) _ (P.EL_D _ _ _ (P.VAR0_D _ _ _ _ _))
   -- by
   --   intro P
   --   apply P.cons_D
@@ -26,5 +27,4 @@ def 𝔓 : GAT := ⟨
   --   have helper := P.VAR0_D EMPTY P.nil_D Ty.UU (P.UU_D _ _)
   --   rw [WkTy] at helper
   --   apply helper
-  ⟩
 -- #reduce 𝔓.elim
