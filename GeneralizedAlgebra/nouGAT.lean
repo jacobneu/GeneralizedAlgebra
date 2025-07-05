@@ -12,6 +12,7 @@ declare_syntax_cat gat_tm
 syntax ident     : gat_tm
 syntax "(" gat_tm ")" : gat_tm
 syntax:60 gat_tm:60 gat_tm:61 : gat_tm
+syntax:58 gat_tm:58  "#⟨" gat_tm:59 "⟩" : gat_tm
 syntax gat_tm : gat_ty
 syntax gat_tm " ≡ " gat_tm : gat_ty
 
@@ -150,6 +151,13 @@ partial def elabGATTm {vars : varStruct} (ctx : Expr) (TT : varTel vars) : Synta
 | `(gat_tm| $i:ident ) => do
       varTelLookup TT i.getId.toString
       -- let args ← vars.getArgs i.getI
+| `(gat_tm| $g1 #⟨ $g2 ⟩ ) => do
+      let (t1,args1) ← elabGATTm ctx TT g1
+      let (t2,args2) ← elabGATTm ctx TT g2
+      failIfExplicitArgs "Insufficient Args #2" args2
+      let resT ← mkAppM ``preTRANSP #[t2,t1]
+      return (resT,args1)
+
 | _ => throwError "TmFail"
 
 

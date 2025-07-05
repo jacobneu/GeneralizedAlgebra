@@ -21,7 +21,7 @@ def ℭ𝔴𝔉 : GAT := ⦃
     idTy    : (Γ : Con) ⇒ (A : Ty Γ) ⇒
               substTy Γ Γ (id Γ) A ≡ A,
     compTy  : (Θ:Con)⇒ (Δ:Con)⇒  (Γ : Con) ⇒ (A : Ty Γ) ⇒
-              (δ : Sub Θ Δ) ⇒ (γ : Sub Δ Γ) ⇒
+              (γ : Sub Δ Γ) ⇒ (δ : Sub Θ Δ) ⇒
               substTy Δ Γ γ (substTy Θ Δ δ A)
               ≡ substTy Θ Γ (comp Θ Δ Γ γ δ) A,
     Tm      : (Γ : Con) ⇒ Ty Γ ⇒ U,
@@ -29,12 +29,13 @@ def ℭ𝔴𝔉 : GAT := ⦃
               (γ : Sub Δ Γ) ⇒
               Tm Γ A ⇒ Tm Δ (substTy Δ Γ γ A),
     idTm    : ( Γ : Con) ⇒ (A : Ty Γ) ⇒ (t : Tm Γ A) ⇒
-              substTm Γ Γ A (id Γ) t ≡ t,
+              substTm Γ Γ A (id Γ) t     #⟨idTy Γ A⟩
+              ≡ t,
     compTm  : (Θ:Con)⇒ (Δ:Con)⇒ (Γ : Con) ⇒
               (A : Ty Γ) ⇒ (t : Tm Γ A) ⇒
               (δ : Sub Θ Δ) ⇒ (γ : Sub Δ Γ) ⇒
               substTm Δ Γ A γ
-                (substTm Θ Δ (substTy Δ Γ γ A) δ t)
+                (substTm Θ Δ (substTy Δ Γ γ A) δ t)      #⟨compTy Θ Δ Γ A γ δ⟩
               ≡ substTm Θ Γ A (comp Θ Δ Γ γ δ) t,
     ext     : ( Γ : Con) ⇒ Ty Γ ⇒ Con,
     pair    : (Δ:Con)⇒ (Γ : Con) ⇒ (A : Ty Γ) ⇒
@@ -46,144 +47,21 @@ def ℭ𝔴𝔉 : GAT := ⦃
               (t : Tm Δ (substTy Δ Γ γ A)) ⇒
               (δ : Sub Θ Δ) ⇒
               comp Θ Δ (ext Γ A) (pair Δ Γ A γ t) δ
-              ≡ pair Θ Γ A (comp Θ Δ Γ γ δ) (substTm Θ Δ (substTy Δ Γ γ A) δ t),
-    π₁      : (Δ:Con)⇒ (Γ : Con) ⇒ (A : Ty Γ) ⇒
-              Sub Δ (ext Γ A) ⇒ Sub Δ Γ,
-    π₂      : (Δ:Con) ⇒ (Γ : Con) ⇒ (A : Ty Γ) ⇒
-              (σ : Sub Δ (ext Γ A)) ⇒
-              Tm Δ (substTy Δ Γ (π₁ Δ Γ A σ) A),
+              ≡ pair Θ Γ A (comp Θ Δ Γ γ δ) (substTm Θ Δ (substTy Δ Γ γ A) δ t   #⟨compTy Θ Δ Γ A γ δ⟩),
+    p      : (Γ : Con) ⇒ (A : Ty Γ) ⇒ Sub (ext Γ A) Γ,
+    v      : (Γ : Con) ⇒ (A : Ty Γ) ⇒
+              Tm (ext Γ A) (substTy (ext Γ A) Γ (p Γ A) A),
     ext_β₁  : (Δ:Con)⇒ (Γ : Con) ⇒ (A : Ty Γ) ⇒
               (γ : Sub Δ Γ) ⇒
               (t : Tm Δ (substTy Δ Γ γ A)) ⇒
-              π₁ Δ Γ A (pair Δ Γ A γ t) ≡ γ,
+              comp Δ (ext Γ A) Γ (p Γ A) (pair Δ Γ A γ t) ≡ γ,
     ext_β₂  : (Δ:Con)⇒ (Γ : Con) ⇒ (A : Ty Γ) ⇒
               (γ : Sub Δ Γ) ⇒
               (t : Tm Δ (substTy Δ Γ γ A)) ⇒
-              π₂ Δ Γ A (pair Δ Γ A γ t) ≡ t,
-    ext_η   : (Δ:Con)⇒ (Γ : Con) ⇒ (A : Ty Γ) ⇒
-              (σ : Sub Δ (ext Γ A)) ⇒
-              pair Δ Γ A (π₁ Δ Γ A σ) (π₂ Δ Γ A σ)
-              ≡ σ
+              substTm Δ (ext Γ A) (substTy Δ Γ γ A) (pair Δ Γ A γ t) (v Γ A)
+                  #⟨compTy Δ (ext Γ A) Γ A (p Γ A) (pair Δ Γ A γ t)⟩  #⟨ext_β₁ Δ Γ A γ t⟩
+              ≡ t,
+    ext_η   : (Γ : Con) ⇒ (A : Ty Γ) ⇒
+              pair (ext Γ A) Γ A (p Γ A) (v Γ A)
+              ≡ id (ext Γ A)
 ⦄
-
-def CwF_inlinenames := [
-    "Con",
-    "Sub",
-    "Γ",
-    "id",
-    "Θ",
-    "Δ",
-    "Γ",
-    "comp",
-    "Δ",
-    "Γ",
-    "γ",
---     "lunit",
-    "Δ",
-    "Γ",
-    "γ",
---     "runit",
-    "Ξ",
-    "Θ",
-    "Δ",
-    "Γ",
-    "ϑ",
-    "δ",
-    "γ",
---     "assoc",
-    "empty",
-    "Γ",
-    "ε",
-    "Γ",
-    "f",
---     "ηε",
-    "Ty",
-    "Δ",
-    "Γ",
-    "substTy",
-    "Γ",
-    "A",
---     "idTy",
-    "Θ",
-    "Δ",
-    "Γ",
-    "A",
-    "δ",
-    "γ",
---     "compTy",
-    "Γ",
-    "Tm",
-    "Δ",
-    "Γ",
-    "A",
-    "γ",
-    "substTm",
-    "Γ",
-    "A",
-    "t",
---     "idTm",
-    "Θ",
-    "Δ",
-    "Γ",
-    "A",
-    "t",
-    "δ",
-    "γ",
---     "compTm",
-    "Γ",
-    "ext",
-    "Δ",
-    "Γ",
-    "A",
-    "γ",
-    "pair",
-    "Θ",
-    "Δ",
-    "Γ",
-    "A",
-    "γ",
-    "t",
-    "δ",
---     "pair_nat",
-    "Δ",
-    "Γ",
-    "A",
-    "π₁",
-    "Δ",
-    "Γ",
-    "A",
-    "σ",
-    "π₂",
-    "Δ",
-    "Γ",
-    "A",
-    "γ",
-    "t",
---     "ext_β₁",
-    "Δ",
-    "Γ",
-    "A",
-    "γ",
-    "t",
---     "ext_β₂",
-    "Δ",
-    "Γ",
-    "A",
-    "σ",
---     "ext_η"
-]
-
-
--- #eval Con_toString ℭ𝔴𝔉
-def Con_v : Nat → List String
-| 0 => ["Γ"]
-| 1 => "Δ" :: Con_v 0
-| 2 => "Θ" :: Con_v 1
-| 3 => "Ξ" :: Con_v 2
-| _ => []
-
--- def twice (L : List String) := L ++ L
--- def CwF_record_names := ["Con","Sub","Γ","id"] ++ Con_v 2 ++ ["comp"] ++ twice (Con_v 1 ++ ["γ"] ) ++ Con_v 3 ++ ["ϑ","δ","γ","empty","Γ","ε","Γ","f",]
--- #eval CwF_names
--- #eval List.length CwF_topnames
--- #eval len ℭ𝔴𝔉
