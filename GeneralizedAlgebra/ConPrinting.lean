@@ -57,6 +57,10 @@ match s.toNat? with
 --   TRANSP_D := λ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ => "r"
 
 def preTmrepr : preTm → String
+| preAPP (preAPP (preAPP (preAPP (preAPP f t1) t2) t3) t4) t5 => mkParen (preTmrepr f) ++ " @ " ++ mkParen (preTmrepr t1) ++ " @ " ++ mkParen (preTmrepr t2) ++ " @ " ++ mkParen (preTmrepr t3) ++ " @ " ++ mkParen (preTmrepr t4) ++ " @ " ++ mkParen (preTmrepr t5)
+| preAPP (preAPP (preAPP (preAPP f t1) t2) t3) t4 => mkParen (preTmrepr f) ++ " @ " ++ mkParen (preTmrepr t1) ++ " @ " ++ mkParen (preTmrepr t2) ++ " @ " ++ mkParen (preTmrepr t3) ++ " @ " ++ mkParen (preTmrepr t4)
+| preAPP (preAPP (preAPP f t1) t2) t3 => mkParen (preTmrepr f) ++ " @ " ++ mkParen (preTmrepr t1) ++ " @ " ++ mkParen (preTmrepr t2) ++ " @ " ++ mkParen (preTmrepr t3)
+| preAPP (preAPP f t1) t2 => mkParen (preTmrepr f) ++ " @ " ++ mkParen (preTmrepr t1) ++ " @ " ++ mkParen (preTmrepr t2)
 | preAPP f t =>   mkParen (preTmrepr f) ++ " @ " ++ mkParen (preTmrepr t)
 | preVAR n => Nat.repr n
 | preTRANSP eq y => "transp " ++ mkParen (preTmrepr eq) ++ " " ++ mkParen (preTmrepr y)
