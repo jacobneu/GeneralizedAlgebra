@@ -1,4 +1,4 @@
-import GeneralizedAlgebra.signature
+import GeneralizedAlgebra.typecheck
 
 open Nat
 open preTy preTm
@@ -84,4 +84,4 @@ def preConrepr : preCon → String :=
 (List.foldr (λ x y => y ++ " ▷ " ++ x) "◇") ∘ (List.map preTyrepr)
 
 instance GATRepr : Repr GAT :=
-⟨ λ 𝔊 _ =>  preConrepr 𝔊.con ⟩
+⟨ λ 𝔊 _ =>  preConrepr (𝔊.toGATdata.con) ⟩

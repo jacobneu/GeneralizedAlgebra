@@ -1,5 +1,7 @@
 import GeneralizedAlgebra.helper
+import Lean
 
+open Lean Meta
 open Nat
 
 inductive preTm : Type where
@@ -37,6 +39,3 @@ structure GATdata where
   (con : preCon)
   (topnames : List String)
   (telescopes : List (List preArg × preTy))
-
-structure GAT extends GATdata where
---   (elim : (P : indData) → P.Con_D con)

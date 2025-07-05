@@ -1,4 +1,4 @@
-import GeneralizedAlgebra.signature
+import GeneralizedAlgebra.typecheck
 import Lean
 
 open Lean Elab Meta
@@ -81,7 +81,6 @@ structure varTel (VV : varStruct) where
 def varLookup (VV : varStruct) (key : String) : MetaM Expr
 := VV.f key
 
-#check mkNatLit
 
 def varExtend (VV : varStruct) (key : String) (ctx : Expr) (newType : Expr) (newCtx : Expr) (newTelescope : List metaArg) (resT : Expr): varStruct :=
 ⟨ λ s =>
@@ -272,7 +271,8 @@ partial def elabGATCon : Syntax → MetaM Expr
   let topList ← mkListStrLit VV.topnames
   let telescopes ← mkListListArgLit VV.telescopes
   let gatdata ← mkAppM ``GATdata.mk #[resCon,topList,telescopes]
-  mkAppM ``GAT.mk #[gatdata]
+  let resTyped ← mkAppM ``compileCon #[resCon]
+  mkAppM ``GAT.mk #[gatdata,resTyped]
 | _ => throwError "ConFail"
 
 elab g:con_outer : term => elabGATCon g

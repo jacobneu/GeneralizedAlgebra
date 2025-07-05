@@ -24,30 +24,35 @@ import GeneralizedAlgebra.signatures.PCwF
 
 -- Sets
 #eval 𝔖𝔢𝔱
+#reduce 𝔖𝔢𝔱.typedCon
 -- #eval Alg 𝔖𝔢𝔱
 -- #eval DAlg 𝔖𝔢𝔱 none ["P"]
 -- #eval DAlg 𝔖𝔢𝔱 (some "𝔖𝔢𝔱") ["P"]
 
 -- -- Pointed sets
 #eval 𝔓
+#reduce 𝔓.typedCon
 -- #eval Alg 𝔓
 -- #eval DAlg 𝔓 none ["P"]
 -- #eval DAlg 𝔓 (some "𝔓") ["P","p₀"] ["X","x₀"]
 
 -- -- Bipointed sets
 #eval 𝔅
+#reduce 𝔅.typedCon
 -- #eval Alg 𝔅
 -- #eval DAlg 𝔅 none ["P"]
 -- #eval DAlg 𝔅 (some "𝔅") ["P","p₀","p₁"]
 
 -- -- Natural numbers
 #eval 𝔑
+#reduce 𝔑.typedCon
 -- #eval Alg 𝔑
 -- #eval DAlg 𝔑 none ["P","n"] ["N","z","s"]
 -- #eval DAlg 𝔑 (some "𝔑") ["P","base_case","n","ind_step"]
 
 -- -- Even/Odd Natural Numbers
 #eval 𝔈𝔒
+#reduce 𝔈𝔒.typedCon
 -- #eval Alg 𝔈𝔒
 -- #eval DAlg 𝔈𝔒 none ["Pe","Po","n","m"]
 -- #eval DAlg 𝔈𝔒 (some "𝔑") ["Pe", "Po", "bc","n","ih","m","ih'"]
