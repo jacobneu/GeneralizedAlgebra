@@ -59,6 +59,7 @@ import GeneralizedAlgebra.signatures.PCwF
 
 -- -- Monoids
 #eval 𝔐𝔬𝔫
+#reduce 𝔐𝔬𝔫.typedCon
 -- -- #eval Alg 𝔐𝔬𝔫 none
 -- #eval Alg 𝔐𝔬𝔫 (some "𝔐𝔬𝔫")
 
@@ -72,10 +73,12 @@ import GeneralizedAlgebra.signatures.PCwF
 -- -/
 -- -- Quivers
 #eval 𝔔𝔲𝔦𝔳
+#reduce 𝔔𝔲𝔦𝔳.typedCon
 -- #eval Alg 𝔔𝔲𝔦𝔳
 
 -- -- -- Reflexive quivers
 #eval 𝔯𝔔𝔲𝔦𝔳
+#eval getError $ 𝔯𝔔𝔲𝔦𝔳.typedCon
 -- #eval Alg 𝔯𝔔𝔲𝔦𝔳
 
 -- -- -- Monoids
