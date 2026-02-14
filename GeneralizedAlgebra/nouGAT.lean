@@ -41,6 +41,10 @@ declare_syntax_cat con_outer
 syntax "⦃" "⦄" : con_outer
 syntax "⦃" con_inner "⦄" : con_outer
 
+declare_syntax_cat condata_outer
+syntax "[GATdata|" "]" : condata_outer
+syntax "[GATdata|" con_inner "]" : condata_outer
+
 inductive metaArg : Type where
 | metaImpl : String → Expr → metaArg
 | metaExpl : String → Expr → metaArg
@@ -260,19 +264,33 @@ def mkListArgLit (tele : List metaArg × Expr) : MetaM Expr := do
 def mkListListArgLit (LL : List (List metaArg × Expr)) : MetaM Expr :=
   List.mapM mkListArgLit LL >>=  mkListLit (.const `LArg [])
 
-partial def elabGATCon : Syntax → MetaM Expr
-| `(con_outer| ⦃  ⦄ ) => do
+-- partial def elabGATCon : Syntax → MetaM Expr
+-- | `(con_outer| ⦃  ⦄ ) => do
+--   let emptyStrList ← mkListStrLit []
+--   let emptyLArgList ← mkListListArgLit []
+--   let gatdata ← mkAppM ``GAT.mk  #[.const ``preEMPTY [],emptyStrList,emptyLArgList]
+--   mkAppM ``GAT.mk #[gatdata]
+-- | `(con_outer| ⦃ $s:con_inner  ⦄ ) => do
+--   let (resCon,VV) ← elabGATCon_core (.const ``preEMPTY []) varEmpty s
+--   let topList ← mkListStrLit VV.topnames
+--   let telescopes ← mkListListArgLit VV.telescopes
+--   let gatdata ← mkAppM ``GATdata.mk #[resCon,topList,telescopes]
+--   let resTyped ← mkAppM ``compileCon #[resCon]
+--   mkAppM ``GAT.mk #[gatdata,resTyped]
+-- | _ => throwError "ConFail"
+
+partial def elabGATConData : Syntax → MetaM Expr
+| `(condata_outer| [GATdata| ] ) => do
   let emptyStrList ← mkListStrLit []
   let emptyLArgList ← mkListListArgLit []
-  let gatdata ← mkAppM ``GAT.mk  #[.const ``preEMPTY [],emptyStrList,emptyLArgList]
-  mkAppM ``GAT.mk #[gatdata]
-| `(con_outer| ⦃ $s:con_inner  ⦄ ) => do
+  mkAppM ``GATdata.mk  #[.const ``preEMPTY [],emptyStrList,emptyLArgList]
+| `(condata_outer| [GATdata| $s:con_inner ] ) => do
   let (resCon,VV) ← elabGATCon_core (.const ``preEMPTY []) varEmpty s
   let topList ← mkListStrLit VV.topnames
   let telescopes ← mkListListArgLit VV.telescopes
-  let gatdata ← mkAppM ``GATdata.mk #[resCon,topList,telescopes]
-  let resTyped ← mkAppM ``compileCon #[resCon]
-  mkAppM ``GAT.mk #[gatdata,resTyped]
+  mkAppM ``GATdata.mk #[resCon,topList,telescopes]
 | _ => throwError "ConFail"
 
-elab g:con_outer : term => elabGATCon g
+-- elab g:con_outer : term => elabGATCon g
+
+elab g:condata_outer : term => elabGATConData g

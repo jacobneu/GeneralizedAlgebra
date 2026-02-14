@@ -12,6 +12,7 @@ inductive wellTy : preCon → preTy → Type where
 | wellWkTy : ∀ {Γ : preCon} {A : preTy} {B : preTy}, wellTy Γ A → wellTy (B :: Γ) (preWkTy A)
 | wellEL : ∀ {Γ : preCon} {X : preTm}, wellTm Γ preUU X → wellTy Γ (preEL X)
 | wellPI : ∀ {Γ : preCon} {X : preTm} {Y : preTy}, wellTm Γ preUU X → wellTy (preEL X :: Γ) Y → wellTy Γ (prePI X Y)
+| wellEQ : ∀ {Γ : preCon} {X s t : preTm}, wellTm Γ preUU X → wellTm Γ (preEL X) s → wellTm Γ (preEL X) t → wellTy Γ (preEQ s t)
 
 inductive wellTm : preCon → preTy → preTm → Type where
 | wellZero : ∀ {Γ : preCon}{A : preTy}, wellTy Γ A → wellTm (A :: Γ) (preWkTy A) (preVAR 0)
@@ -40,9 +41,6 @@ open wellTy wellTm wellCon
 -- end
 
 
--- structure GAT extends GATdata where
---   (typedCon : Except String Con)
---   (elim : (P : indData) → P.Con_D con)
 
 
 -- def getSuccess {α} : Except String α → Option α
@@ -162,3 +160,8 @@ def test := [
 
 -- #reduce compileCon test
 -- #eval getError $ compileCon test
+
+
+structure GAT extends GATdata where
+  (isWell : wellCon con)
+  -- (elim : (P : indData) → P.Con_D con)

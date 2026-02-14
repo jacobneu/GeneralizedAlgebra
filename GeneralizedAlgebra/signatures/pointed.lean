@@ -16,8 +16,18 @@ import GeneralizedAlgebra.signatures.set
 
 
 
-def 𝔓 : GAT :=
-  ⦃ X : U, x : X ⦄
+def 𝔓_data : GATdata :=
+  [GATdata| X : U, x : X ]
+
+def 𝔓 : GAT := ⟨
+  𝔓_data,
+  by
+    apply wellCon.wellCons
+    apply wellTy.wellEL
+    apply wellTm.wellZero
+    apply wellTy.wellUU
+    exact 𝔖𝔢𝔱.2
+⟩
   -- ,
   -- λ P => P.cons_D _ (𝔖𝔢𝔱.elim P) _ (P.EL_D _ _ _ (P.VAR0_D _ _ _ _ _))
   -- by
