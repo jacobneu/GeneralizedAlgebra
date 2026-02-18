@@ -19,8 +19,35 @@ def mappartial {α β} (f : α → Option β) : List α → List β
 def mk2 (x:Con) (y:List String):= (x,y)
 def mk3 {α : Type} (x:Con) (y:List String) (z : α) := (x,y,z)
 
-def paren (s:String):String :=
-  if String.isNat s then s else "("++s++")"
+
+def stripFirstParen : List Char → Option (List Char)
+| '('::xs => some xs
+| _ => none
+def stripLastParen : List Char → Option (List Char)
+| [] => none
+| [')'] => some []
+| x::xs => do
+  let stripped <- stripLastParen xs
+  return x::stripped
+
+
+def stripOuterParen (s : String) : Option (List Char) := do
+  let charList := String.toList s
+  stripFirstParen charList >>= stripLastParen
+
+
+def parenCounter : Option Nat → Char → Option Nat
+| some n, '(' => some $ succ n
+| some (succ n), ')' => some n
+| some 0, ')' => none
+| o, _ => o
+
+def parensUnnecessary (s : String) : Bool :=
+   Option.isSome (stripOuterParen s >>= List.foldl parenCounter (some 0))
+|| (Option.isNone $ List.find? Char.isWhitespace $ String.toList s)
+
+def paren (s:String):String := if parensUnnecessary s then s else "("++s++")"
+
 
 def parenX (s:String):String :=
   if String.isNat (String.drop s 2) then s else "("++s++")"

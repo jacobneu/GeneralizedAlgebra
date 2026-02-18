@@ -1,6 +1,6 @@
 import GeneralizedAlgebra.nouGAT
 
-def 𝔖𝔢𝔱𝔬𝔦𝔡 : GAT := ⦃
+def 𝔖𝔢𝔱𝔬𝔦𝔡_data : GATdata := [GATdata|
     X : U,
     eq : X ⇒ X ⇒ U,
     eqη : (x : X) ⇒ (x' : X) ⇒
@@ -10,4 +10,4 @@ def 𝔖𝔢𝔱𝔬𝔦𝔡 : GAT := ⦃
         eq x y ⇒ eq y x,
     trns : (x : X) ⇒ (y : X) ⇒ (z : X) ⇒
         eq x y ⇒ eq y z ⇒ eq x z
-⦄
+]

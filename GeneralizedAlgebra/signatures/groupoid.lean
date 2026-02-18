@@ -1,6 +1,6 @@
 import GeneralizedAlgebra.nouGAT
 
-def 𝔊𝔯𝔭𝔡 : GAT := ⦃
+def 𝔊𝔯𝔭𝔡_data : GATdata := [GATdata|
     Obj : U,
     Hom : Obj ⇒ Obj ⇒ U,
     id  : (X : Obj) ⇒ Hom X X,
@@ -18,4 +18,4 @@ def 𝔊𝔯𝔭𝔡 : GAT := ⦃
         comp X Y X (inv X Y f) f ≡ id X,
     rinv :  (X : Obj) ⇒ (Y : Obj) ⇒ (f : Hom X Y) ⇒
         comp Y X Y f (inv X Y f) ≡ id Y
-⦄
+]

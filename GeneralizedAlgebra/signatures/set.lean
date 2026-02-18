@@ -10,11 +10,3 @@ def 𝔖𝔢𝔱 : GAT := ⟨
     apply wellTy.wellUU
     apply wellCon.wellEmpty
 ⟩
-
-  -- ,
-
-  -- by
-  --   intro P
-  --   apply P.cons_D
-  --   apply P.UU_D
-  --   apply P.nil_D

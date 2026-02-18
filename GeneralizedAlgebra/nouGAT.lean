@@ -95,8 +95,8 @@ def varExtend (VV : varStruct) (key : String) (ctx : Expr) (newType : Expr) (new
       -- let ID ← mkAppM ``ID #[newCtx]
       -- let p ← mkAppM ``PROJ1 #[ID]
       mkAppM ``preWkTm #[ old ],
-  VV.topnames ++ [key],
-  VV.telescopes ++ [(newTelescope,resT)],
+  key::VV.topnames,
+  (newTelescope,resT)::VV.telescopes,
   λ s => if s=key then return newTelescope else VV.getArgs s
 ⟩
 
@@ -245,10 +245,6 @@ def mkListListStrLit (LL : List (List String)) : MetaM Expr :=
   List.mapM mkListStrLit LL >>= mkListLit (.const `LStr [])
 
 
-
--- def mkListArgLit (L : List Arg) : MetaM Expr :=
---   List.mapM mkArgLit L >>= mkListLit (.const `String [])
-
 def LArg := List preArg × preTy
 
 def mkArgLit : metaArg → MetaM Expr
@@ -264,20 +260,6 @@ def mkListArgLit (tele : List metaArg × Expr) : MetaM Expr := do
 def mkListListArgLit (LL : List (List metaArg × Expr)) : MetaM Expr :=
   List.mapM mkListArgLit LL >>=  mkListLit (.const `LArg [])
 
--- partial def elabGATCon : Syntax → MetaM Expr
--- | `(con_outer| ⦃  ⦄ ) => do
---   let emptyStrList ← mkListStrLit []
---   let emptyLArgList ← mkListListArgLit []
---   let gatdata ← mkAppM ``GAT.mk  #[.const ``preEMPTY [],emptyStrList,emptyLArgList]
---   mkAppM ``GAT.mk #[gatdata]
--- | `(con_outer| ⦃ $s:con_inner  ⦄ ) => do
---   let (resCon,VV) ← elabGATCon_core (.const ``preEMPTY []) varEmpty s
---   let topList ← mkListStrLit VV.topnames
---   let telescopes ← mkListListArgLit VV.telescopes
---   let gatdata ← mkAppM ``GATdata.mk #[resCon,topList,telescopes]
---   let resTyped ← mkAppM ``compileCon #[resCon]
---   mkAppM ``GAT.mk #[gatdata,resTyped]
--- | _ => throwError "ConFail"
 
 partial def elabGATConData : Syntax → MetaM Expr
 | `(condata_outer| [GATdata| ] ) => do

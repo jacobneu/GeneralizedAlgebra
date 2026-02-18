@@ -1,5 +1,6 @@
--- import GeneralizedAlgebra.AlgPrinting
-import GeneralizedAlgebra.ConPrinting
+import GeneralizedAlgebra.nouGAT
+import GeneralizedAlgebra.eliminate.DAlgString
+import GeneralizedAlgebra.eliminate.ConPrinting
 
 import GeneralizedAlgebra.signatures.set
 import GeneralizedAlgebra.signatures.pointed
@@ -15,101 +16,94 @@ import GeneralizedAlgebra.signatures.setoid
 import GeneralizedAlgebra.signatures.category
 import GeneralizedAlgebra.signatures.groupoid
 import GeneralizedAlgebra.signatures.CwF
-import GeneralizedAlgebra.signatures.PCwF
 
+-- Functions for displaying
+def printIndent s := IO.println ("    " ++ s)
+
+def printAlg (G : String) (𝔊 : GATdata) : IO PUnit := do
+  IO.println $ "record " ++ G ++ "-Alg where "
+  List.forM (AlgStr_Con 𝔊) printIndent
+
+def printDAlg (G : String) (𝔊 : GATdata) : IO PUnit := do
+  IO.println $ "record " ++ G ++ "-DAlg (" ++ (String.intercalate "," (List.reverse 𝔊.topnames)) ++ ") where"
+  List.forM (DAlgStr_Con 𝔊) printIndent
 
 /-
 ## Basic structures
 -/
-
 -- Sets
 #eval 𝔖𝔢𝔱
-#reduce 𝔖𝔢𝔱.typedCon
--- #eval Alg 𝔖𝔢𝔱
--- #eval DAlg 𝔖𝔢𝔱 none ["P"]
--- #eval DAlg 𝔖𝔢𝔱 (some "𝔖𝔢𝔱") ["P"]
+#eval printAlg "𝔖𝔢𝔱" 𝔖𝔢𝔱_data
+#eval printDAlg "𝔖𝔢𝔱" 𝔖𝔢𝔱_data
 
 -- -- Pointed sets
 #eval 𝔓
-#reduce 𝔓.typedCon
--- #eval Alg 𝔓
--- #eval DAlg 𝔓 none ["P"]
--- #eval DAlg 𝔓 (some "𝔓") ["P","p₀"] ["X","x₀"]
+#eval printAlg "𝔓" 𝔓_data
+#eval printDAlg "𝔓" 𝔓_data
 
 -- -- Bipointed sets
 #eval 𝔅
-#reduce 𝔅.typedCon
--- #eval Alg 𝔅
--- #eval DAlg 𝔅 none ["P"]
--- #eval DAlg 𝔅 (some "𝔅") ["P","p₀","p₁"]
+#eval printAlg "𝔅" 𝔓_data
+#eval printDAlg "𝔅" 𝔓_data
 
 -- -- Natural numbers
 #eval 𝔑
-#reduce 𝔑.typedCon
--- #eval Alg 𝔑
--- #eval DAlg 𝔑 none ["P","n"] ["N","z","s"]
--- #eval DAlg 𝔑 (some "𝔑") ["P","base_case","n","ind_step"]
+#eval printAlg "𝔑" 𝔑_data
+#eval printDAlg "𝔑" 𝔑_data
 
--- -- Even/Odd Natural Numbers
+-- Even/Odd Natural Numbers
 #eval 𝔈𝔒
-#reduce 𝔈𝔒.typedCon
--- #eval Alg 𝔈𝔒
--- #eval DAlg 𝔈𝔒 none ["Pe","Po","n","m"]
--- #eval DAlg 𝔈𝔒 (some "𝔑") ["Pe", "Po", "bc","n","ih","m","ih'"]
+#eval printAlg "𝔈𝔒" 𝔈𝔒_data
+#eval printDAlg "𝔈𝔒" 𝔈𝔒_data
 
--- -- Monoids
+-- Monoids
 #eval 𝔐𝔬𝔫
-#reduce 𝔐𝔬𝔫.typedCon
--- -- #eval Alg 𝔐𝔬𝔫 none
--- #eval Alg 𝔐𝔬𝔫 (some "𝔐𝔬𝔫")
+#eval printAlg "𝔐𝔬𝔫" 𝔐𝔬𝔫_data
+#eval printDAlg "𝔐𝔬𝔫" 𝔐𝔬𝔫_data
 
--- -- Groups
-#eval 𝔊𝔯𝔭
--- -- #eval Alg 𝔊𝔯𝔭 none
--- #eval Alg 𝔊𝔯𝔭 (some "𝔊𝔯𝔭")
+-- Groups
+#eval 𝔊𝔯𝔭_data
+#eval printAlg "𝔊𝔯𝔭" 𝔊𝔯𝔭_data
+#eval printDAlg "𝔊𝔯𝔭" 𝔊𝔯𝔭_data
 
--- /-
--- ## Quiver-like structures
--- -/
--- -- Quivers
+/-
+## Quiver-like structures
+-/
+-- Quivers
 #eval 𝔔𝔲𝔦𝔳
-#reduce 𝔔𝔲𝔦𝔳.typedCon
--- #eval Alg 𝔔𝔲𝔦𝔳
+#eval printAlg "𝔔𝔲𝔦𝔳" 𝔔𝔲𝔦𝔳_data
+#eval printDAlg "𝔔𝔲𝔦𝔳" 𝔔𝔲𝔦𝔳_data
 
--- -- -- Reflexive quivers
+-- Reflexive quivers
 #eval 𝔯𝔔𝔲𝔦𝔳
-#eval getError $ 𝔯𝔔𝔲𝔦𝔳.typedCon
--- #eval Alg 𝔯𝔔𝔲𝔦𝔳
+#eval printAlg "𝔯𝔔𝔲𝔦𝔳" 𝔯𝔔𝔲𝔦𝔳_data
+#eval printDAlg "𝔯𝔔𝔲𝔦𝔳" 𝔯𝔔𝔲𝔦𝔳_data
 
--- -- -- Monoids
-#eval 𝔐𝔬𝔫
--- #eval Alg 𝔐𝔬𝔫 (some "𝔐𝔬𝔫")
+-- Preorders
+#eval 𝔓𝔯𝔢𝔒𝔯𝔡_data
+#eval printAlg "𝔓𝔯𝔢𝔒𝔯𝔡" 𝔓𝔯𝔢𝔒𝔯𝔡_data
+#eval printDAlg "𝔓𝔯𝔢𝔒𝔯𝔡" 𝔓𝔯𝔢𝔒𝔯𝔡_data
 
--- -- -- Preorders
-#eval 𝔓𝔯𝔢𝔒𝔯𝔡
--- #eval Alg 𝔓𝔯𝔢𝔒𝔯𝔡 (some "𝔓𝔯𝔢𝔒𝔯𝔡")
+-- Setoids
+#eval 𝔖𝔢𝔱𝔬𝔦𝔡_data
+#eval printAlg "𝔖𝔢𝔱𝔬𝔦𝔡" 𝔖𝔢𝔱𝔬𝔦𝔡_data
+#eval printDAlg "𝔖𝔢𝔱𝔬𝔦𝔡" 𝔖𝔢𝔱𝔬𝔦𝔡_data
 
--- -- -- Setoids
-#eval 𝔖𝔢𝔱𝔬𝔦𝔡
--- #eval Alg 𝔖𝔢𝔱𝔬𝔦𝔡 (some "𝔖𝔢𝔱𝔬𝔦𝔡")
+-- Categories
+#eval ℭ𝔞𝔱_data
+#eval printAlg "ℭ𝔞𝔱" ℭ𝔞𝔱_data
+#eval printDAlg "ℭ𝔞𝔱" ℭ𝔞𝔱_data
 
--- -- -- Categories
-#eval ℭ𝔞𝔱
--- #eval Alg ℭ𝔞𝔱 (some "ℭ𝔞𝔱")
-
--- -- -- Groupoids
-#eval 𝔊𝔯𝔭𝔡
--- #eval Alg 𝔊𝔯𝔭𝔡 (some "𝔊𝔯𝔭𝔡")
+-- Groupoids
+#eval 𝔊𝔯𝔭𝔡_data
+#eval printAlg "𝔊𝔯𝔭𝔡" 𝔊𝔯𝔭𝔡_data
+#eval printDAlg "𝔊𝔯𝔭𝔡" 𝔊𝔯𝔭𝔡_data
 
 
--- /-
--- ## Models of Type Theory
--- -/
--- -- Categories with Families
-#eval ℭ𝔴𝔉
--- #eval Alg ℭ𝔴𝔉 (some "ℭ𝔴𝔉")
--- #eval Alg ℭ𝔴𝔉 none CwF_inlinenames
-
--- -- -- Polarized Categories with Families
-#eval 𝔓ℭ𝔴𝔉
--- #eval Alg 𝔓ℭ𝔴𝔉 (some "𝔓ℭ𝔴𝔉")
+/-
+## Models of Type Theory
+-/
+-- Categories with Families
+#eval ℭ𝔴𝔉_data
+#eval printAlg "ℭ𝔴𝔉" ℭ𝔴𝔉_data
+#eval printDAlg "ℭ𝔴𝔉" ℭ𝔴𝔉_data

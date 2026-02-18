@@ -1,6 +1,6 @@
 import GeneralizedAlgebra.nouGAT
 
-def 𝔓𝔯𝔢𝔒𝔯𝔡 : GAT := ⦃
+def 𝔓𝔯𝔢𝔒𝔯𝔡_data : GATdata := [GATdata|
     X : U,
     leq : X ⇒ X ⇒ U,
     leqη : (x : X) ⇒ (x' : X) ⇒
@@ -8,4 +8,4 @@ def 𝔓𝔯𝔢𝔒𝔯𝔡 : GAT := ⦃
     rfl : (x : X) ⇒ leq x x,
     trns : (x : X) ⇒ (y : X) ⇒ (z : X) ⇒
         leq x y ⇒ leq y z ⇒ leq x z
-⦄
+]
