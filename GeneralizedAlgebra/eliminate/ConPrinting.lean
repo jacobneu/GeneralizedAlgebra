@@ -36,6 +36,9 @@ instance : Repr preTy where
 def preConrepr : preCon → String :=
 (List.foldr (λ x y => y ++ " ▷ " ++ x) "◇") ∘ (List.map preTyrepr)
 
+instance : Repr preCon :=
+⟨ λ 𝔊 _ => preConrepr 𝔊 ⟩
+
 instance GATRepr : Repr GAT :=
 ⟨ λ 𝔊 _ =>  preConrepr (𝔊.toGATdata.con) ⟩
 

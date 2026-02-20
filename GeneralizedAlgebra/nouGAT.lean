@@ -22,24 +22,24 @@ syntax ident ":" gat_ty : gat_decl
 declare_syntax_cat gat_arg
 syntax "(" ident ":" gat_tm ")" : gat_arg
 syntax "(" "_" ":" gat_tm ")" : gat_arg
-syntax "{" ident ":" gat_tm "}" : gat_arg
+-- syntax "{" ident ":" gat_tm "}" : gat_arg
 syntax gat_tm : gat_arg
 
 syntax gat_arg "⇒" gat_ty : gat_ty
 
-declare_syntax_cat ident_list
-syntax ident : ident_list
-syntax "_" : ident_list
-syntax ident_list "," "_" : ident_list
-syntax ident_list "," ident : ident_list
+-- declare_syntax_cat ident_list
+-- syntax ident : ident_list
+-- syntax "_" : ident_list
+-- syntax ident_list "," "_" : ident_list
+-- syntax ident_list "," ident : ident_list
 
 declare_syntax_cat con_inner
 syntax gat_decl : con_inner
 syntax con_inner "," gat_decl : con_inner
-syntax "include" ident "as" "(" ident_list ");" con_inner : con_inner
-declare_syntax_cat con_outer
-syntax "⦃" "⦄" : con_outer
-syntax "⦃" con_inner "⦄" : con_outer
+-- syntax "include" ident "as" "(" ident_list ");" con_inner : con_inner
+-- declare_syntax_cat con_outer
+-- syntax "⦃" "⦄" : con_outer
+-- syntax "⦃" con_inner "⦄" : con_outer
 
 declare_syntax_cat condata_outer
 syntax "[GATdata|" "]" : condata_outer
@@ -170,9 +170,9 @@ partial def elabClosedGATTm {vars : varStruct} (ctx : Expr) (TT : varTel vars) (
   return T
 
 partial def elabGATArg {vars : varStruct} (ctx : Expr) (TT : varTel vars) : Syntax → MetaM metaArg
-| `(gat_arg| { $i:ident : $g:gat_tm } ) => do
-  let t ← elabClosedGATTm ctx TT g
-  return (metaImpl i.getId.toString t)
+-- | `(gat_arg| { $i:ident : $g:gat_tm } ) => do
+--   let t ← elabClosedGATTm ctx TT g
+--   return (metaImpl i.getId.toString t)
 | `(gat_arg| ( $i:ident : $g:gat_tm ) ) => do
   let t ← elabClosedGATTm ctx TT g
   return (metaExpl i.getId.toString t)

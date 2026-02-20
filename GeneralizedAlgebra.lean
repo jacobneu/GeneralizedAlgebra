@@ -16,6 +16,7 @@ import GeneralizedAlgebra.signatures.setoid
 import GeneralizedAlgebra.signatures.category
 import GeneralizedAlgebra.signatures.groupoid
 import GeneralizedAlgebra.signatures.CwF
+import GeneralizedAlgebra.signatures.GAT_CwF
 
 -- Functions for displaying
 def printIndent s := IO.println ("    " ++ s)
@@ -107,3 +108,8 @@ def printDAlg (G : String) (𝔊 : GATdata) : IO PUnit := do
 #eval ℭ𝔴𝔉_data
 #eval printAlg "ℭ𝔴𝔉" ℭ𝔴𝔉_data
 #eval printDAlg "ℭ𝔴𝔉" ℭ𝔴𝔉_data
+
+-- GAT signature Categories with Families
+#eval 𝔊𝔄𝔗ℭ𝔴𝔉_data
+#eval printAlg "𝔊𝔄𝔗ℭ𝔴𝔉" 𝔊𝔄𝔗ℭ𝔴𝔉_data
+#eval printDAlg "𝔊𝔄𝔗ℭ𝔴𝔉" 𝔊𝔄𝔗ℭ𝔴𝔉_data

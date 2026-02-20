@@ -31,21 +31,24 @@ def DAlgStr_Con_core : preCon → List (List String) → List String → List St
 
 def genVars_core : Nat → List (List preArg) → List (List String) → List (List String)
 | _, [],_ => []
-| acc, []::AS, givenFst::givenRest => givenFst::genVars_core acc AS givenRest
-| acc, []::AS, [] => []::genVars_core acc AS []
+| acc, []::AS, given => []::genVars_core acc AS given
+-- | acc, []::AS, [] => []::genVars_core acc AS []
 | acc, ((preAnon _)::as)::AS, []::givenRest => match genVars_core (succ acc) (as::AS) ([]::givenRest) with
     | headStr::rest => (("X_" ++ toString acc)::headStr)::rest
     | [] => []
-| acc, ((preAnon _)::as)::AS, (s1::givenFst)::givenRest => match genVars_core acc (as::AS) (givenFst::givenRest) with
+| acc, (_::as)::AS, (s1::givenFst)::givenRest => match genVars_core acc (as::AS) (givenFst::givenRest) with
     | headStr::rest => (s1::headStr)::rest
     | [] => []
 | acc, ((preAnon _)::as)::AS, [] => match genVars_core (succ acc) (as::AS) [] with
     | headStr::rest => (("X_" ++ toString acc)::headStr)::rest
     | [] => []
-| acc, ((preExpl s _)::as)::AS, _::given => match genVars_core acc (as::AS) given with
+-- | acc, (_::as)::AS, (s1::givenFst)::givenRest => match genVars_core acc (as::AS) (givenFst::givenRest) with
+--     | headStr::rest => (s1::headStr)::rest
+--     | [] => []
+| acc, ((preExpl s _)::as)::AS, [] => match genVars_core acc (as::AS) [] with
     | headStr::rest => (s::headStr)::rest
     | [] => []
-| acc, ((preExpl s _)::as)::AS, [] => match genVars_core acc (as::AS) [] with
+| acc, ((preExpl s _)::as)::AS, ([]::givenRest) => match genVars_core acc (as::AS) ([]::givenRest) with
     | headStr::rest => (s::headStr)::rest
     | [] => []
 
