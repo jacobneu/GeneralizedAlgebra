@@ -12,3 +12,4 @@ scope = "leanprover-community"
 
 [[lean_lib]]
 name = "GeneralizedAlgebra"
+root = "Main"
