@@ -16,6 +16,7 @@ import GeneralizedAlgebra.signatures.setoid
 import GeneralizedAlgebra.signatures.category
 import GeneralizedAlgebra.signatures.groupoid
 import GeneralizedAlgebra.signatures.CwF
+import GeneralizedAlgebra.signatures.PCwF
 import GeneralizedAlgebra.signatures.GAT_CwF
 
 -- Functions for displaying

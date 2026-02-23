@@ -1,6 +1,6 @@
 import GeneralizedAlgebra.nouGAT
 
-def 𝔓ℭ𝔴𝔉 : GAT := ⦃
+def 𝔓ℭ𝔴𝔉_data : GATdata := [GATdata|
     Con : U,
     Sub : Con ⇒ Con ⇒ U,
     id  : ( Γ : Con) ⇒ Sub Γ Γ,
@@ -84,4 +84,4 @@ def 𝔓ℭ𝔴𝔉 : GAT := ⦃
         neg_Sub (neg_Con Δ) (neg_Con Γ) (neg_Sub Δ Γ γ) ≡ γ,
     invl_Ty    : ( Γ : Con ) ⇒ (A : Ty Γ) ⇒
         neg_Ty Γ (neg_Ty Γ A) ≡ A
-⦄
+]
