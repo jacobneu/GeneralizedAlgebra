@@ -1,6 +1,6 @@
 import GeneralizedAlgebra.nouGAT
 
-def 𝔊𝔯𝔭_data := [namedGAT|
+def 𝔊𝔯𝔭_data : GATdata := [GATdata|
     M     : U,
     u     : M,
     m     : M ⇒ M ⇒ M,
@@ -11,6 +11,3 @@ def 𝔊𝔯𝔭_data := [namedGAT|
     linv  : (x : M) ⇒ m (inv x) x ≡ u,
     rinv  : (x : M) ⇒ m x (inv x) ≡ u
 ]
-def 𝔊𝔯𝔭 : GAT := 𝔊𝔯𝔭_data.1
-def Group_names := 𝔊𝔯𝔭_data.2.1
-def Group_topnames := 𝔊𝔯𝔭_data.2.2

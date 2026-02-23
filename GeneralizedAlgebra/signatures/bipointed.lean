@@ -1,10 +1,15 @@
-import GeneralizedAlgebra.nouGAT
+import GeneralizedAlgebra.signatures.pointed
 
-def 𝔅_data := [namedGAT|
-    X : U,
-    x₀ : X,
-    x₁ : X
-]
-def 𝔅 : GAT := 𝔅_data.1
-def Bipointed_names := 𝔅_data.2.1
-def Bipointed_topnames := 𝔅_data.2.2
+def 𝔅_data : GATdata :=
+  [GATdata| X : U, x : X, x' : X ]
+
+def 𝔅 : GAT := ⟨
+  𝔅_data,
+  by
+    apply wellCon.wellCons
+    apply wellTy.wellEL
+    apply @wellTm.wellWkTm _ preTy.preUU
+    apply wellTm.wellZero
+    apply wellTy.wellUU
+    exact 𝔓.2
+⟩

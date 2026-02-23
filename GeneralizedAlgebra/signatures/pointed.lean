@@ -1,9 +1,14 @@
-import GeneralizedAlgebra.nouGAT
+import GeneralizedAlgebra.signatures.set
 
-def 𝔓_data := [namedGAT|
-    X : U,
-    x : X
-]
-def 𝔓 : GAT := 𝔓_data.1
-def Pointed_names := 𝔓_data.2.1
-def Pointed_topnames := 𝔓_data.2.2
+def 𝔓_data : GATdata :=
+  [GATdata| X : U, x : X ]
+
+def 𝔓 : GAT := ⟨
+  𝔓_data,
+  by
+    apply wellCon.wellCons
+    apply wellTy.wellEL
+    apply wellTm.wellZero
+    apply wellTy.wellUU
+    exact 𝔖𝔢𝔱.2
+⟩

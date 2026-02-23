@@ -1,6 +1,6 @@
 import GeneralizedAlgebra.nouGAT
 
-def ℭ𝔴𝔉_data := [namedGAT|
+def ℭ𝔴𝔉_data : GATdata := [GATdata|
     Con : U,
     Sub : Con ⇒ Con ⇒ U,
     id  : ( Γ : Con) ⇒ Sub Γ Γ,
@@ -47,7 +47,7 @@ def ℭ𝔴𝔉_data := [namedGAT|
               (t : Tm Δ (substTy Δ Γ γ A)) ⇒
               (δ : Sub Θ Δ) ⇒
               comp Θ Δ (ext Γ A) (pair Δ Γ A γ t) δ
-              ≡ pair Θ Γ A (comp γ δ) (substTm Θ Δ (substTy Δ Γ γ A) δ t   #⟨compTy Θ Δ Γ A γ δ⟩),
+              ≡ pair Θ Γ A (comp Θ Δ Γ γ δ) (substTm Θ Δ (substTy Δ Γ γ A) δ t   #⟨compTy Θ Δ Γ A γ δ⟩),
     p      : (Γ : Con) ⇒ (A : Ty Γ) ⇒ Sub (ext Γ A) Γ,
     v      : (Γ : Con) ⇒ (A : Ty Γ) ⇒
               Tm (ext Γ A) (substTy (ext Γ A) Γ (p Γ A) A),
@@ -65,129 +65,3 @@ def ℭ𝔴𝔉_data := [namedGAT|
               pair (ext Γ A) Γ A (p Γ A) (v Γ A)
               ≡ id (ext Γ A)
 ]
-
-def ℭ𝔴𝔉 : Con := ℭ𝔴𝔉_data.1
-def CwF_names := ℭ𝔴𝔉_data.2.1
-def CwF_topnames := ℭ𝔴𝔉_data.2.2
-
-def CwF_inlinenames := [
-    "Con",
-    "Sub",
-    "Γ",
-    "id",
-    "Θ",
-    "Δ",
-    "Γ",
-    "comp",
-    "Δ",
-    "Γ",
-    "γ",
---     "lunit",
-    "Δ",
-    "Γ",
-    "γ",
---     "runit",
-    "Ξ",
-    "Θ",
-    "Δ",
-    "Γ",
-    "ϑ",
-    "δ",
-    "γ",
---     "assoc",
-    "empty",
-    "Γ",
-    "ε",
-    "Γ",
-    "f",
---     "ηε",
-    "Ty",
-    "Δ",
-    "Γ",
-    "substTy",
-    "Γ",
-    "A",
---     "idTy",
-    "Θ",
-    "Δ",
-    "Γ",
-    "A",
-    "δ",
-    "γ",
---     "compTy",
-    "Γ",
-    "Tm",
-    "Δ",
-    "Γ",
-    "A",
-    "γ",
-    "substTm",
-    "Γ",
-    "A",
-    "t",
---     "idTm",
-    "Θ",
-    "Δ",
-    "Γ",
-    "A",
-    "t",
-    "δ",
-    "γ",
---     "compTm",
-    "Γ",
-    "ext",
-    "Δ",
-    "Γ",
-    "A",
-    "γ",
-    "pair",
-    "Θ",
-    "Δ",
-    "Γ",
-    "A",
-    "γ",
-    "t",
-    "δ",
---     "pair_nat",
-    "Δ",
-    "Γ",
-    "A",
-    "π₁",
-    "Δ",
-    "Γ",
-    "A",
-    "σ",
-    "π₂",
-    "Δ",
-    "Γ",
-    "A",
-    "γ",
-    "t",
---     "ext_β₁",
-    "Δ",
-    "Γ",
-    "A",
-    "γ",
-    "t",
---     "ext_β₂",
-    "Δ",
-    "Γ",
-    "A",
-    "σ",
---     "ext_η"
-]
-
-
--- #eval Con_toString ℭ𝔴𝔉
-def Con_v : Nat → List String
-| 0 => ["Γ"]
-| 1 => "Δ" :: Con_v 0
-| 2 => "Θ" :: Con_v 1
-| 3 => "Ξ" :: Con_v 2
-| _ => []
-
--- def twice (L : List String) := L ++ L
--- def CwF_record_names := ["Con","Sub","Γ","id"] ++ Con_v 2 ++ ["comp"] ++ twice (Con_v 1 ++ ["γ"] ) ++ Con_v 3 ++ ["ϑ","δ","γ","empty","Γ","ε","Γ","f",]
--- #eval CwF_names
--- #eval List.length CwF_topnames
--- #eval len ℭ𝔴𝔉
