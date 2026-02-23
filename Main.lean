@@ -81,6 +81,11 @@ import GeneralizedAlgebra
 #eval printAlg "ℭ𝔴𝔉" ℭ𝔴𝔉_data
 #eval printDAlg "ℭ𝔴𝔉" ℭ𝔴𝔉_data
 
+-- Polarized Categories with Families
+#eval 𝔓ℭ𝔴𝔉_data
+#eval printAlg "𝔓ℭ𝔴𝔉" 𝔓ℭ𝔴𝔉_data
+#eval printDAlg "𝔓ℭ𝔴𝔉" 𝔓ℭ𝔴𝔉_data
+
 -- GAT signature Categories with Families
 #eval 𝔊𝔄𝔗ℭ𝔴𝔉_data
 #eval printAlg "𝔊𝔄𝔗ℭ𝔴𝔉" 𝔊𝔄𝔗ℭ𝔴𝔉_data
