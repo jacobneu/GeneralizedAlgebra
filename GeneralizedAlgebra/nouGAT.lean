@@ -37,34 +37,34 @@ declare_syntax_cat con_inner
 syntax gat_decl : con_inner
 syntax con_inner "," gat_decl : con_inner
 -- syntax "include" ident "as" "(" ident_list ");" con_inner : con_inner
--- declare_syntax_cat con_outer
--- syntax "⦃" "⦄" : con_outer
--- syntax "⦃" con_inner "⦄" : con_outer
+declare_syntax_cat con_outer
+syntax "⦃" "⦄" : con_outer
+syntax "⦃" con_inner "⦄" : con_outer
 
 declare_syntax_cat condata_outer
 syntax "[GATdata|" "]" : condata_outer
 syntax "[GATdata|" con_inner "]" : condata_outer
 
 inductive metaArg : Type where
-| metaImpl : String → Expr → metaArg
+-- | metaImpl : String → Expr → metaArg
 | metaExpl : String → Expr → metaArg
 | metaAnon : Expr → metaArg
 open metaArg
 def extractMetaTy : metaArg → Expr
-| metaImpl _ e => e
+-- | metaImpl _ e => e
 | metaExpl _ e => e
 | metaAnon e => e
 
 def argMatch (key : String) : metaArg → Bool
-| metaImpl i _ => key=i
+-- | metaImpl i _ => key=i
 | metaExpl i _ => key=i
 | metaAnon _ => false
 
 
 def argEl : metaArg → MetaM metaArg
-| metaImpl i t => do
-    let T ← mkAppM ``preEL #[t]
-    return (metaImpl i T)
+-- | metaImpl i t => do
+--     let T ← mkAppM ``preEL #[t]
+--     return (metaImpl i T)
 | metaExpl i t => do
     let T ← mkAppM ``preEL #[t]
     return (metaExpl i T)
@@ -122,13 +122,13 @@ def varTelExtend {VV : varStruct} (TT : varTel VV) (newArg : metaArg) (ctx : Exp
 partial def splitArgList (message : String) : List metaArg → MetaM (metaArg × List metaArg)
 | [] => throwError message
 | (metaExpl i e)::As => return (metaExpl i e,As)
-| (metaImpl _ _)::As => splitArgList message As
+-- | (metaImpl _ _)::As => splitArgList message As
 | (metaAnon e)::As => return (metaAnon e,As)
 
 partial def failIfExplicitArgs (message : String) : List metaArg → MetaM Unit
 | [] => return ()
 | (metaExpl _ _)::_ => throwError message
-| (metaImpl _ _)::As => failIfExplicitArgs message As
+-- | (metaImpl _ _)::As => failIfExplicitArgs message As
 | (metaAnon _)::_ => throwError message
 
 partial def elabGATTm {vars : varStruct} (ctx : Expr) (TT : varTel vars) : Syntax → MetaM (Expr × List metaArg)
@@ -248,7 +248,7 @@ def mkListListStrLit (LL : List (List String)) : MetaM Expr :=
 def LArg := List preArg × preTy
 
 def mkArgLit : metaArg → MetaM Expr
-| metaImpl i t => mkAppM `preArg.preImpl #[mkStrLit i,t]
+-- | metaImpl i t => mkAppM `preArg.preImpl #[mkStrLit i,t]
 | metaExpl i t => mkAppM `preArg.preExpl #[mkStrLit i,t]
 | metaAnon t => mkAppM `preArg.preAnon #[t]
 
