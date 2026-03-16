@@ -28,3 +28,8 @@ def parensUnnecessary (s : String) : Bool :=
 || (Option.isNone $ List.find? Char.isWhitespace $ String.toList s)
 
 def paren (s:String):String := if parensUnnecessary s then s else "("++s++")"
+
+def paren' (sep : String) (sl : List String) : String :=
+  if parensUnnecessary (String.intercalate " " sl)
+  then String.intercalate sep sl
+  else "("++ String.intercalate sep sl ++")"

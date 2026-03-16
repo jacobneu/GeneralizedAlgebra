@@ -10,3 +10,7 @@ lean_lib «GeneralizedAlgebra» where
 @[default_target]
 lean_exe «generalizedalgebra» where
   root := `Main
+
+@[default_target]
+lean_exe «forester» where
+  root := `Forester
