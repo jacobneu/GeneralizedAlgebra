@@ -1,6 +1,8 @@
 import GeneralizedAlgebra.typecheck
 import Lean
 
+set_option linter.unusedVariables false
+
 open Lean Elab Meta
 open preTy preTm
 

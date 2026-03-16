@@ -31,8 +31,6 @@ instance : Repr preTm where
 instance : Repr preTy where
   reprPrec := λ t _ => preTyrepr t
 
-#eval List.foldr (λ x y => y ++ "-" ++ x) "x" ["a","b","c"]
-
 def preConrepr : preCon → String :=
 (List.foldr (λ x y => y ++ " ▷ " ++ x) "◇") ∘ (List.map preTyrepr)
 
