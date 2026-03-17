@@ -1,5 +1,5 @@
 import GeneralizedAlgebra
-import GeneralizedAlgebra.eliminate.AlgForester
+import GeneralizedAlgebra.eliminate.DAlgForester
 
 
 def main : List String → IO PUnit
@@ -9,6 +9,7 @@ def main : List String → IO PUnit
       | _ => 𝔖𝔢𝔱_data
     let theCmd := match theCmdStr with
       | "Con" => ConForester
+      | "DAlg" => DAlgForester
       | _ => AlgForester
     List.forM (theCmd theGAT theGATstr) IO.println
 | _ => IO.println "Error: command and GAT not supplied"

@@ -30,7 +30,8 @@ def liFormat s := "\\li{#{" ++ s ++ "}}"
 -- | (some n) => Nat.repr (succ n)
 -- | _ => s ++ "[wk]"
 
-def parenFor := paren' "\\;"
+def parenFor sl := paren' "\\;" sl ["\\;"]
+def collapseFor := String.intercalate "\\;"
 
 def ConForester_Tm : preTm → List String
 | preAPP (preAPP (preAPP (preAPP (preAPP f t1) t2) t3) t4) t5 => [parenFor (ConForester_Tm f),"@",parenFor (ConForester_Tm t1),"@",parenFor (ConForester_Tm t2),"@",parenFor (ConForester_Tm t3)," @ ",parenFor (ConForester_Tm t4),"@",parenFor (ConForester_Tm t5)]
@@ -80,9 +81,9 @@ def ConForester_Ty : preTy → List String
 
 def ConForester (𝔊 : GATdata) (G : String) : List String :=
 ["\\taxon{Definition}","","\\import{index}","\\title{#{\\mathfrak{" ++ G ++ "}}}"]
-++ ["\\p{The GAT #{\\mathfrak{" ++ G ++ "}} is given by the signature"]
+++ ["\\p{The GAT #{\\GAT{" ++ G ++ "}} is given by the signature"]
 ++ ["\\<html:ul>[style]{list-style-type:'▷  ';list-style-position: inside;}{","\\<html:li>[style]{list-style-type:'◇';list-style-position: outside;}{}"]
-++ List.map liFormat (List.map (λ A => String.intercalate "\\;" (ConForester_Ty A)) (List.reverse 𝔊.con))
+++ List.map liFormat (List.map (λ A => collapseFor (ConForester_Ty A)) (List.reverse 𝔊.con))
 ++ ["}","}"]
 -- | ⟨[],_,_⟩ => []
 -- | ⟨[X],[s],[(tt,_)]⟩ =>

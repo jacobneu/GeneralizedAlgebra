@@ -1,9 +1,9 @@
 import GeneralizedAlgebra.signatures.pointed
 
 def 𝔑_data : GATdata := [GATdata|
-    Nat   : U,
-    zero  : Nat,
-    succ  : Nat ⇒ Nat
+    N  : U,
+    z  : N,
+    s  : N ⇒ N
 ]
 
 def 𝔑 : GAT := ⟨
