@@ -33,62 +33,102 @@ def liFormat s := "\\li{#{" ++ s ++ "}}"
 def parenFor sl := paren' "\\;" sl ["\\;"]
 def collapseFor := String.intercalate "\\;"
 
-def ConForester_Tm : preTm → List String
-| preAPP (preAPP (preAPP (preAPP (preAPP f t1) t2) t3) t4) t5 => [parenFor (ConForester_Tm f),"@",parenFor (ConForester_Tm t1),"@",parenFor (ConForester_Tm t2),"@",parenFor (ConForester_Tm t3)," @ ",parenFor (ConForester_Tm t4),"@",parenFor (ConForester_Tm t5)]
-| preAPP (preAPP (preAPP (preAPP f t1) t2) t3) t4 => [parenFor (ConForester_Tm f),"@",parenFor (ConForester_Tm t1),"@",parenFor (ConForester_Tm t2),"@",parenFor (ConForester_Tm t3),"@",parenFor (ConForester_Tm t4)]
-| preAPP (preAPP (preAPP f t1) t2) t3 => [parenFor (ConForester_Tm f),"@",parenFor (ConForester_Tm t1),"@",parenFor (ConForester_Tm t2),"@",parenFor (ConForester_Tm t3)]
-| preAPP (preAPP f t1) t2 => [parenFor (ConForester_Tm f),"@",parenFor (ConForester_Tm t1),"@",parenFor (ConForester_Tm t2)]
-| preAPP f t => [parenFor (ConForester_Tm f),"@",parenFor (ConForester_Tm t)]
-| preVAR n => [Nat.repr n]
-| preTRANSP eq y => ["\\transp",parenFor (ConForester_Tm eq),parenFor (ConForester_Tm y)]
+inductive texExp : Type where
+| texLit : String → texExp
+| texL : List texExp → texExp -- be lazy about parens on the first
+| texR :  List texExp → texExp -- be lazy about parens on the last
+| texPar : List texExp → texExp -- be strict about parens
+| texNopar : List texExp → texExp -- don't require parens
+| texDep : List (String × texExp) → texExp → texExp
+| texDecorate : texExp → (String → String) → texExp
+open texExp
 
-def ConForester_Ty : preTy → List String
-| preUU => ["\\UU"]
-| preEQ s t => ["\\Eq",parenFor (ConForester_Tm s), parenFor (ConForester_Tm t)]
-| preEL X => ["\\El",parenFor (ConForester_Tm X)]
-| prePI X Y => ["\\Pi",parenFor (ConForester_Tm X), parenFor (ConForester_Ty Y)]
+def texExp.reprPrec : texExp → Nat → String
+| texLit s, _ => "texLit(" ++ s ++ ")"
+| texL xs, succ i => "texL [" ++ String.intercalate "," (List.map (λ t => reprPrec t i) xs) ++ "]"
+| texR xs, succ i => "texR [" ++ String.intercalate "," (List.map (λ t => reprPrec t i) xs) ++ "]"
+| texPar xs, succ i => "texPar [" ++ String.intercalate "," (List.map (λ t => reprPrec t i) xs) ++ "]"
+| texDep tel body, succ i => "texDep [" ++ String.intercalate "," (List.map (λ (s,t) => "(" ++ s ++ "," ++ reprPrec t i ++ ")") tel) ++ "] (" ++ reprPrec body i ++ ")"
+| texDecorate t _, succ i => "texDecorate (" ++ reprPrec t i ++ ") _"
+| texNopar xs, succ i => "texNopar [" ++ String.intercalate "," (List.map (λ t => reprPrec t i) xs) ++ "]"
+| _ , 0 => "ZERO"
 
--- def ConForester_Tm : List String → preTm → String
--- | As::_, preVAR 0 => identFormat As
--- | _::ss, preVAR (succ n) => ConForester_Tm ss (preVAR n)
--- | topnames, preAPP f t =>
---     ConForester_Tm topnames f ++ " " ++ parenFor (ConForester_Tm topnames t)
--- | topnames, preTRANSP _ s => ConForester_Tm topnames s
--- | _, _ => ""
-
--- def ConForester_Ty : List String → preTy → List preArg → String
--- | _, preUU, _ => "\\Set"
--- | topnames, preEL t, _ =>
---     ConForester_Tm topnames t
--- | topnames, preEQ s t, _ =>
---     ConForester_Tm topnames s ++ " = " ++ ConForester_Tm topnames t
--- | topnames, prePI _ Y, preAnon TT ::trest =>
---     ConForester_Ty topnames TT [] ++ " \\to " ++ ConForester_Ty (""::topnames) Y trest
--- | topnames, prePI _ Y, preExpl s TT ::trest =>
---     "(" ++ identFormat s ++ " : " ++ ConForester_Ty topnames TT [] ++ ") \\to " ++ ConForester_Ty (s::topnames) Y trest
--- | _, _, _ => ""
+instance : Repr texExp where
+  reprPrec := λ t _ => texExp.reprPrec t 100000
 
 
--- def ConForester_Con : preCon → List String
--- | [] => []
--- | [X] =>
---     [identFormat s ++ " \\colon " ++ ConForester_Ty [] X tt]
--- | ⟨X::XS,s::ss,(tt,_)::tts⟩ =>
---     ConForester_Con ⟨XS,ss,tts⟩ ++
---     [identFormat s ++ " \\colon " ++ ConForester_Ty ss X tt]
--- | _ => []
+
+def ConForester_Tm : preTm → texExp
+| preAPP f t => texL [ConForester_Tm f,texLit "@", ConForester_Tm t]
+| preVAR n => texLit $ Nat.repr n
+| preTRANSP eq y => texPar [texLit "\\transp", ConForester_Tm eq,ConForester_Tm y]
+
+
+
+def ConForester_Ty : preTy → texExp
+| preUU => texLit "\\UU"
+| preEQ s t => texPar [texLit "\\Eq", ConForester_Tm s, ConForester_Tm t]
+| preEL X => texL [texLit "\\El", ConForester_Tm X]
+| prePI X Y => texL [texLit "\\Pi", ConForester_Tm X, ConForester_Ty Y]
+
+
+mutual
+def texExp.toStringParen : Nat → texExp → String
+| _, texLit s => s
+| succ n, texR [x] => texExp.toString_core n x
+| succ n, texPar [x] => texExp.toString_core n x
+| succ n, texNopar [x] => texExp.toString_core n x
+| succ n, texL [x] => texExp.toString_core n x
+| succ n, texDecorate x f => f (texExp.toStringParen n x)
+| _, texR [] => ""
+| _, texPar [] => ""
+| _, texNopar [] => ""
+| _, texL [] => ""
+| succ n, z => "(" ++ texExp.toString_core n z ++ ")"
+| 0,_ => ""
+
+
+def groupTel : Nat → List (String × texExp) → List String × String × List (String × texExp)
+| _, [] => ([],"",[])
+| n, [(i,tt)] => ([i],texExp.toString_core n tt,[])
+| n, (i,tt)::(i',tt')::res =>
+    let tts := texExp.toString_core n tt
+    let tts' := texExp.toString_core n tt'
+    if tts = tts'
+    then
+      let (others,_,remainder) := groupTel n ((i',tt')::res)
+      (i::others,tts,remainder)
+    else ([i],tts,(i',tt')::res)
+
+def texExp.toString_core : Nat → texExp → String
+| _, texLit s => s
+| succ n, texL (texL fst :: rest) =>
+    texExp.toString_core n (texL fst) ++ "\\;" ++ String.intercalate "\\;" (List.map (texExp.toStringParen n) rest)
+| succ n, texL xs => String.intercalate "\\;" (List.map (texExp.toStringParen n) xs)
+| succ n, texR [texR xs] => texExp.toString_core n (texR xs)
+| succ n, texR [x] => texExp.toStringParen n x
+| succ n, texR (x :: xs) => texExp.toStringParen n x ++ "\\;" ++ texExp.toString_core n (texR xs)
+| _, texR [] => ""
+| succ n, texPar xs => String.intercalate "\\;" (List.map (texExp.toStringParen n) xs)
+| succ n, texNopar xs => String.intercalate "\\;" (List.map (texExp.toString_core n) xs)
+| succ n, texDep [] body =>  " \\to " ++ texExp.toString_core n body
+| succ n, texDep tel body =>
+    let (is,tts,remainder) := groupTel (succ n) tel
+    "(" ++ String.intercalate "\\;" is ++ " \\colon " ++ tts ++ ")" ++ texExp.toString_core n (texDep remainder body)
+| succ n, texDecorate tt f => f (texExp.toString_core n tt)
+| 0, _ => ""
+end
+
+def texExp.strictify : texExp → texExp
+| texNopar xs => texPar xs
+| z => z
+
+def texExp.toString : texExp → String := texExp.toString_core 1000000
 
 
 def ConForester (𝔊 : GATdata) (G : String) : List String :=
 ["\\taxon{Definition}","","\\import{index}","\\title{#{\\mathfrak{" ++ G ++ "}}}"]
 ++ ["\\p{The GAT #{\\GAT{" ++ G ++ "}} is given by the signature"]
 ++ ["\\<html:ul>[style]{list-style-type:'▷  ';list-style-position: inside;}{","\\<html:li>[style]{list-style-type:'◇';list-style-position: outside;}{}"]
-++ List.map liFormat (List.map (λ A => collapseFor (ConForester_Ty A)) (List.reverse 𝔊.con))
+++ List.map liFormat (List.map (λ A => texExp.toString (ConForester_Ty A)) (List.reverse 𝔊.con))
 ++ ["}","}"]
--- | ⟨[],_,_⟩ => []
--- | ⟨[X],[s],[(tt,_)]⟩ =>
---     [s ++ " : " ++ ConForester_Ty [] X tt]
--- | ⟨X::XS,s::ss,(tt,_)::tts⟩ =>
---     ConForester_Con ⟨XS,ss,tts⟩ ++
---     [s ++ " : " ++ ConForester_Ty ss X tt]
--- | _ => []
