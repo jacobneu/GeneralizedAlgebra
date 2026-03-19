@@ -29,6 +29,7 @@ syntax gat_tm : gat_arg
 
 syntax gat_arg "⇒" gat_ty : gat_ty
 
+
 -- declare_syntax_cat ident_list
 -- syntax ident : ident_list
 -- syntax "_" : ident_list
@@ -237,6 +238,43 @@ partial def elabGATCon_core (ctx : Expr) (vars : varStruct) : Syntax → MetaM (
 | _ => throwError "Con_coreFail"
 
 
+def type0 := Type 0
+def type1 := Type 1
+def lev0 : Level := Lean.Level.zero
+def lev1 : Level := Lean.Level.succ lev0
+def consttype0 : type0 → type1 := λ _ => type0
+def el1 (X : Type 0) : Type 1 :=
+  PUnit.{2} → X
+-- def SigmaExpl {u v} A B := @Sigma u v A B
+-- #check mkAppN
+
+partial def elabAlgTy (algΓ : Expr) : Syntax → MetaM (Expr × Level)
+| `(gat_decl| $_:ident : U ) => return (.lam `_ algΓ (.const ``type0 []) .default,lev1)
+| `(gat_decl| $_:ident : $x:gat_tm ) => return (.lam `_ algΓ (.bvar 0) .default,lev0)
+-- | `(gat_decl| $_:ident : $x:gat_tm ) => return (.lam `_ algΓ (.app (.const ``el1 []) $ .bvar 0) .default)
+-- | `(gat_decl| $_:ident : $T:gat_arg ⇒ $T':gat_ty) => _
+-- | `(gat_decl| $_:ident : $t1:gat_tm ≡ $t2:gat_tm) => _
+| _ => return (.lam `_ algΓ (.const ``type0 []) .default,lev1)
+-- | _ => throwError "AlgTyFail"
+
+partial def elabAlgCon : Syntax → MetaM Expr
+| `(con_inner| $rest:con_inner , $d:gat_decl ) => do
+    let algΓ ← elabAlgCon rest
+    let (algA,levA) ← elabAlgTy algΓ d
+    return (mkApp2 (.const ``Sigma [lev1,levA]) algΓ algA)
+| `(con_inner| $d:gat_decl ) => return .const ``type0 []
+| _ => throwError "Alg_coreFail"
+
+
+
+
+
+
+
+
+
+
+
 
 
 def LStr := List String
@@ -263,16 +301,35 @@ def mkListListArgLit (LL : List (List metaArg × Expr)) : MetaM Expr :=
   List.mapM mkListArgLit LL >>=  mkListLit (.const `LArg [])
 
 
+def mkPreTmLit : preTm → Expr
+| preVAR n => .app (.const `preVAR []) (mkNatLit n)
+| preAPP f t => mkApp2 (.const `preAPP []) (mkPreTmLit f) (mkPreTmLit t)
+| preTRANSP f t => mkApp2 (.const `preTRANSP []) (mkPreTmLit f) (mkPreTmLit t)
+
+def mkPreTyLit : preTy → Expr
+| preUU => .const `preUU []
+| preEQ s t => mkApp2 (.const `preEQ []) (mkPreTmLit s) (mkPreTmLit t)
+| prePI X Y => mkApp2 (.const `prePI []) (mkPreTmLit X) (mkPreTyLit Y)
+| preEL X => .app (.const `prePI []) (mkPreTmLit X)
+
+def mkPreConLit : preCon → Expr
+| [] => mkApp (mkConst ``List.nil [Lean.Level.zero]) (.const `preTy [])
+| A::Γ => mkApp3 (mkConst ``List.cons [Lean.Level.zero]) (.const `preTy []) (mkPreTyLit A) (mkPreConLit Γ)
+
+
 partial def elabGATConData : Syntax → MetaM Expr
 | `(condata_outer| [GATdata| ] ) => do
   let emptyStrList ← mkListStrLit []
   let emptyLArgList ← mkListListArgLit []
-  mkAppM ``GATdata.mk  #[.const ``preEMPTY [],emptyStrList,emptyLArgList]
+  let res ← mkAppM ``GATdata.mk  #[.const ``preEMPTY [],emptyStrList,emptyLArgList]
+  mkAppM ``Prod.mk #[res,.const ``Empty []]
 | `(condata_outer| [GATdata| $s:con_inner ] ) => do
   let (resCon,VV) ← elabGATCon_core (.const ``preEMPTY []) varEmpty s
   let topList ← mkListStrLit VV.topnames
   let telescopes ← mkListListArgLit VV.telescopes
-  mkAppM ``GATdata.mk #[resCon,topList,telescopes]
+  let res ← mkAppM ``GATdata.mk #[resCon,topList,telescopes]
+  let alg ← elabAlgCon s
+  mkAppM ``Prod.mk #[res,alg]
 | _ => throwError "ConFail"
 
 -- elab g:con_outer : term => elabGATCon g
