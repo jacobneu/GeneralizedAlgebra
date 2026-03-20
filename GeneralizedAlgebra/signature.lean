@@ -55,8 +55,8 @@ def substTy : Nat → preTm → preTy → preTy
 
 inductive preArg : Type where
 -- | preImpl : String → preTy → preArg
-| preExpl : String → preTy → preArg
-| preAnon : preTy → preArg
+| preExpl : String → preTm → preArg
+| preAnon : preTm → preArg
 open preArg
 
 structure GATdata where
