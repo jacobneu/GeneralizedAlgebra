@@ -22,9 +22,9 @@ def AlgStr_Ty : List String → preTy → List preArg → String
 | topnames, preEQ s t, _ =>
     AlgStr_Tm topnames s ++ " = " ++ AlgStr_Tm topnames t
 | topnames, prePI _ Y, preAnon TT ::trest =>
-    AlgStr_Ty topnames TT [] ++ " → " ++ AlgStr_Ty (""::topnames) Y trest
+    AlgStr_Tm topnames TT ++ " → " ++ AlgStr_Ty (""::topnames) Y trest
 | topnames, prePI _ Y, preExpl s TT ::trest =>
-    "(" ++ s ++ " : " ++ AlgStr_Ty topnames TT [] ++ ") → " ++ AlgStr_Ty (s::topnames) Y trest
+    "(" ++ s ++ " : " ++ AlgStr_Tm topnames TT ++ ") → " ++ AlgStr_Ty (s::topnames) Y trest
 | _, _, _ => ""
 
 def AlgStr_Con : GATdata → List String
