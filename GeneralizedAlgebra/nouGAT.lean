@@ -106,15 +106,30 @@ def varExtend (VV : varStruct) (key : String) (newTelescope : List metaArg) (res
     (newTelescope,resT)::VV.telescopes
   ⟩
 
+def varTruncate : varStruct → MetaM varStruct
+| ⟨f,_::topnames,_::telescopes ⟩ =>
+    return ⟨
+        λ s message => do
+          let n ← f s message
+          match n with
+          | 0 => throwError "truncate error 0"
+          | succ n' => return n'
+        ,topnames,telescopes⟩
+| _ => throwError "truncate error 1"
+
+
 def varEmpty : varStruct := ⟨ λ s mess => throwError ("Unknown var: " ++ s ++ ". Info dump:" ++ mess), [], [] ⟩
 
 
-def varTelLkup (VV : varStruct) : List metaArg → String → String → MetaM Nat
-| [], key, message => VV.lkup key message
+def varTelLkup (VV : varStruct) : List metaArg → String → String → MetaM (Nat × Nat)
+| [], key, message => do
+    let b ← VV.lkup key message
+    let (tel,_) ← getN "Issue accessing arity" VV.telescopes b
+    return (b,List.length tel)
 | a::rest, key, message =>
   if argMatch key a
-  then return 0
-  else succ <$> varTelLkup VV rest key (message ++ "tried2 \"" ++ argRecord a ++ "\"; ")
+  then return (0,0)
+  else (λ (b,arity) => (succ b,arity)) <$> varTelLkup VV rest key (message ++ "tried2 \"" ++ argRecord a ++ "\"; ")
 
 -- partial def splitArgList (message : String) : List metaArg → MetaM (metaArg × List metaArg)
 -- | [] => throwError message
@@ -128,15 +143,25 @@ def varTelLkup (VV : varStruct) : List metaArg → String → String → MetaM N
 -- | (metaImpl _ _)::As => failIfExplicitArgs message As
 -- | (metaAnon _)::_ => throwError message
 
-partial def elabGATTm (TT : List metaArg) (vars : varStruct)  : Syntax → MetaM Expr
+partial def failNonzero (message : String) : Nat → MetaM Unit
+| 0 => return ()
+| _ => throwError message
+
+partial def failIfZero (message : String) : Nat → MetaM Unit
+| 0 => throwError message
+| _ => return ()
+
+partial def elabGATTm (TT : List metaArg) (vars : varStruct)  : Syntax → MetaM (Expr × Nat)
 | `(gat_tm| ( $g:gat_tm ) ) => elabGATTm TT vars g
 | `(gat_tm| $g1:gat_tm $g2:gat_tm ) => do
-      let t1 ← elabGATTm TT vars g1
+      let (t1,n1) ← elabGATTm TT vars g1
+      failIfZero "Too many args #0" n1
       -- let (_,args1') ← splitArgList "Too many args #0" args1
       -- let domain := extractMetaTy A
 --         -- TODO: Check the type of A against the type of t2
       -- let Appt1 ← mkAppM ``APP #[t1]
-      let t2 ← elabGATTm TT vars g2
+      let (t2,n2) ← elabGATTm TT vars g2
+      failNonzero "Insufficient args #0" n2
       -- failIfExplicitArgs "Insufficient Args #0" args2
 --       -- let actualT2 ← reduce t2
 --       -- let expectedT2 ← reduce (extractMetaTy A)
@@ -147,23 +172,27 @@ partial def elabGATTm (TT : List metaArg) (vars : varStruct)  : Syntax → MetaM
 --       let ID ← mkAppM ``ID #[ctx]
 --       let substt2 ← mkAppM ``PAIR #[ID,t2]
       let resT ← mkAppM ``preAPP #[t1,t2]
-      return resT
+      return (resT, n1 - 1)
 | `(gat_tm| $i:ident ) => do
-      let b ← varTelLkup vars TT i.getId.toString ("Lookup \"" ++ i.getId.toString ++ "\"; ")
-      mkAppM ``preVAR #[mkNatLit b]
+      let (b,arity) ← varTelLkup vars TT i.getId.toString ("Lookup \"" ++ i.getId.toString ++ "\"; ")
+      let res ← mkAppM ``preVAR #[mkNatLit b]
+      return (res,arity)
 | `(gat_tm| $g1 #⟨ $g2 ⟩ ) => do
-      let t1 ← elabGATTm TT vars g1
-      let t2 ← elabGATTm TT vars g2
+      let (t1,n1) ← elabGATTm TT vars g1
+      failNonzero "Insufficient args #1" n1
+      let (t2,n2) ← elabGATTm TT vars g2
+      failNonzero "Insufficient args #2" n2
       -- failIfExplicitArgs "Insufficient Args #2" args2
       let resT ← mkAppM ``preTRANSP #[t2,t1]
-      return resT
+      return (resT,0)
 
 | _ => throwError "TmFail"
 
 
 -- returns the preTm
 partial def elabClosedGATTm (TT : List metaArg) (vars : varStruct)  (s : Syntax) : MetaM Expr := do
-  let t ← elabGATTm TT vars s
+  let (t,n) ← elabGATTm TT vars s
+  failNonzero "Insufficient args #3" n
   -- failIfExplicitArgs "Insufficient Args #1" args
   return t
 
@@ -233,32 +262,54 @@ partial def elabGATCon_core : Syntax → MetaM (Expr × varStruct)
 | _ => throwError "Con_coreFail"
 
 
-def type0 := Type 0
-def type1 := Type 1
-def lev0 : Level := Lean.Level.zero
-def lev1 : Level := Lean.Level.succ lev0
-def consttype0 : type0 → type1 := λ _ => type0
-def el1 (X : Type 0) : Type 1 :=
-  PUnit.{2} → X
--- def SigmaExpl {u v} A B := @Sigma u v A B
--- #check mkAppN
+-- def type0 := Type 0
+-- def type1 := Type 1
+-- def lev0 : Level := Lean.Level.zero
+-- def lev1 : Level := Lean.Level.succ lev0
+-- def consttype0 : type0 → type1 := λ _ => type0
+-- def el1 (X : Type 0) : Type 1 :=
+--   PUnit.{2} → X
+-- -- def SigmaExpl {u v} A B := @Sigma u v A B
+-- -- #check mkAppN
 
-partial def elabAlgTy (algΓ : Expr) : Syntax → MetaM (Expr × Level)
-| `(gat_decl| $_:ident : U ) => return (.lam `_ algΓ (.const ``type0 []) .default,lev1)
-| `(gat_decl| $_:ident : $_:gat_tm ) => return (.lam `_ algΓ (.bvar 0) .default,lev0)
--- | `(gat_decl| $_:ident : $x:gat_tm ) => return (.lam `_ algΓ (.app (.const ``el1 []) $ .bvar 0) .default)
--- | `(gat_decl| $_:ident : $T:gat_arg ⇒ $T':gat_ty) => _
--- | `(gat_decl| $_:ident : $t1:gat_tm ≡ $t2:gat_tm) => _
-| _ => return (.lam `_ algΓ (.const ``type0 []) .default,lev1)
--- | _ => throwError "AlgTyFail"
+-- def algNth : Nat → Expr → MetaM Expr
+-- | 0, e => mkAppM ``Prod.snd #[e] <|> return e
+-- | succ n, e =>
+--     algNth n (.app (.const ``Prod.fst [lev1,lev0]) e)
+--     -- <|> algNth n (.app (.const ``Prod.fst [lev0,lev0]) e)
+--     -- <|> algNth n (.app (.const ``Prod.fst [lev1,lev1]) e)
+--     -- <|> algNth n (.app (.const ``Prod.fst [lev1,lev0]) e)
 
-partial def elabAlgCon : Syntax → MetaM Expr
-| `(con_inner| $rest:con_inner , $d:gat_decl ) => do
-    let algΓ ← elabAlgCon rest
-    let (algA,levA) ← elabAlgTy algΓ d
-    return (mkApp2 (.const ``Sigma [lev1,levA]) algΓ algA)
-| `(con_inner| $_:gat_decl ) => return .const ``type0 []
-| _ => throwError "Alg_coreFail"
+-- partial def elabAlgTy (vars : varStruct) (algΓ : Expr) : Syntax → MetaM (Expr × Level)
+-- | `(gat_decl| $_:ident : U ) => return (.lam `_ algΓ (.const ``type0 []) .default,lev1)
+-- | `(gat_decl| $_:ident : $i:ident ) => do
+--     let n ← vars.lkup (i.getId.toString) ""
+--     let proj ← algNth n (.bvar 0)
+--     return (.lam `_ algΓ proj .default,lev0)
+-- -- | `(gat_decl| $_:ident : $x:gat_tm ) => return (.lam `_ algΓ (.app (.const ``el1 []) $ .bvar 0) .default)
+-- -- | `(gat_decl| $_:ident : $T:gat_arg ⇒ $T':gat_ty) => _
+-- -- | `(gat_decl| $_:ident : $t1:gat_tm ≡ $t2:gat_tm) => _
+-- | _ => return (.lam `_ algΓ (.const ``type0 []) .default,lev1)
+-- -- | _ => throwError "AlgTyFail"
+
+-- partial def elabAlgCon (vars : varStruct) : Syntax → MetaM (Expr)
+-- | `(con_inner| $rest:con_inner , $d:gat_decl ) => do
+--     let vars' ← varTruncate vars
+--     let algΓ ← elabAlgCon vars' rest
+--     let (algA,levA) ← elabAlgTy vars algΓ d
+--     return (mkApp2 (.const ``Sigma [lev1,levA]) algΓ algA)
+-- | `(con_inner| $_:gat_decl ) => return .const ``type0 []
+-- | _ => throwError "Alg_coreFail"
+
+-- -- returns 𝔊-alg : type1
+-- def mkAlg (vars : varStruct) : MetaM Expr := match vars with
+-- | ⟨_, [_], [_] ⟩ => return .const ``type0 []
+-- | ⟨f, s::topnames, a::telescopes ⟩ => do
+--     let vars' ← varTruncate vars
+--     let algΓ ← mkAlg vars'
+
+-- | _ => throwError "Alg_Fail"
+
 
 
 def LStr := List String
@@ -314,7 +365,7 @@ partial def elabGATConData : Syntax → MetaM Expr
   let telescopes ← mkListListArgLit $ List.map (λ (l,t) => (List.reverse l,t)) VV.telescopes
   let res ← mkAppM ``GATdata.mk #[resCon,topList,telescopes]
   return res
-  -- let alg ← elabAlgCon s
+  -- let alg ← elabAlgCon VV s
   -- mkAppM ``Prod.mk #[res,alg]
 | _ => throwError "ConFail"
 
