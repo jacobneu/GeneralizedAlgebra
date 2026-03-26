@@ -3,6 +3,7 @@ import Lean
 
 open Lean Elab Meta
 open preTy preTm
+open Std Format
 
 declare_syntax_cat gat_ty
 syntax "U"       : gat_ty
@@ -45,6 +46,7 @@ syntax con_inner "," gat_decl : con_inner
 declare_syntax_cat condata_outer
 syntax "[GATdata|" "]" : condata_outer
 syntax "[GATdata|" con_inner "]" : condata_outer
+syntax "[rawGAT|" con_inner "]" : condata_outer
 
 
 
@@ -139,7 +141,7 @@ def mkMetaTyLit : metaTy → MetaM Expr -- :: String × List (String × metaTm)
     mkAppM ``Prod.mk #[mkStrLit $ "Eq _(" ++ metaTm.toString X ++")(" ++ metaTm.toString s ++ ") (" ++ metaTm.toString t ++ ")",mTT]
 | metaEl TT t => do
     let mTT ← List.mapM mkMetaArgLit TT >>= mkListLit (.const ``metaOut' [])
-    mkAppM ``Prod.mk #[mkStrLit $ "El (" ++ metaTm.toString t ++ ")",mTT]--]
+    mkAppM ``Prod.mk #[mkStrLit $ "El (" ++ metaTm.toString t ++ ")",mTT]
 
 
 -- def extractExpr : metaArg → Expr
@@ -500,11 +502,20 @@ partial def elabGATArg (TT : List metaArg) (vars : varStruct) : Syntax → MetaM
   return (t, metaAnon (metaLOC 0 0) mt)
 | _ => throwError "ArgFail"
 
+-- def Format.intercalate : List String → Format
+-- | [] => ""
+-- | [x] => x
+-- | (x::y::zs) => x ++ line ++ Format.intercalate (y::zs)
+
+-- def myThrow {α : Type} (messages : List String) : MetaM α := throwError
+--     (nest 1 <| (align true) ++ Format.intercalate messages)
+--     ++ (nest 2 <| (align true) ++ Format.intercalate (List.map (λ s => "> " ++ s) messages))
+--     ++ (nest 1 <| (align true) ++ Format.intercalate (List.map (λ s => "> " ++ s) messages))
 
 partial def failIfBadEq (tm1 tm2 : String) : metaTy → metaTy → MetaM metaTm
 | metaEl [] mt1, metaEl [] mt2 => if mt1 = mt2 then return mt1 else throwError ("Error: Bad eq: term " ++ tm1 ++ " is an element of " ++ metaTm.toString mt1 ++ " but " ++ tm2 ++ " is an element of " ++ metaTm.toString mt2)
 | metaEl _ _, metaEl [] _ => throwError ("Error: Bad eq: term " ++ tm1 ++ " has open variables")
-| metaEl [] _, metaEl _ _ => throwError ("Error: Bad eq: term " ++ tm2 ++ " has open variables")
+| metaEl [] _, metaEl _ _ => throwError ("Error: Bad eq: term" ++ tm2 ++ " has open variables")
 | metaEl _ _, metaEl _ _ => throwError ("Error: Bad eq: terms " ++ tm1 ++ " and " ++ tm2 ++ " have open variables")
 | metaUU _, _ => throwError ("Error: Bad eq: term " ++ tm1 ++ " is a sort")
 | metaEq _ mX ms mt, _ => throwError ("Error: Bad eq: term " ++ tm1 ++ " is an equality (" ++ ms.toString ++ " ≡ " ++ mt.toString ++ " in " ++ mX.toString ++")")
@@ -623,7 +634,21 @@ partial def elabGATCon_core : Syntax → MetaM (Expr × varStruct)
 
 -- def LArg := List preArg × preTy
 
--- def mkListArgLit (tele : List metaArg × Expr) : MetaM Expr := do
+def mkMetaArgLit' : metaArg → Expr -- :: Option String
+| metaImpl i _ _ => mkApp (.app (.const ``some [Level.zero]) (.const ``String [])) $ mkStrLit i
+| metaExpl i _ _ => mkApp (.app (.const ``some [Level.zero]) (.const ``String [])) $ mkStrLit i
+| metaAnon _ _ => .app (.const ``none [Level.zero]) (.const ``String [])
+
+def StringOpt : Type := Option String
+def StringOptList : Type := List StringOpt
+
+def mkMetaTyLit' : metaTy → MetaM Expr -- :: List (Option String)
+| metaUU TT => mkListLit (.const ``StringOpt []) (List.map mkMetaArgLit' (List.reverse TT))
+| metaEq TT _ _ _ => mkListLit (.const ``StringOpt []) (List.map mkMetaArgLit' (List.reverse TT))
+| metaEl TT _ => mkListLit (.const ``StringOpt []) (List.map mkMetaArgLit' (List.reverse TT))
+
+
+-- def mkListArgLit (tele : List metaTy) : MetaM Expr := do
 --   let teleArgs ← List.mapM mkArgLit tele.1
 --   let teleExpr ← mkListLit (.const `preArg []) teleArgs
 --   mkAppM ``Prod.mk #[teleExpr,tele.2]
@@ -656,12 +681,20 @@ partial def elabGATConData : Syntax → MetaM Expr
 --   let res ← mkAppM ``rawGAT.mk  #[.const ``preEMPTY [],emptyStrList,emptyLArgList]
 --   return res
   -- mkAppM ``Prod.mk #[res,.const ``Empty []]
-| `(condata_outer| [GATdata| $s:con_inner ] ) => do
+| `(condata_outer| [rawGAT| $s:con_inner ] ) => do
   let (resCon,VV) ← elabGATCon_core s
   let topList ← mkListLit (.const ``String []) (List.map mkStrLit VV.topnames)
   -- let telescopes ← mkListListArgLit $ List.map (λ (l,t) => (List.reverse l,t)) VV.telescopes
   let telescopes ← List.mapM mkMetaTyLit VV.telescopes >>= mkListLit (.const ``metaOut [])
   let res ← mkAppM ``rawGAT.mk #[resCon,topList,telescopes]
+  return res
+  -- let alg ← elabAlgCon VV s
+  -- mkAppM ``Prod.mk #[res,alg]
+| `(condata_outer| [GATdata| $s:con_inner ] ) => do
+  let (resCon,VV) ← elabGATCon_core s
+  let topList ← mkListLit (.const ``String []) (List.map mkStrLit (List.reverse VV.topnames))
+  let telescopes ← List.mapM mkMetaTyLit' (List.reverse VV.telescopes) >>= mkListLit (.const ``StringOptList [])
+  let res ← mkAppM ``GATdata.mk #[resCon,topList,telescopes]
   return res
   -- let alg ← elabAlgCon VV s
   -- mkAppM ``Prod.mk #[res,alg]

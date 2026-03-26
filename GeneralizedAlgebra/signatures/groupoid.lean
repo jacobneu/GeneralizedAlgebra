@@ -12,7 +12,7 @@ def 𝔊𝔯𝔭𝔡_data : GATdata := [GATdata|
             comp X X Y f (id X) ≡ f,
     assoc : (W:Obj) ⇒ (X:Obj) ⇒ (Y:Obj) ⇒ (Z:Obj) ⇒ (e : Hom W X) ⇒
             (f : Hom X Y) ⇒ (g : Hom Y Z) ⇒
-            comp W X Z g (comp W X Y f e) ≡ comp W Y Z (comp X Y Z g f) e,
+            comp W Y Z g (comp W X Y f e) ≡ comp W X Z (comp X Y Z g f) e,
     inv : (X:Obj) ⇒ (Y:Obj) ⇒ Hom X Y ⇒ Hom Y X,
     linv :  (X : Obj) ⇒ (Y : Obj) ⇒ (f : Hom X Y) ⇒
         comp X Y X (inv X Y f) f ≡ id X,
