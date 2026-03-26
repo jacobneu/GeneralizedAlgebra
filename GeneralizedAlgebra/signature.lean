@@ -80,13 +80,13 @@ def substTy : Nat → preTm → preTy → preTy
 | a, s, preEQ s' t => preEQ (substTm a s s') (substTm a s t)
 | a, s, prePI X Y => prePI (substTm a s X) (substTy (succ a) s Y)
 
-inductive preArg : Type where
--- | preImpl : String → preTy → preArg
-| preExpl : String → preTm → preArg
-| preAnon : preTm → preArg
-open preArg
+-- inductive preArg : Type where
+-- -- | preImpl : String → preTy → preArg
+-- | preExpl : String → preTm → preArg
+-- | preAnon : preTm → preArg
+-- open preArg
 
 structure GATdata where
   (con : preCon)
   (topnames : List String)
-  (telescopes : List (List preArg × preTy))
+  (telescopes : List (List (Option String)))

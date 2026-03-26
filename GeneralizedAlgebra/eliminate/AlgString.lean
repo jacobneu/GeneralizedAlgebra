@@ -2,7 +2,7 @@ import GeneralizedAlgebra.typecheck
 
 
 open Nat
-open preTy preTm preArg
+open preTy preTm
 open wellCon
 
 
@@ -15,23 +15,32 @@ def AlgStr_Tm : List String → preTm → String
 | topnames, preTRANSP _ s => AlgStr_Tm topnames s
 | _, _ => ""
 
-def AlgStr_Ty : List String → preTy → List preArg → String
+def AlgStr_Ty : List String → preTy → List (Option String × preTm) → String
 | _, preUU, _ => "Set"
 | topnames, preEL t, _ =>
     AlgStr_Tm topnames t
 | topnames, preEQ s t, _ =>
     AlgStr_Tm topnames s ++ " = " ++ AlgStr_Tm topnames t
-| topnames, prePI _ Y, preAnon TT ::trest =>
-    AlgStr_Tm topnames TT ++ " → " ++ AlgStr_Ty (""::topnames) Y trest
-| topnames, prePI _ Y, preExpl s TT ::trest =>
-    "(" ++ s ++ " : " ++ AlgStr_Tm topnames TT ++ ") → " ++ AlgStr_Ty (s::topnames) Y trest
+| topnames, prePI _ Y, (none,t) ::trest =>
+    AlgStr_Tm topnames t ++ " → " ++ AlgStr_Ty (""::topnames) Y trest
+| topnames, prePI _ Y, (some s,t) ::trest =>
+    "(" ++ s ++ " : " ++ AlgStr_Tm topnames t ++ ") → " ++ AlgStr_Ty (s::topnames) Y trest
 | _, _, _ => ""
 
-def AlgStr_Con : GATdata → List String
-| ⟨[],_,_⟩ => []
-| ⟨[X],[s],[(tt,_)]⟩ =>
+def AlgStr_Con_core : List String → List (preTy × List (Option String × preTm)) → List String
+| [s],[(X,tt)] =>
     [s ++ " : " ++ AlgStr_Ty [] X tt]
-| ⟨X::XS,s::ss,(tt,_)::tts⟩ =>
-    AlgStr_Con ⟨XS,ss,tts⟩ ++
+| s::ss, (X,tt)::rest => -- ⟨X::XS,s::ss,(tt,_)::tts⟩ =>
+    AlgStr_Con_core ss rest ++
     [s ++ " : " ++ AlgStr_Ty ss X tt]
-| _ => []
+| _,_ => []
+
+def GATdataZip_core : preTy → List (Option String) → preTy × List (Option String × preTm)
+| prePI X Y, o::TT => (prePI X Y,(o,X) :: (GATdataZip_core Y TT).2)
+| T, _ => (T,[])
+
+def GATdataZip : GATdata → List String × List (preTy × List (Option String × preTm))
+| ⟨thePreCon, theTopnames, theTelescopes⟩ =>
+    (List.reverse theTopnames, List.zipWith GATdataZip_core thePreCon (List.reverse theTelescopes))
+
+def AlgStr_Con (𝔊 : GATdata) : List String := let z := GATdataZip 𝔊; AlgStr_Con_core z.1 z.2
