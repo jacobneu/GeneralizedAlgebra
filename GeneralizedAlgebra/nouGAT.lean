@@ -39,6 +39,7 @@ syntax gat_arg "⇒" gat_ty : gat_ty
 declare_syntax_cat con_inner
 syntax gat_decl : con_inner
 syntax con_inner "," gat_decl : con_inner
+-- syntax "include" ident ";" : con_inner
 -- syntax "include" ident "as" "(" ident_list ");" con_inner : con_inner
 -- declare_syntax_cat con_outer
 -- syntax "⦃" "⦄" : con_outer
@@ -580,9 +581,9 @@ namespace elaborator
     | _ => throwError "TyFail"
 
 
-    partial def elabGATCon_core : Syntax → StateT st MetaM Expr
+    partial def elabGATCon_inner : Syntax → StateT st MetaM Expr
     | `(con_inner| $rest:con_inner , $i:ident : $g:gat_ty ) => do
-        let restCon ← elabGATCon_core rest
+        let restCon ← elabGATCon_inner rest
         setCurrentName i.getId.toString
         let (T,finalT) ← elabGATTy g
         let newCtx ← mkAppM ``preEXTEND #[restCon, T]
@@ -594,24 +595,33 @@ namespace elaborator
         let newCtx ← mkAppM ``preEXTEND #[.const ``preEMPTY [],T]
         extendMain finalT
         return newCtx
-    | _ => throwError "Con_coreFail"
+    | _ => throwError "Con_innerFail"
 
 
 
-    partial def elabGATConData : Syntax → MetaM Expr
+    -- partial def elabGATCon_outer (init : st) (s : Syntax) : MetaM (Expr × st) :=
+    --     StateT.run (elabGATCon_inner s) init
+    -- | `(con_inner| $s:con_inner ) => do
+    --     let (resCon,VV) ← StateT.run (elabGATCon_inner s) init
+    --     let topList ← mkListLit (.const ``String []) (List.map mkStrLit VV.topnames)
+    --     let telescopes ← List.mapM mkMetaTyLit VV.telescopes >>= mkListLit (.const ``metaOut [])
+    --     let res ← mkAppM ``rawGAT.mk #[resCon,topList,telescopes]
+    --     return res
+
+    partial def elabGATCon  : Syntax →  MetaM Expr
     | `(condata_outer| [GATdata| ] ) => do
         let emptyStrList ← mkListLit (.const ``String []) []
         let emptyLArgList ← mkListLit (.const ``metaArg []) []
         let res ← mkAppM ``GATdata.mk  #[.const ``preEMPTY [],emptyStrList,emptyLArgList]
         return res
     | `(condata_outer| [rawGAT| $s:con_inner ] ) => do
-        let (resCon,VV) ← StateT.run (elabGATCon_core s) (stEmpty true)
+        let (resCon,VV) ← StateT.run (elabGATCon_inner s) (stEmpty true)
         let topList ← mkListLit (.const ``String []) (List.map mkStrLit VV.topnames)
         let telescopes ← List.mapM mkMetaTyLit VV.telescopes >>= mkListLit (.const ``metaOut [])
         let res ← mkAppM ``rawGAT.mk #[resCon,topList,telescopes]
         return res
     | `(condata_outer| [GATdata| $s:con_inner ] ) => do
-        let (resCon,VV) ← StateT.run (elabGATCon_core s) (stEmpty false)
+        let (resCon,VV) ← StateT.run (elabGATCon_inner s) (stEmpty false)
         let topList ← mkListLit (.const ``String []) (List.map mkStrLit (List.reverse VV.topnames))
         let telescopes ← List.mapM mkMetaTyLit' (List.reverse VV.telescopes) >>= mkListLit (.const ``StringOptList [])
         let res ← mkAppM ``GATdata.mk #[resCon,topList,telescopes]
@@ -620,4 +630,93 @@ namespace elaborator
 
   end mainFunctions
 
-elab g:condata_outer : term => elabGATConData g
+elab g:condata_outer : term => elabGATCon g
+
+def foo : st → st → st := λ _ g => g
+def bar : GATdata → st := λ _ => stEmpty false
+
+def N := [GATdata|
+    A : U
+    -- , B : U
+    -- ,B : A ⇒ U
+    -- , w : A
+    -- ,b : (a : A) ⇒ B a
+    -- , e : (a0 : A) ⇒ (a1 : A) ⇒ a0 ≡ a1
+    -- , zz : B w
+    -- ,c : (a0 : A) ⇒ (a1 : A) ⇒ b a0 #⟨ e a0 a1 ⟩ ≡ b a1
+]
+-- declare_syntax_cat con_extended
+-- syntax "⦃" "⦄" : con_extended
+-- syntax "⦃" con_inner "⦄" : con_extended
+-- declare_syntax_cat includes_list
+-- syntax ident : includes_list
+-- syntax ident "," includes_list : includes_list
+-- syntax "⦃" "include" includes_list ";"  con_inner  "⦄"
+
+declare_syntax_cat foo
+syntax ident "TRY" : foo
+declare_syntax_cat bar
+syntax "THIS" : bar
+syntax "THAT" : bar
+
+partial def elabBar : Syntax → MetaM Nat
+| `(bar| THIS ) => return 2
+| `(bar| THAT ) => return 0
+| _ => λ _ => throwError "Other syntax"
+
+
+def unExprCon : Expr → preCon
+-- | .app e (.const ``preEMPTY []) => unExprCon e
+-- | .app (.app (.app (.const `List.cons _) _) (.const `preTy.preUU [])) rest
+| (.app _ _) => preUU :: []
+| (.const _ _ ) => preEL (preVAR 0) :: []
+| _ => []
+-- open Lean.Elab.Term in
+-- def whnf' (e : TermElabM Syntax) : TermElabM Format := do
+--   let e ← elabTermAndSynthesize (← e) none
+--   ppExpr (← whnf e)
+
+#eval whnf (.app (.const ``rawGAT.con []) (.const ``N []))
+partial def elabFoo : Syntax → MetaM Expr
+| `(foo| $i:ident TRY ) => do
+    match ← whnf (.app (.const ``rawGAT.con []) (.const i.getId [])) with
+    | (.app _ _) => return mkNatLit 5
+    | (.const _ _ ) => return mkNatLit 4
+    | _ => return mkNatLit 0
+    -- return mkNatLit (unExprCon x).length
+-- --     -- let x ← Lean.Meta.getLocalDeclFromUserName
+-- --     match ←  with
+-- --       | .app (.congst)
+--     -- let k := Lean.LocalDecl.toExpr x
+--     return mkNatLit z
+
+-- λ n => match n with
+--   | 0 => throwError "Got zero"
+--   | _ => mkAppM ``Nat.succ #[]
+| _ => throwError "Other syntax"
+
+elab g:foo : term => elabFoo g
+
+#reduce N TRY
+
+
+
+notation p "to" r => (p,r)
+notation s "renaming" sts => List.foldl (λ s' (p,r) => String.replace s' p r) s sts
+
+notation "⦃" f "⦄" => f "X"
+notation "⦃" "include" l ";" f "⦄" => f (List.foldl (λ s1 s2 => "(" ++ s1 ++ "▷" ++ s2 ++ ")") "nil" l)
+
+-- #eval "green" renaming ["e" to "i"]
+#eval ⦃
+    include [
+      "green" renaming ["e" to "i", "n" to "m"],
+      "isn't",
+      "purple" renaming ["p" to "xx3"]
+    ];
+
+    (λ s => (s,s.length))
+  ⦄
+#eval ⦃ (λ s => (s,s.length))  ⦄
+
+-- List.foldr (λ s1 s2 => "(" ++ s1 ++ s2 ++ ")") "y"  (List.reverse $ "z"::["a","b","c"])
