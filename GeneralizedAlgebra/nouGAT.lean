@@ -263,38 +263,38 @@ namespace elabState
   open nouGATmeta
   open metaTm metaTy metaArg metaArgMarker
 
--- (lkup : String → String → MetaM Nat)
-
     structure st where
       (topnames : List String)
       (telescopes : List metaTy)
       (currentName : Option String)
       (currentTel : List metaArg)
+      (rawMode : Bool)
+
+    def stEmpty (raw : Bool) : st := ⟨[],[],none,[],raw⟩
 
   section toString
 
-
     def metaTmFormat (current : st) : metaTm → String
     | metaGLOB n => let gIndex := current.topnames.length; match current.topnames[gIndex - n - 1]? with
-      | some s => s ++ "[" ++ Nat.repr n ++ "]"
-      | none => "???" ++ "[" ++ Nat.repr n ++ "]"
+      | some s => s ++ (if current.rawMode then "[" ++ Nat.repr n ++ "]" else "")
+      | none => "???" ++ (if current.rawMode then "[" ++ Nat.repr n ++ "]" else "")
     | metaLOC g b => let gIndex := current.topnames.length;
       if g = gIndex then match current.currentTel[b]? with
-        | some a => (extractName a) ++ "[" ++ Nat.repr g ++ ","++ Nat.repr b ++ "]"
-        | none => "???" ++ "[" ++ Nat.repr g ++ ","++ Nat.repr b ++ "]"
+        | some a => (extractName a) ++ (if current.rawMode then "[" ++ Nat.repr g ++ ","++ Nat.repr b ++ "]" else "")
+        | none => "???" ++ (if current.rawMode then "[" ++ Nat.repr g ++ ","++ Nat.repr b ++ "]" else "")
       else
       match current.telescopes[gIndex - g - 1]? with
       | some mX => match (extractTel mX)[b]? with
-        | some a => (extractName a) ++ "[" ++ Nat.repr g ++ ","++ Nat.repr b ++ "]"
-        | none => "???" ++ "[" ++ Nat.repr g ++ ","++ Nat.repr b ++ "]"
-      | none => "???" ++ "[" ++ Nat.repr g ++ ","++ Nat.repr b ++ "]"
-    | metaAPP m1 m2 => "(" ++ metaTmFormat current m1 ++ ") (" ++ metaTmFormat current m2 ++ ")"
-    | metaTRANSP m1 m2 => "(" ++ metaTmFormat current m2 ++ ") #⟨" ++ metaTm.toString m1 ++ "⟩"
+        | some a => (extractName a) ++ (if current.rawMode then "[" ++ Nat.repr g ++ ","++ Nat.repr b ++ "]" else "")
+        | none => "???" ++ (if current.rawMode then "[" ++ Nat.repr g ++ ","++ Nat.repr b ++ "]" else "")
+      | none => "???" ++ (if current.rawMode then "[" ++ Nat.repr g ++ ","++ Nat.repr b ++ "]" else "")
+    | metaAPP m1 m2 => mkParen (metaTmFormat current m1) ++ " " ++ mkParen (metaTmFormat current m2)
+    | metaTRANSP m1 m2 =>  mkParen (metaTmFormat current m2) ++ " #⟨" ++ metaTm.toString m1 ++ "⟩"
 
     def metaArgFormat (current : st) : metaArg → String
-    | metaImpl i mt mX => "{" ++ i ++ "=" ++ mt.toString ++ " : " ++ metaTmFormat current mX ++ "}"
-    | metaExpl i mt mX => "(" ++ i ++ "=" ++ mt.toString ++ " : " ++ metaTmFormat current mX ++ ")"
-    | metaAnon mt mX => "_=" ++ mt.toString ++ " : " ++ metaTmFormat current mX
+    | metaImpl i mt mX => "{" ++ i ++ (if current.rawMode then "=" ++ mt.toString else "") ++ " : " ++ metaTmFormat current mX ++ "}"
+    | metaExpl i mt mX => "(" ++ i ++ (if current.rawMode then "=" ++ mt.toString else "") ++ " : " ++ metaTmFormat current mX ++ ")"
+    | metaAnon mt mX => "_" ++ (if current.rawMode then "=" ++ mt.toString else "") ++ " : " ++ metaTmFormat current mX
 
     def formatList (ind : Nat) : List Format → Format
     | [] => ""
@@ -353,7 +353,11 @@ namespace elabState
         return text $ "expected " ++ s1 ++ ", got " ++ s2
     | errType2 s1 m1 s2 m2 => do
         let current ← get
-        return text $ suberror ++ ": Type mismatch: " ++ s1 ++ " is element of " ++ metaTmFormat current m1 ++ ", " ++ s2 ++ " is element of " ++ metaTmFormat current m2 ++ "."
+        return (text $ suberror ++ ": Type mismatch: ")
+          ++ (nest 3 <| (align true) ++ s1 ++ " is element of ")
+          ++ (nest 5 <| (align true) ++ metaTmFormat current m1 ++ ", ")
+          ++ (nest 3 <| (align true) ++ s2 ++ " is element of ")
+          ++ (nest 5 <| (align true) ++ metaTmFormat current m2 ++ ".")
     | errOpen mt mX => do
         let current ← get
         let ts := metaTmFormat current mt
@@ -389,44 +393,34 @@ namespace elabState
 
   end failure
 
-    def stTest : st := ⟨["Foo","Bar"],[metaUU [metaExpl "w" (metaLOC 1 0) (metaGLOB 2)],metaUU []],some "Nat",[metaExpl "x" (metaLOC 0 0) (metaGLOB 2),metaExpl "y" (metaLOC 0 1) (metaGLOB 1),metaAnon  (metaLOC 0 2) (metaGLOB 2)]⟩
 
-    def stEmpty : st := ⟨[],[],none,[]⟩
+    def extendMain (finalT : metaTy) : StateT st MetaM Unit := do
+      let current ← get
+      let theName ← optFail "getting name for extension" current.currentName
+      set (st.mk (theName::current.topnames) (finalT::current.telescopes) none [] current.rawMode)
 
-  def extendMain (finalT : metaTy) : StateT st MetaM Unit := do
-    let current ← get
-    let theName ← optFail "getting name for extension" current.currentName
-    set (st.mk (theName::current.topnames) (finalT::current.telescopes) none [])
+    def extendTel (newArgMark : metaArgMarker) : StateT st MetaM Unit := do
+      let current ← get
+      let gIndex := current.topnames.length
+      let newArg := match newArgMark with
+        | mkImpl i mX => metaImpl i (metaLOC gIndex 0) (localWkTm mX)
+        | mkExpl i mX => metaExpl i (metaLOC gIndex 0) (localWkTm mX)
+        | mkAnon mX => metaAnon (metaLOC gIndex 0) (localWkTm mX)
+      set (st.mk current.topnames current.telescopes current.currentName (newArg::List.map localWkArg current.currentTel) current.rawMode)
 
-  def extendTel (newArgMark : metaArgMarker) : StateT st MetaM Unit := do
-    let current ← get
-    let gIndex := current.topnames.length
-    let newArg := match newArgMark with
-      | mkImpl i mX => metaImpl i (metaLOC gIndex 0) (localWkTm mX)
-      | mkExpl i mX => metaExpl i (metaLOC gIndex 0) (localWkTm mX)
-      | mkAnon mX => metaAnon (metaLOC gIndex 0) (localWkTm mX)
-    set (st.mk current.topnames current.telescopes current.currentName (newArg::List.map localWkArg current.currentTel))
+    def setCurrentName (theName : String) : StateT st MetaM Unit := do
+      let current ← get
+      set (st.mk current.topnames current.telescopes (some theName) current.currentTel current.rawMode)
 
-  def setCurrentName (theName : String) : StateT st MetaM Unit := do
-    let current ← get
-    set (st.mk current.topnames current.telescopes (some theName) current.currentTel)
-
-  def getCurrentTel : StateT st MetaM (List metaArg) := do
-    let current ← get
-    return current.currentTel
+    def getCurrentTel : StateT st MetaM (List metaArg) := do
+      let current ← get
+      return current.currentTel
 
     def varTelLkup (key : String) : StateT st MetaM (metaTm × metaTy × Nat) := do
         let resO ← varTelLkup_core key
         match resO with
           | some z => return z
           | none => elabFail "" (errorCode.errUnknownVar key)
-        -- let current ← get
-        -- let gIndex := current.topnames.length
-        -- match findIdxElem (argMatch key) current.currentTel with
-        -- | some (idx,a) => return (metaLOC gIndex idx,metaEl [] $ extractMetaSort a,idx)
-        -- | none => match findIdxElem (λ (s,_) => s == key) (List.zip current.topnames current.telescopes) with
-        --   | some (idx,_,T) => return (metaGLOB (gIndex - idx - 1),T,idx + current.currentTel.length)
-        --   | none =>
 
 end elabState
 
@@ -446,47 +440,37 @@ namespace elaborator
   -- Failure-prone helper functions
   section failureHelpers
 
-    -- TODO: reimplement using List.getLast? and List.dropLast
-    def initLast {A : Type} : List A → MetaM (List A × A)
-    | [] => throwError "Shouldn't happen"
-    | [x] => return ([],x)
-    | (x::xs) => (λ (res,f) => (x::res,f)) <$> initLast xs
+    def initLast {A : Type} (l : List A) : Option (List A × A) := do
+        let last ← List.getLast? l
+        let init := List.dropLast l
+        return (init,last)
 
     def metaTyMatch (suberror : String): metaArg → metaTm → metaTy → StateT st MetaM metaTy
     | metaImpl _ _ m1, m2, res => if m1 = m2 then return res else elabFail suberror (errorCode.errType m1 m2)
     | metaExpl _ _ m1, m2, res => if m1 = m2 then return res else elabFail suberror (errorCode.errType m1 m2)
     | metaAnon _ m1, m2, res => if m1 = m2 then return res else elabFail suberror (errorCode.errType m1 m2)
 
-    def locSubstTy (t : metaTm) : metaTy → MetaM (metaTy × metaArg)
-    | metaEl [] _ => throwError "Tried to perform dummy substitution"
-    | metaEq [] _ _ _ => throwError "Tried to perform dummy substitution"
-    | metaUU [] => throwError "Tried to perform dummy substitution"
+    def locSubstTy (t : metaTm) : metaTy → StateT st MetaM (metaTy × metaArg)
     | metaUU args => do
-        let (rest,arg) ← initLast args
+        let (rest,arg) ← optFail "Tried to perform dummy substitution" (initLast args)
         let s := extractMetaTm arg
         return (metaUU (List.map (metaSubstArg s t) rest),arg)
     | metaEl args finalT => do
-        let (rest,arg) ← initLast args
+        let (rest,arg) ← optFail "Tried to perform dummy substitution" (initLast args)
         let s := extractMetaTm arg
         return (metaEl (List.map (metaSubstArg s t) rest) (metaSubstTm s t finalT),arg)
     | metaEq args finalT ms mt => do
-        let (rest,arg) ← initLast args
+        let (rest,arg) ← optFail "Tried to perform dummy substitution" (initLast args)
         let s := extractMetaTm arg
         return (metaEq (List.map (metaSubstArg s t) rest) (metaSubstTm s t finalT) (metaSubstTm s t ms) (metaSubstTm s t mt),arg)
 
     partial def metaTyApp (fnTm : metaTm) (fnTy : metaTy) (argTm : metaTm) (argTy : metaTy) : StateT st MetaM metaTy := match (fnTy,argTy) with
     | (_, metaUU _) => elabFail "Bad argument" (errorCode.errKind argTm argTy "a sort" "an element")
-    --throwError ("Error: applied function to sort argument")
     | (_,  metaEq _ _ _ _) => elabFail "Bad argument" (errorCode.errKind argTm argTy "an equation" "an element")
-    --throwError ("Error: applied function to equation argument")
     | (_,  metaEl (_::_) _) => elabFail "Bad argument" (errorCode.errOpen argTm argTy)
-    --throwError ("Error: applied function to open argument")
     | (metaUU [], _) => elabFail "Bad function" (errorCode.errTooManyArgs fnTm fnTy)
-    --throwError "Too many arguments"
     | (metaEq [] _ _ _, _) => elabFail "Bad function" (errorCode.errTooManyArgs fnTm fnTy)
-    --throwError "Too many arguments"
     | (metaEl [] _, _) => elabFail "Bad function" (errorCode.errTooManyArgs fnTm fnTy)
-    --throwError "Too many arguments"
     | (metaUU args, metaEl [] y) => do
         let (finalT',x) ← locSubstTy argTm (metaUU args)
         metaTyMatch "Bad application" x y finalT'
@@ -501,17 +485,11 @@ namespace elaborator
     partial def failIfBadTransp (tm1 tm2 : metaTm) (T1 T2 : metaTy) : StateT st MetaM metaTy := match (T1,T2) with
     | (metaEq [] _ ms mt, metaEl [] mq) => return (metaEl [] $ metaSubstTm ms mt mq)
     | (metaEq (_::_) _ _ _, metaEl _ _) => elabFail "Bad transport" (errorCode.errOpen tm1 T1)
-    -- throwError ("Error: Bad transport: " ++ tm1 ++ " has open variables. Did you forget an argument?." ++ message)
     | (metaEq [] _ _ _, metaEl _ _) => elabFail "Bad transport" (errorCode.errOpen tm2 T2)
-    --throwError ("Error: Bad transport: " ++ tm2 ++ " has open variables. Did you forget an argument?." ++ message)
     | (metaEl _ _ , _) => elabFail "Bad transport" (errorCode.errKind tm1 T1 "an element" "an equality")
-    --throwError ("Error: Bad transport: " ++ tm1 ++ " is an element, not an equality." ++ message)
     | (metaUU _ , _) =>  elabFail "Bad transport" (errorCode.errKind tm1 T1 "a sort" "an equality")
-    --throwError ("Error: Bad transport: " ++ tm1 ++ " is a sort, not an equality." ++ message)
     | (_, metaEq _ _ _ _)  => elabFail "Bad transport" (errorCode.errKind tm2 T2 "an equality" "an element")
-    --throwError ("Error: Bad transport: " ++ tm2 ++ " is an equality, not an element." ++ message)
     | (_, metaUU _) => elabFail "Bad transport" (errorCode.errKind tm2 T2 "a sort" "an element")
-    --throwError ("Error: Bad transport: " ++ tm2 ++ " is a sort, not an element." ++ message)
 
     partial def failIfNotU (suberror : String) (theTm : metaTm) (theTy : metaTy) : StateT st MetaM Unit := match theTy with
     | metaUU [] => return ()
@@ -522,16 +500,10 @@ namespace elaborator
     partial def failIfBadEq (tm1 tm2 : metaTm) (T1 T2 : metaTy) : StateT st MetaM metaTm := match (T1,T2) with
     | (metaEl [] mX1, metaEl [] mX2) => if mX1 = mX2 then return mX1 else
     elabFail "Bad eq" (errorCode.errType2 "LHS" mX1 "RHS" mX2)
-    --throwError ("Error: Bad eq: term " ++ tm1 ++ " is an element of " ++ metaTm.toString mt1 ++ " but " ++ tm2 ++ " is an element of " ++ metaTm.toString mt2)
     | (metaEl (_::_) _, metaEl _ _) => elabFail "Bad eq" (errorCode.errOpen tm1 T1)
-    -- throwError ("Error: Bad eq: term " ++ tm1 ++ " has open variables")
     | (metaEl _ _, metaEl _ _) => elabFail "Bad eq" (errorCode.errOpen tm2 T2)
-    --throwError ("Error: Bad eq: term" ++ tm2 ++ " has open variables")
-    -- | (metaEl _ _, metaEl _ _) => throwError ("Error: Bad eq: terms " ++ tm1 ++ " and " ++ tm2 ++ " have open variables")
     | (metaUU _, _) => elabFail "Bad eq" (errorCode.errKind tm1 T1 "a sort" "an element")
-    --throwError ("Error: Bad eq: term " ++ tm1 ++ " is a sort")
     | (metaEq _ _ _ _, _) => elabFail "Bad eq" (errorCode.errKind tm1 T1 "an equality" "an element")
-    --throwError ("Error: Bad eq: term " ++ tm1 ++ " is an equality (" ++ ms.toString ++ " ≡ " ++ mt.toString ++ " in " ++ mX.toString ++")")
     | (_, metaUU _) => elabFail "Bad eq" (errorCode.errKind tm2 T2 "a sort" "an element")
     | (_, metaEq _ _ _ _) => elabFail "Bad eq" (errorCode.errKind tm2 T2 "an equality" "an element")
 
@@ -551,11 +523,7 @@ namespace elaborator
           let resT ← mkAppM ``preAPP #[t1,t2]
           return (resT, metaAPP mt1 mt2,mRes)
     | `(gat_tm| $i:ident ) => do
-          let (mb,m,b) ← varTelLkup i.getId.toString --("Lookup \"" ++ i.getId.toString ++ "\"; ")
-          -- let (b,mb) ← (match bv with
-          --   | LOC b => return (b, metaLOC gIndex b)
-          --   | GLOB b => return ((gIndex - b - 1) + List.length TT,metaGLOB b))
-            -- | GLOB 0 => elabFail (errorCode.errOther "Self reference"))
+          let (mb,m,b) ← varTelLkup i.getId.toString
           let res ← mkAppM ``preVAR #[mkNatLit b]
           return (res,mb,m)
     | `(gat_tm| $g1 #⟨ $g2 ⟩ ) => do
@@ -637,13 +605,13 @@ namespace elaborator
         let res ← mkAppM ``GATdata.mk  #[.const ``preEMPTY [],emptyStrList,emptyLArgList]
         return res
     | `(condata_outer| [rawGAT| $s:con_inner ] ) => do
-        let (resCon,VV) ← StateT.run (elabGATCon_core s) stEmpty
+        let (resCon,VV) ← StateT.run (elabGATCon_core s) (stEmpty true)
         let topList ← mkListLit (.const ``String []) (List.map mkStrLit VV.topnames)
         let telescopes ← List.mapM mkMetaTyLit VV.telescopes >>= mkListLit (.const ``metaOut [])
         let res ← mkAppM ``rawGAT.mk #[resCon,topList,telescopes]
         return res
     | `(condata_outer| [GATdata| $s:con_inner ] ) => do
-        let (resCon,VV) ← StateT.run (elabGATCon_core s) stEmpty
+        let (resCon,VV) ← StateT.run (elabGATCon_core s) (stEmpty false)
         let topList ← mkListLit (.const ``String []) (List.map mkStrLit (List.reverse VV.topnames))
         let telescopes ← List.mapM mkMetaTyLit' (List.reverse VV.telescopes) >>= mkListLit (.const ``StringOptList [])
         let res ← mkAppM ``GATdata.mk #[resCon,topList,telescopes]

@@ -11,7 +11,7 @@ def AlgStr_Tm : List String → preTm → String
 | As::_, preVAR 0 => As
 | _::ss, preVAR (succ n) => AlgStr_Tm ss (preVAR n)
 | topnames, preAPP f t =>
-    AlgStr_Tm topnames f ++ " " ++ paren (AlgStr_Tm topnames t)
+    AlgStr_Tm topnames f ++ " " ++ mkParen (AlgStr_Tm topnames t)
 | topnames, preTRANSP _ s => AlgStr_Tm topnames s
 | _, _ => ""
 

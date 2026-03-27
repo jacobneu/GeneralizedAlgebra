@@ -12,12 +12,12 @@ def dalg s := s ++ "ᴰ"
 
 def DAlgStr_Tm : List String → preTm → String
 | topnames, preVAR n => dalg (AlgStr_Tm topnames (preVAR n))
-| topnames, preAPP f s => DAlgStr_Tm topnames f ++ " " ++ paren (AlgStr_Tm topnames s) ++ " " ++ paren (DAlgStr_Tm topnames s)
+| topnames, preAPP f s => DAlgStr_Tm topnames f ++ " " ++ mkParen (AlgStr_Tm topnames s) ++ " " ++ mkParen (DAlgStr_Tm topnames s)
 | topnames, preTRANSP _ s => DAlgStr_Tm topnames s
 
 def DAlgStr_Ty : List String → List String → String → preTy → String
 | _, _, algS, preUU => algS ++ " → Set"
-| topnames, _, algS, preEL tt => DAlgStr_Tm topnames tt ++ " " ++ paren algS
+| topnames, _, algS, preEL tt => DAlgStr_Tm topnames tt ++ " " ++ mkParen algS
 | topnames, t::ts, algS, prePI X Y =>
 "(" ++ t ++ " : " ++ AlgStr_Tm topnames X ++ ") → (" ++ dalg t ++ " : " ++ DAlgStr_Tm topnames X ++ " " ++ t ++ ") → " ++ DAlgStr_Ty (t::topnames) ts (algS ++ " " ++ t) Y
 | topnames, _, _, preEQ s t => DAlgStr_Tm topnames s ++ " = " ++ DAlgStr_Tm topnames t
