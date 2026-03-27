@@ -8,6 +8,7 @@ inductive preTm : Type where
 | preVAR : Nat → preTm
 | preAPP : preTm → preTm → preTm
 | preTRANSP : preTm → preTm → preTm
+| holeTm : preTm
 
 inductive preTy : Type where
 | preUU : preTy
@@ -27,6 +28,7 @@ def preWkTmArr : Nat → preTm → preTm
 | a, preVAR n => if n < a then preVAR n else preVAR (succ n)
 | a, preAPP f t => preAPP (preWkTmArr a f) (preWkTmArr a t)
 | a, preTRANSP eq t => preTRANSP (preWkTmArr a eq) (preWkTmArr a t)
+| _, holeTm => holeTm
 
 def preWkTyArr : Nat → preTy → preTy
 | _, preUU => preUU
@@ -73,6 +75,7 @@ def substTm : Nat → preTm → preTm → preTm
     | Ordering.gt => preVAR (n - 1)
 | a, s, preAPP f t => preAPP (substTm a s f) (substTm a s t)
 | a, s, preTRANSP eq t => preTRANSP (substTm a s eq) (substTm a s t)
+| _, s, holeTm => s
 
 def substTy : Nat → preTm → preTy → preTy
 | _, _, preUU => preUU
