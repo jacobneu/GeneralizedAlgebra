@@ -17,6 +17,7 @@ def preTmrepr : preTm → String
 | preAPP f t =>   mkParen (preTmrepr f) ++ " @ " ++ mkParen (preTmrepr t)
 | preVAR n => Nat.repr n
 | preTRANSP eq y => "transp " ++ mkParen (preTmrepr eq) ++ " " ++ mkParen (preTmrepr y)
+| holeTm => "?"
 
 def preTyrepr : preTy → String
 | preUU => "U"
