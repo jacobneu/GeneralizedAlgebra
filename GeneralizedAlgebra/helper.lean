@@ -27,12 +27,4 @@ def parensUnnecessary (s : String) : Bool :=
    Option.isSome (stripOuterParen s >>= List.foldl parenCounter (some 0))
 || (Option.isNone $ List.find? Char.isWhitespace $ String.toList s)
 
-def paren (s:String):String := if parensUnnecessary s then s else "("++s++")"
-
-def replaceAllWithSpace (asSpace : List String) (s : String) :String :=
-  List.foldl (λ as curr => curr.replace as " ") s asSpace
-
-def paren' (sep : String) (sl : List String) (asSpace : List String := []): String :=
-  if parensUnnecessary (String.intercalate " " (List.map (replaceAllWithSpace asSpace) sl))
-  then String.intercalate sep sl
-  else "("++ String.intercalate sep sl ++")"
+def mkParen (s:String):String := if parensUnnecessary s then s else "("++s++")"
