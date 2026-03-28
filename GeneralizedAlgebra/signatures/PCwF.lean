@@ -1,4 +1,4 @@
-import GeneralizedAlgebra.nouGAT
+import GeneralizedAlgebra.nouGAT_eliminate
 
 def 𝔓ℭ𝔴𝔉_data := [GATdata|
         Con : U,

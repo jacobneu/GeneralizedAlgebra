@@ -1,4 +1,4 @@
-import GeneralizedAlgebra.nouGAT
+import GeneralizedAlgebra.nouGAT_eliminate
 
 def ℭ𝔞𝔱_data  := [GATdata|
     Obj : U,
