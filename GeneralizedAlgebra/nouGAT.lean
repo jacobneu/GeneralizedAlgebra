@@ -514,44 +514,68 @@ namespace elaborator
 
   end failureHelpers
 
+
+  structure eliminator where
+    (Con_D : Type)
+    (Ty_D : Type)
+    (Tm_D : Type)
+    (Empty_D : Con_D)
+    (Extend_D : Con_D → Ty_D → Con_D)
+    (UU_D : Ty_D)
+    (El_D : Tm_D → Ty_D)
+    (Pi_D : Tm_D → Ty_D → Ty_D)
+    (Eq_D : Tm_D → Tm_D → Ty_D)
+    (Var_D : Nat → Tm_D)
+    (App_D : Tm_D → Tm_D → Tm_D)
+    (Transp_D : Tm_D → Tm_D → Tm_D)
+
+  def litEmpty_D : Expr → Expr := .app (.const ``eliminator.Empty_D [])
+  def litExtend_D : Expr → Expr := .app (.const ``eliminator.Extend_D [])
+  def litUU_D : Expr → Expr := .app (.const ``eliminator.UU_D [])
+  def litEl_D : Expr → Expr := .app (.const ``eliminator.El_D [])
+  def litPi_D : Expr → Expr := .app (.const ``eliminator.Pi_D [])
+  def litEq_D : Expr → Expr := .app (.const ``eliminator.Eq_D [])
+  def litApp_D : Expr → Expr := .app (.const ``eliminator.App_D [])
+  def litTransp_D : Expr → Expr := .app (.const ``eliminator.Transp_D [])
+  def litVar_D : Expr → Expr := .app (.const ``eliminator.Var_D [])
+
+
   section mainFunctions
+
 
     instance  : Inhabited (Syntax → StateT st MetaM (Expr × metaTm × metaTy)) where
       default _ := pure (.const ``true [],metaGLOB 0,metaUU, [])
 
-    partial def elabGATTm : Syntax → StateT st MetaM (Expr × metaTm × metaTy)
-    | `(gat_tm| ( $g:gat_tm ) ) => elabGATTm g
+    partial def elabGATTm (Elim : Expr) : Syntax → StateT st MetaM (Expr × metaTm × metaTy)
+    | `(gat_tm| ( $g:gat_tm ) ) => elabGATTm Elim g
     | `(gat_tm| $g1:gat_tm $g2:gat_tm ) => do
-          let (t1,mt1,mA1) ← elabGATTm g1
-          let (t2,mt2,mA2) ← elabGATTm g2
+          let (t1,mt1,mA1) ← elabGATTm Elim g1
+          let (t2,mt2,mA2) ← elabGATTm Elim g2
           let mRes ← metaTyApp mt1 mA1 mt2 mA2
-          let resT ← mkAppM ``preAPP #[t1,t2]
-          return (resT, metaAPP mt1 mt2,mRes)
+          return (mkAppN (litApp_D Elim) #[t1,t2], metaAPP mt1 mt2,mRes)
     | `(gat_tm| $i:ident ) => do
           let (mb,m,b) ← varTelLkup i.getId.toString
-          let res ← mkAppM ``preVAR #[mkNatLit b]
-          return (res,mb,m)
+          return (mkAppN (litVar_D Elim) #[mkNatLit b],mb,m)
     | `(gat_tm| $g1 #⟨ $g2 ⟩ ) => do
-          let (t1,mt1,mX1) ← elabGATTm g1
-          let (t2,mt2,mX2) ← elabGATTm g2
+          let (t1,mt1,mX1) ← elabGATTm Elim g1
+          let (t2,mt2,mX2) ← elabGATTm Elim g2
           let mresT ← failIfBadTransp mt2 mt1 mX2 mX1
-          let resT ← mkAppM ``preTRANSP #[t2,t1]
-          return (resT,metaTRANSP mt2 mt1,mresT)
+          return (mkAppN (litTransp_D Elim) #[t2,t1],metaTRANSP mt2 mt1,mresT)
     | _ => throwError "TmFail"
 
-    partial def elabGATArg : Syntax → StateT st MetaM Expr
+    partial def elabGATArg (Elim : Expr) : Syntax → StateT st MetaM Expr
     | `(gat_arg| ( $i:ident : $g:gat_tm ) ) => do
-      let (t,mt,mX) ← elabGATTm g
+      let (t,mt,mX) ← elabGATTm Elim g
       failIfNotU "Failed to create argument" mt mX
       extendTel (mkExpl i.getId.toString mt)
       return t
     | `(gat_arg| ( _ : $g:gat_tm ) ) => do
-      let (t,mt,mX) ← elabGATTm g
+      let (t,mt,mX) ← elabGATTm Elim g
       failIfNotU "Failed to create argument" mt mX
       extendTel (mkAnon mt)
       return t
     | `(gat_arg| $g:gat_tm ) => do
-      let (t,mt,mX) ← elabGATTm g
+      let (t,mt,mX) ← elabGATTm Elim g
       failIfNotU "Failed to create argument" mt mX
       extendTel (mkAnon mt)
       return t
@@ -560,60 +584,54 @@ namespace elaborator
     instance  : Inhabited (Syntax → StateT st MetaM (Expr × metaTyMarker)) where
       default _ := pure (.const ``true [],metaUU)
 
-    partial def elabGATTy : Syntax → StateT st MetaM (Expr × metaTyMarker)
+    partial def elabGATTy (Elim : Expr) : Syntax → StateT st MetaM (Expr × metaTyMarker)
     | `(gat_ty| U ) => do
-        return (.const ``preUU [],metaUU)
+        return (litUU_D Elim,metaUU)
     | `(gat_ty| $x:gat_tm ) => do
-        let (t,mt,mX) ← elabGATTm x
+        let (t,mt,mX) ← elabGATTm Elim x
         failIfNotU "Bad El" mt mX
-        let T ← mkAppM ``preEL #[t]
-        return (T,metaEl mt)
+        return (mkAppN (litEl_D Elim) #[t],metaEl mt)
     | `(gat_ty| $T:gat_arg ⇒ $T':gat_ty) => do
-        let domain ← elabGATArg T
-        let (codomain,finalT) ← elabGATTy T'
-        let result ← mkAppM  ``prePI #[domain,codomain]
-        return (result,finalT)
+        let domain ← elabGATArg Elim T
+        let (codomain,finalT) ← elabGATTy Elim T'
+        return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
     | `(gat_ty| $t1:gat_tm ≡ $t2:gat_tm) => do
-        let (tt1,mt1,mX1) ← elabGATTm t1
-        let (tt2,mt2,mX2) ← elabGATTm t2
+        let (tt1,mt1,mX1) ← elabGATTm Elim t1
+        let (tt2,mt2,mX2) ← elabGATTm Elim t2
         let mX ← failIfBadEq mt1 mt2 mX1 mX2
-        let T ← mkAppM ``preEQ #[tt1,tt2]
-        return (T,metaEq mX mt1 mt2)
+        return (mkAppN (litEq_D Elim) #[tt1,tt2],metaEq mX mt1 mt2)
     | _ => throwError "TyFail"
 
 
-    partial def elabGATCon_core : Syntax → StateT st MetaM Expr
+    partial def elabGATCon_core (Elim : Expr) : Syntax → StateT st MetaM Expr
     | `(con_inner| $rest:con_inner , $i:ident : $g:gat_ty ) => do
-        let restCon ← elabGATCon_core rest
+        let restCon ← elabGATCon_core Elim rest
         setCurrentName i.getId.toString
-        let (T,finalT) ← elabGATTy g
-        let newCtx ← mkAppM ``preEXTEND #[restCon, T]
+        let (T,finalT) ← elabGATTy Elim g
         extendMain finalT
-        return newCtx
+        return mkAppN (litExtend_D Elim) #[restCon,T]
     | `(con_inner| $i:ident : $g:gat_ty ) => do
         setCurrentName i.getId.toString
-        let (T,finalT) ← elabGATTy g
-        let newCtx ← mkAppM ``preEXTEND #[.const ``preEMPTY [],T]
+        let (T,finalT) ← elabGATTy Elim g
         extendMain finalT
-        return newCtx
+        return mkAppN (litExtend_D Elim) #[litEmpty_D Elim, T]
     | _ => throwError "Con_coreFail"
 
 
-
-    partial def elabGATConData : Syntax → MetaM Expr
+    partial def elabGATConData (Elim : Expr) : Syntax → MetaM Expr
     | `(condata_outer| [GATdata| ] ) => do
         let emptyStrList ← mkListLit (.const ``String []) []
         let emptyLArgList ← mkListLit (.const ``metaArg []) []
-        let res ← mkAppM ``GATdata.mk  #[.const ``preEMPTY [],emptyStrList,emptyLArgList]
+        let res ← mkAppM ``GATdata.mk  #[litEmpty_D Elim,emptyStrList,emptyLArgList]
         return res
     | `(condata_outer| [rawGAT| $s:con_inner ] ) => do
-        let (resCon,VV) ← StateT.run (elabGATCon_core s) (stEmpty true)
+        let (resCon,VV) ← StateT.run (elabGATCon_core Elim s) (stEmpty true)
         let topList ← mkListLit (.const ``String []) (List.map mkStrLit VV.topnames)
         let telescopes ← List.mapM mkMetaTyLit VV.telescopes >>= mkListLit (.const ``metaOut [])
         let res ← mkAppM ``rawGAT.mk #[resCon,topList,telescopes]
         return res
     | `(condata_outer| [GATdata| $s:con_inner ] ) => do
-        let (resCon,VV) ← StateT.run (elabGATCon_core s) (stEmpty false)
+        let (resCon,VV) ← StateT.run (elabGATCon_core Elim s) (stEmpty false)
         let topList ← mkListLit (.const ``String []) (List.map mkStrLit (List.reverse VV.topnames))
         let telescopes ← List.mapM mkMetaTyLit' (List.reverse VV.telescopes) >>= mkListLit (.const ``StringOptList [])
         let res ← mkAppM ``GATdata.mk #[resCon,topList,telescopes]
@@ -622,4 +640,37 @@ namespace elaborator
 
   end mainFunctions
 
-elab g:condata_outer : term => elabGATConData g
+
+    def preElim : eliminator := ⟨
+        preCon,
+        preTy,
+        preTm,
+        preEMPTY,
+        preEXTEND,
+        preUU,
+        preEL,
+        prePI,
+        preEQ,
+        preVAR,
+        preAPP,
+        preTRANSP
+    ⟩
+
+    def preElimLit : Expr :=
+      mkAppN (.const ``eliminator.mk []) #[
+        .app (.const ``eliminator.Con_D []) (.const ``preElim []),
+        .app (.const ``eliminator.Ty_D []) (.const ``preElim []),
+        .app (.const ``eliminator.Tm_D []) (.const ``preElim []),
+        .app (.const ``eliminator.Empty_D []) (.const ``preElim []),
+        .app (.const ``eliminator.Extend_D []) (.const ``preElim []),
+        .app (.const ``eliminator.UU_D []) (.const ``preElim []),
+        .app (.const ``eliminator.El_D []) (.const ``preElim []),
+        .app (.const ``eliminator.Pi_D []) (.const ``preElim []),
+        .app (.const ``eliminator.Eq_D []) (.const ``preElim []),
+        .app (.const ``eliminator.Var_D []) (.const ``preElim []),
+        .app (.const ``eliminator.App_D []) (.const ``preElim []),
+        .app (.const ``eliminator.Transp_D []) (.const ``preElim [])
+      ]
+
+
+elab g:condata_outer : term => elabGATConData preElimLit g
