@@ -6,49 +6,6 @@ open preTy preTm
 open Std Format
 open Nat
 
-declare_syntax_cat gat_ty
-syntax "U"       : gat_ty
-syntax "(" gat_ty ")" : gat_ty
-
-declare_syntax_cat gat_tm
-syntax ident     : gat_tm
-syntax "(" gat_tm ")" : gat_tm
-syntax:60 gat_tm:60 gat_tm:61 : gat_tm
-syntax:58 gat_tm:58  "#⟨" gat_tm:59 "⟩" : gat_tm
-syntax gat_tm : gat_ty
-syntax gat_tm " ≡ " gat_tm : gat_ty
-
-declare_syntax_cat gat_decl
-syntax ident ":" gat_ty : gat_decl
-
-declare_syntax_cat gat_arg
-syntax "(" ident ":" gat_tm ")" : gat_arg
-syntax "(" "_" ":" gat_tm ")" : gat_arg
--- syntax "{" ident ":" gat_tm "}" : gat_arg
-syntax gat_tm : gat_arg
-
-syntax gat_arg "⇒" gat_ty : gat_ty
-
-
--- declare_syntax_cat ident_list
--- syntax ident : ident_list
--- syntax "_" : ident_list
--- syntax ident_list "," "_" : ident_list
--- syntax ident_list "," ident : ident_list
-
-declare_syntax_cat con_inner
-syntax gat_decl : con_inner
-syntax con_inner "," gat_decl : con_inner
--- syntax "include" ident "as" "(" ident_list ");" con_inner : con_inner
--- declare_syntax_cat con_outer
--- syntax "⦃" "⦄" : con_outer
--- syntax "⦃" con_inner "⦄" : con_outer
-
-declare_syntax_cat condata_outer
-syntax "[GATdata|" "]" : condata_outer
-syntax "[GATdata|" con_inner "]" : condata_outer
-syntax "[rawGAT|" con_inner "]" : condata_outer
-
 
 namespace nouGATmeta
 
@@ -72,11 +29,13 @@ namespace nouGATmeta
     | metaAnon : metaTm → metaTm → metaArg
     open metaArg
 
-    inductive metaTy : Type where
-    | metaUU : List metaArg → metaTy
-    | metaEl : List metaArg → metaTm → metaTy
-    | metaEq : List metaArg → metaTm → metaTm → metaTm → metaTy
-    open metaTy
+    inductive metaTyMarker : Type where
+    | metaUU : metaTyMarker
+    | metaEl : metaTm → metaTyMarker
+    | metaEq : metaTm → metaTm → metaTm → metaTyMarker
+    open metaTyMarker
+
+    def metaTy : Type := metaTyMarker × List metaArg
 
 
   section decEq
@@ -136,10 +95,7 @@ namespace nouGATmeta
     | metaExpl _ _ m => m
     | metaAnon _ m => m
 
-    def extractTel : metaTy → List metaArg
-    | metaUU l => l
-    | metaEq l _ _ _=> l
-    | metaEl l _ => l
+    def extractTel : metaTy → List metaArg := Prod.snd
 
     def extractName : metaArg → String
     | metaImpl i _ _ => i
@@ -170,15 +126,15 @@ namespace nouGATmeta
     | metaExpl i mt mX => metaExpl i mt (metaWkTm mX)
     | metaAnon mt mX => metaAnon mt (metaWkTm mX)
 
-    def metaWkTy
-    | metaEl TT t => metaEl (List.map metaWkArg TT) (metaWkTm t)
-    | metaEq TT X s t => metaEq (List.map metaWkArg TT) (metaWkTm X) (metaWkTm s) (metaWkTm t)
-    | metaUU TT => metaUU (List.map metaWkArg TT)
+    def metaWkTy : metaTy → metaTy
+    | (metaEl t, TT) => (metaEl (metaWkTm t), List.map metaWkArg TT)
+    | (metaEq X s t,TT) => (metaEq (metaWkTm X) (metaWkTm s) (metaWkTm t),List.map metaWkArg TT)
+    | (metaUU, TT) => (metaUU, List.map metaWkArg TT)
 
     def metaWkTySortOnly
-    | metaEl TT t => metaEl (List.map metaWkSortOnly TT) t
-    | metaEq TT X s t => metaEq (List.map metaWkSortOnly TT) (metaWkTm X) s t
-    | metaUU TT => metaUU (List.map metaWkSortOnly TT)
+    | (metaEl t, TT) => (metaEl t, List.map metaWkSortOnly TT)
+    | (metaEq X s t, TT) => (metaEq (metaWkTm X) s t, List.map metaWkSortOnly TT)
+    | (metaUU, TT) => (metaUU, List.map metaWkSortOnly TT)
 
   -- Local weakening functions
     def localWkTm
@@ -231,13 +187,13 @@ namespace nouGATmeta
     def metaOut' := String × metaTm
 
     def mkMetaTyLit : metaTy → MetaM Expr -- :: String × List (String × metaTm)
-    | metaUU TT => do
+    | (metaUU, TT) => do
         let mTT ← List.mapM mkMetaArgLit TT >>= mkListLit (.const ``metaOut' [])
         mkAppM ``Prod.mk #[mkStrLit "UU",mTT]
-    | metaEq TT X s t => do
+    | (metaEq X s t, TT) => do
         let mTT ← List.mapM mkMetaArgLit TT >>= mkListLit (.const ``metaOut' [])
         mkAppM ``Prod.mk #[mkStrLit $ "Eq _(" ++ metaTm.toString X ++")(" ++ metaTm.toString s ++ ") (" ++ metaTm.toString t ++ ")",mTT]
-    | metaEl TT t => do
+    | (metaEl t, TT) => do
         let mTT ← List.mapM mkMetaArgLit TT >>= mkListLit (.const ``metaOut' [])
         mkAppM ``Prod.mk #[mkStrLit $ "El (" ++ metaTm.toString t ++ ")",mTT]
 
@@ -251,9 +207,9 @@ namespace nouGATmeta
     def StringOptList : Type := List StringOpt
 
     def mkMetaTyLit' : metaTy → MetaM Expr -- :: List (Option String)
-    | metaUU TT => mkListLit (.const ``StringOpt []) (List.map mkMetaArgLit' (List.reverse TT))
-    | metaEq TT _ _ _ => mkListLit (.const ``StringOpt []) (List.map mkMetaArgLit' (List.reverse TT))
-    | metaEl TT _ => mkListLit (.const ``StringOpt []) (List.map mkMetaArgLit' (List.reverse TT))
+    | (metaUU, TT) => mkListLit (.const ``StringOpt []) (List.map mkMetaArgLit' (List.reverse TT))
+    | (metaEq _ _ _, TT) => mkListLit (.const ``StringOpt []) (List.map mkMetaArgLit' (List.reverse TT))
+    | (metaEl _, TT) => mkListLit (.const ``StringOpt []) (List.map mkMetaArgLit' (List.reverse TT))
   end literals
 
 end nouGATmeta
@@ -261,7 +217,7 @@ end nouGATmeta
 namespace elabState
 
   open nouGATmeta
-  open metaTm metaTy metaArg metaArgMarker
+  open metaTm metaTyMarker metaArg metaArgMarker
 
     structure st where
       (topnames : List String)
@@ -302,33 +258,19 @@ namespace elabState
     | (x::y::zs) => (nest ind <| (align true) ++ x) ++ formatList ind (y::zs)
 
     def metaTyFormatDisp (current : st) (ind : Nat) (theTy : metaTy) (outername := "_") : Format := match theTy with
-    | metaEl TT mX => formatList ind ((List.map (text ∘ metaArgFormat current) (List.reverse TT)) ++ [text " ⊢ ",outername ++ " : " ++ (metaTmFormat current mX)])
-    | metaUU TT => formatList ind ((List.map (text ∘ metaArgFormat current) (List.reverse TT)) ++ [text " ⊢ ",outername ++ " : U"])
-    | metaEq TT _ ms mt => formatList ind ((List.map (text ∘ metaArgFormat current) (List.reverse TT)) ++ [text " ⊢ ",outername ++ " : " ++ (metaTmFormat current ms) ++ " = " ++ (metaTmFormat current mt)])
+    | (metaEl mX, TT) => formatList ind ((List.map (text ∘ metaArgFormat current) (List.reverse TT)) ++ [text " ⊢ ",outername ++ " : " ++ (metaTmFormat current mX)])
+    | (metaUU, TT) => formatList ind ((List.map (text ∘ metaArgFormat current) (List.reverse TT)) ++ [text " ⊢ ",outername ++ " : U"])
+    | (metaEq _ ms mt, TT) => formatList ind ((List.map (text ∘ metaArgFormat current) (List.reverse TT)) ++ [text " ⊢ ",outername ++ " : " ++ (metaTmFormat current ms) ++ " = " ++ (metaTmFormat current mt)])
 
     def metaTyFormat (current : st) (theTy : metaTy) (outername := "_") : Format := match theTy with
-    | metaEl TT mX => (String.intercalate ", " (List.map (metaArgFormat current) (List.reverse TT))) ++ " ⊢ " ++ outername ++ " : " ++ (metaTmFormat current mX)
-    | metaUU TT => (String.intercalate ", " (List.map (metaArgFormat current) (List.reverse TT))) ++ " ⊢ " ++ outername ++ " : U"
-    | metaEq TT _ ms mt => (String.intercalate ", " (List.map (metaArgFormat current) (List.reverse TT))) ++ " ⊢ " ++ outername ++ " : " ++ (metaTmFormat current ms) ++ " = " ++ (metaTmFormat current mt)
+    | (metaEl mX, TT) => (String.intercalate ", " (List.map (metaArgFormat current) (List.reverse TT))) ++ " ⊢ " ++ outername ++ " : " ++ (metaTmFormat current mX)
+    | (metaUU, TT) => (String.intercalate ", " (List.map (metaArgFormat current) (List.reverse TT))) ++ " ⊢ " ++ outername ++ " : U"
+    | (metaEq _ ms mt, TT) => (String.intercalate ", " (List.map (metaArgFormat current) (List.reverse TT))) ++ " ⊢ " ++ outername ++ " : " ++ (metaTmFormat current ms) ++ " = " ++ (metaTmFormat current mt)
 
     def previousFormat (current : st) : String × metaTy → Format
     | (s,T) => metaTyFormat current T s
 
   end toString
-
-    def findIdxElem {α} (p : α → Bool) (l : List α) : Option (Nat × α) := do
-      let elem ← List.find? p l
-      let idx ← List.findIdx? p l
-      return (idx,elem)
-
-    def varTelLkup_core (key : String) : StateT st MetaM (Option (metaTm × metaTy × Nat)) := do
-        let current ← get
-        let gIndex := current.topnames.length
-        match findIdxElem (argMatch key) current.currentTel with
-        | some (idx,a) => return (metaLOC gIndex idx,metaEl [] $ extractMetaSort a,idx)
-        | none => match findIdxElem (λ (s,_) => s == key) (List.zip current.topnames current.telescopes) with
-          | some (idx,_,T) => return (metaGLOB (gIndex - idx - 1),T,idx + current.currentTel.length)
-          | none => return none
 
   section failure
     inductive errorCode : Type where
@@ -393,11 +335,11 @@ namespace elabState
 
   end failure
 
-
-    def extendMain (finalT : metaTy) : StateT st MetaM Unit := do
+  section extend
+    def extendMain (finalT : metaTyMarker) : StateT st MetaM Unit := do
       let current ← get
       let theName ← optFail "getting name for extension" current.currentName
-      set (st.mk (theName::current.topnames) (finalT::current.telescopes) none [] current.rawMode)
+      set (st.mk (theName::current.topnames) ((finalT,current.currentTel)::current.telescopes) none [] current.rawMode)
 
     def extendTel (newArgMark : metaArgMarker) : StateT st MetaM Unit := do
       let current ← get
@@ -407,6 +349,23 @@ namespace elabState
         | mkExpl i mX => metaExpl i (metaLOC gIndex 0) (localWkTm mX)
         | mkAnon mX => metaAnon (metaLOC gIndex 0) (localWkTm mX)
       set (st.mk current.topnames current.telescopes current.currentName (newArg::List.map localWkArg current.currentTel) current.rawMode)
+  end extend
+
+  section access
+
+    def findIdxElem {α} (p : α → Bool) (l : List α) : Option (Nat × α) := do
+    let elem ← List.find? p l
+    let idx ← List.findIdx? p l
+    return (idx,elem)
+
+    def varTelLkup_core (key : String) : StateT st MetaM (Option (metaTm × metaTy × Nat)) := do
+        let current ← get
+        let gIndex := current.topnames.length
+        match findIdxElem (argMatch key) current.currentTel with
+        | some (idx,a) => return some (metaLOC gIndex idx,(metaEl (extractMetaSort a),[]),idx)
+        | none => match findIdxElem (λ (s,_) => s == key) (List.zip current.topnames current.telescopes) with
+          | some (idx,_,T) => return (metaGLOB (gIndex - idx - 1),T,idx + current.currentTel.length)
+          | none => return none
 
     def setCurrentName (theName : String) : StateT st MetaM Unit := do
       let current ← get
@@ -421,6 +380,7 @@ namespace elabState
         match resO with
           | some z => return z
           | none => elabFail "" (errorCode.errUnknownVar key)
+  end access
 
 end elabState
 
@@ -428,8 +388,55 @@ namespace elaborator
 
     open nouGATmeta
     open elabState
-    open metaTm metaArg metaArgMarker metaTy
+    open metaTm metaArg metaArgMarker metaTyMarker
     open Nat
+
+  section theSyntax
+
+    declare_syntax_cat gat_ty
+    syntax "U"       : gat_ty
+    syntax "(" gat_ty ")" : gat_ty
+
+    declare_syntax_cat gat_tm
+    syntax ident     : gat_tm
+    syntax "(" gat_tm ")" : gat_tm
+    syntax:60 gat_tm:60 gat_tm:61 : gat_tm
+    syntax:58 gat_tm:58  "#⟨" gat_tm:59 "⟩" : gat_tm
+    syntax gat_tm : gat_ty
+    syntax gat_tm " ≡ " gat_tm : gat_ty
+
+    declare_syntax_cat gat_decl
+    syntax ident ":" gat_ty : gat_decl
+
+    declare_syntax_cat gat_arg
+    syntax "(" ident ":" gat_tm ")" : gat_arg
+    syntax "(" "_" ":" gat_tm ")" : gat_arg
+    -- syntax "{" ident ":" gat_tm "}" : gat_arg
+    syntax gat_tm : gat_arg
+
+    syntax gat_arg "⇒" gat_ty : gat_ty
+
+
+    -- declare_syntax_cat ident_list
+    -- syntax ident : ident_list
+    -- syntax "_" : ident_list
+    -- syntax ident_list "," "_" : ident_list
+    -- syntax ident_list "," ident : ident_list
+
+    declare_syntax_cat con_inner
+    syntax gat_decl : con_inner
+    syntax con_inner "," gat_decl : con_inner
+    -- syntax "include" ident "as" "(" ident_list ");" con_inner : con_inner
+    -- declare_syntax_cat con_outer
+    -- syntax "⦃" "⦄" : con_outer
+    -- syntax "⦃" con_inner "⦄" : con_outer
+
+    declare_syntax_cat condata_outer
+    syntax "[GATdata|" "]" : condata_outer
+    syntax "[GATdata|" con_inner "]" : condata_outer
+    syntax "[rawGAT|" con_inner "]" : condata_outer
+
+  end theSyntax
 
   -- The rawGAT type
     structure rawGAT where
@@ -451,68 +458,66 @@ namespace elaborator
     | metaAnon _ m1, m2, res => if m1 = m2 then return res else elabFail suberror (errorCode.errType m1 m2)
 
     def locSubstTy (t : metaTm) : metaTy → StateT st MetaM (metaTy × metaArg)
-    | metaUU args => do
+    | (metaUU, args) => do
         let (rest,arg) ← optFail "Tried to perform dummy substitution" (initLast args)
         let s := extractMetaTm arg
-        return (metaUU (List.map (metaSubstArg s t) rest),arg)
-    | metaEl args finalT => do
+        return ((metaUU, (List.map (metaSubstArg s t) rest)),arg)
+    | (metaEl finalT, args) => do
         let (rest,arg) ← optFail "Tried to perform dummy substitution" (initLast args)
         let s := extractMetaTm arg
-        return (metaEl (List.map (metaSubstArg s t) rest) (metaSubstTm s t finalT),arg)
-    | metaEq args finalT ms mt => do
+        return ((metaEl (metaSubstTm s t finalT), List.map (metaSubstArg s t) rest),arg)
+    | (metaEq finalT ms mt, args) => do
         let (rest,arg) ← optFail "Tried to perform dummy substitution" (initLast args)
         let s := extractMetaTm arg
-        return (metaEq (List.map (metaSubstArg s t) rest) (metaSubstTm s t finalT) (metaSubstTm s t ms) (metaSubstTm s t mt),arg)
+        return ((metaEq (metaSubstTm s t finalT) (metaSubstTm s t ms) (metaSubstTm s t mt), List.map (metaSubstArg s t) rest),arg)
 
     partial def metaTyApp (fnTm : metaTm) (fnTy : metaTy) (argTm : metaTm) (argTy : metaTy) : StateT st MetaM metaTy := match (fnTy,argTy) with
-    | (_, metaUU _) => elabFail "Bad argument" (errorCode.errKind argTm argTy "a sort" "an element")
-    | (_,  metaEq _ _ _ _) => elabFail "Bad argument" (errorCode.errKind argTm argTy "an equation" "an element")
-    | (_,  metaEl (_::_) _) => elabFail "Bad argument" (errorCode.errOpen argTm argTy)
-    | (metaUU [], _) => elabFail "Bad function" (errorCode.errTooManyArgs fnTm fnTy)
-    | (metaEq [] _ _ _, _) => elabFail "Bad function" (errorCode.errTooManyArgs fnTm fnTy)
-    | (metaEl [] _, _) => elabFail "Bad function" (errorCode.errTooManyArgs fnTm fnTy)
-    | (metaUU args, metaEl [] y) => do
-        let (finalT',x) ← locSubstTy argTm (metaUU args)
+    | (_, metaUU, _) => elabFail "Bad argument" (errorCode.errKind argTm argTy "a sort" "an element")
+    | (_,  metaEq _ _ _, _) => elabFail "Bad argument" (errorCode.errKind argTm argTy "an equation" "an element")
+    | (_,  metaEl  _,(_::_)) => elabFail "Bad argument" (errorCode.errOpen argTm argTy)
+    | ((_, []), _) => elabFail "Bad function" (errorCode.errTooManyArgs fnTm fnTy)
+    | ((metaUU, args), metaEl y, []) => do
+        let (finalT',x) ← locSubstTy argTm (metaUU, args)
         metaTyMatch "Bad application" x y finalT'
-    | (metaEl args finalT, metaEl [] y) => do
-        let (finalT',x) ← locSubstTy argTm (metaEl args finalT)
+    | ((metaEl finalT,args), metaEl y, []) => do
+        let (finalT',x) ← locSubstTy argTm (metaEl finalT, args)
         metaTyMatch "Bad application" x y finalT'
-    | (metaEq args finalT ms mt ,  metaEl [] y) => do
-        let (finalT',x) ← locSubstTy argTm (metaEq args finalT ms mt)
+    | ((metaEq finalT ms mt, args) ,  metaEl y, []) => do
+        let (finalT',x) ← locSubstTy argTm (metaEq finalT ms mt,args)
         metaTyMatch "Bad application" x y finalT'
 
 
     partial def failIfBadTransp (tm1 tm2 : metaTm) (T1 T2 : metaTy) : StateT st MetaM metaTy := match (T1,T2) with
-    | (metaEq [] _ ms mt, metaEl [] mq) => return (metaEl [] $ metaSubstTm ms mt mq)
-    | (metaEq (_::_) _ _ _, metaEl _ _) => elabFail "Bad transport" (errorCode.errOpen tm1 T1)
-    | (metaEq [] _ _ _, metaEl _ _) => elabFail "Bad transport" (errorCode.errOpen tm2 T2)
-    | (metaEl _ _ , _) => elabFail "Bad transport" (errorCode.errKind tm1 T1 "an element" "an equality")
-    | (metaUU _ , _) =>  elabFail "Bad transport" (errorCode.errKind tm1 T1 "a sort" "an equality")
-    | (_, metaEq _ _ _ _)  => elabFail "Bad transport" (errorCode.errKind tm2 T2 "an equality" "an element")
-    | (_, metaUU _) => elabFail "Bad transport" (errorCode.errKind tm2 T2 "a sort" "an element")
+    | ((metaEq _ ms mt, []), metaEl mq, []) => return (metaEl $ metaSubstTm ms mt mq, [])
+    | ((metaEq _ _ _, (_::_)), metaEl _, _) => elabFail "Bad transport" (errorCode.errOpen tm1 T1)
+    | ((metaEq _ _ _, []), metaEl _, _) => elabFail "Bad transport" (errorCode.errOpen tm2 T2)
+    | ((metaEl _, _) , _) => elabFail "Bad transport" (errorCode.errKind tm1 T1 "an element" "an equality")
+    | ((metaUU, _) , _) =>  elabFail "Bad transport" (errorCode.errKind tm1 T1 "a sort" "an equality")
+    | (_, metaEq _ _ _, _)  => elabFail "Bad transport" (errorCode.errKind tm2 T2 "an equality" "an element")
+    | (_, metaUU, _) => elabFail "Bad transport" (errorCode.errKind tm2 T2 "a sort" "an element")
 
     partial def failIfNotU (suberror : String) (theTm : metaTm) (theTy : metaTy) : StateT st MetaM Unit := match theTy with
-    | metaUU [] => return ()
-    | metaUU _ => elabFail suberror (errorCode.errOpen theTm theTy)
-    | metaEq _ _ _ _ => elabFail suberror (errorCode.errKind theTm theTy "an equality" "a sort")
-    | metaEl _ _  => elabFail suberror (errorCode.errKind theTm theTy "an element" "a sort")
+    | (metaUU, []) => return ()
+    | (metaUU, _) => elabFail suberror (errorCode.errOpen theTm theTy)
+    | (metaEq _ _ _, _) => elabFail suberror (errorCode.errKind theTm theTy "an equality" "a sort")
+    | (metaEl _, _)  => elabFail suberror (errorCode.errKind theTm theTy "an element" "a sort")
 
     partial def failIfBadEq (tm1 tm2 : metaTm) (T1 T2 : metaTy) : StateT st MetaM metaTm := match (T1,T2) with
-    | (metaEl [] mX1, metaEl [] mX2) => if mX1 = mX2 then return mX1 else
+    | ((metaEl mX1, []), metaEl mX2, []) => if mX1 = mX2 then return mX1 else
     elabFail "Bad eq" (errorCode.errType2 "LHS" mX1 "RHS" mX2)
-    | (metaEl (_::_) _, metaEl _ _) => elabFail "Bad eq" (errorCode.errOpen tm1 T1)
-    | (metaEl _ _, metaEl _ _) => elabFail "Bad eq" (errorCode.errOpen tm2 T2)
-    | (metaUU _, _) => elabFail "Bad eq" (errorCode.errKind tm1 T1 "a sort" "an element")
-    | (metaEq _ _ _ _, _) => elabFail "Bad eq" (errorCode.errKind tm1 T1 "an equality" "an element")
-    | (_, metaUU _) => elabFail "Bad eq" (errorCode.errKind tm2 T2 "a sort" "an element")
-    | (_, metaEq _ _ _ _) => elabFail "Bad eq" (errorCode.errKind tm2 T2 "an equality" "an element")
+    | ((metaEl _,  (_::_)), metaEl _, _) => elabFail "Bad eq" (errorCode.errOpen tm1 T1)
+    | ((metaEl _, _), metaEl _, _) => elabFail "Bad eq" (errorCode.errOpen tm2 T2)
+    | ((metaUU, _), _) => elabFail "Bad eq" (errorCode.errKind tm1 T1 "a sort" "an element")
+    | ((metaEq _ _ _, _), _) => elabFail "Bad eq" (errorCode.errKind tm1 T1 "an equality" "an element")
+    | (_, metaUU, _) => elabFail "Bad eq" (errorCode.errKind tm2 T2 "a sort" "an element")
+    | (_, metaEq _ _ _, _) => elabFail "Bad eq" (errorCode.errKind tm2 T2 "an equality" "an element")
 
   end failureHelpers
 
   section mainFunctions
 
     instance  : Inhabited (Syntax → StateT st MetaM (Expr × metaTm × metaTy)) where
-      default _ := pure (.const ``true [],metaGLOB 0,metaUU [])
+      default _ := pure (.const ``true [],metaGLOB 0,metaUU, [])
 
     partial def elabGATTm : Syntax → StateT st MetaM (Expr × metaTm × metaTy)
     | `(gat_tm| ( $g:gat_tm ) ) => elabGATTm g
@@ -552,19 +557,17 @@ namespace elaborator
       return t
     | _ => throwError "ArgFail"
 
-    instance  : Inhabited (Syntax → StateT st MetaM (Expr × metaTy)) where
-      default _ := pure (.const ``true [],metaUU [])
+    instance  : Inhabited (Syntax → StateT st MetaM (Expr × metaTyMarker)) where
+      default _ := pure (.const ``true [],metaUU)
 
-    partial def elabGATTy : Syntax → StateT st MetaM (Expr × metaTy)
+    partial def elabGATTy : Syntax → StateT st MetaM (Expr × metaTyMarker)
     | `(gat_ty| U ) => do
-        let TT ← getCurrentTel
-        return (.const ``preUU [],metaUU TT)
+        return (.const ``preUU [],metaUU)
     | `(gat_ty| $x:gat_tm ) => do
         let (t,mt,mX) ← elabGATTm x
         failIfNotU "Bad El" mt mX
         let T ← mkAppM ``preEL #[t]
-        let TT ← getCurrentTel
-        return (T,metaEl TT mt)
+        return (T,metaEl mt)
     | `(gat_ty| $T:gat_arg ⇒ $T':gat_ty) => do
         let domain ← elabGATArg T
         let (codomain,finalT) ← elabGATTy T'
@@ -575,8 +578,7 @@ namespace elaborator
         let (tt2,mt2,mX2) ← elabGATTm t2
         let mX ← failIfBadEq mt1 mt2 mX1 mX2
         let T ← mkAppM ``preEQ #[tt1,tt2]
-        let TT ← getCurrentTel
-        return (T,metaEq TT mX mt1 mt2)
+        return (T,metaEq mX mt1 mt2)
     | _ => throwError "TyFail"
 
 
