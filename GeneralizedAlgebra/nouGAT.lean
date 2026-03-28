@@ -1,4 +1,4 @@
-import GeneralizedAlgebra.typecheck
+import GeneralizedAlgebra.signature
 import Lean
 
 open Lean Elab Meta
@@ -526,6 +526,46 @@ namespace elaborator
       (Output : Type)
       (mkOutput : Con_D → List String → List (List (Option String)) → Output)
 
+    def eliminator_outer (inn : eliminator_inner) : Type 1 := @Sigma Type (λ O => inn.Con_D → List String → List (List (Option String)) → O)
+
+    def elimProduct_outer {inn : eliminator_inner} (EO1 EO2 : eliminator_outer inn) : eliminator_outer inn :=
+      ⟨ EO1.1 × EO2.1, λ Γ topnames telescopes => (EO1.2 Γ topnames telescopes,EO2.2 Γ topnames telescopes)⟩
+
+    def elimProduct_outer_post {inn : eliminator_inner} (EO : eliminator_outer inn) {Output' : Type} (f : EO.1 → Output') : eliminator_outer inn :=
+      ⟨ Output', λ Γ topnames telescopes => f (EO.2 Γ topnames telescopes)⟩
+
+    def toEliminator {inn : eliminator_inner} (outt : eliminator_outer inn) : eliminator := ⟨inn, outt.1,outt.2⟩
+
+    def elimProduct_inner (E1 E2 : eliminator_inner) : eliminator_inner := ⟨
+        E1.Con_D × E2.Con_D,
+        E1.Ty_D × E2.Ty_D,
+        E1.Tm_D × E2.Tm_D,
+        (E1.Empty_D,E2.Empty_D),
+        λ (x1,x2) (y1,y2) => (E1.Extend_D x1 y1,E2.Extend_D x2 y2),
+        (E1.UU_D,E2.UU_D),
+        λ (x1,x2) => (E1.El_D x1,E2.El_D x2),
+        λ (x1,x2) (y1,y2) => (E1.Pi_D x1 y1,E2.Pi_D x2 y2),
+        λ (x1,x2) (y1,y2) => (E1.Eq_D x1 y1,E2.Eq_D x2 y2),
+        λ n => (E1.Var_D n,E2.Var_D n),
+        λ (x1,x2) (y1,y2) => (E1.App_D x1 y1,E2.App_D x2 y2),
+        λ (x1,x2) (y1,y2) => (E1.Transp_D x1 y1,E2.Transp_D x2 y2)
+      ⟩
+    def elimProduct (E1 E2 : eliminator) : eliminator := ⟨
+      elimProduct_inner E1.toeliminator_inner E2.toeliminator_inner,
+      E1.Output × E2.Output,
+      λ (x1,x2) topnames telescopes => (E1.mkOutput x1 topnames telescopes, E2.mkOutput x2 topnames telescopes)
+    ⟩
+    def elimProduct' (E1 E2 : eliminator) (Output' : Type) (mkOutput' : E1.Con_D → E2.Con_D → List String → List (List (Option String)) → Output'): eliminator := ⟨
+      elimProduct_inner E1.toeliminator_inner E2.toeliminator_inner,
+      Output',
+      λ (x1,x2) => mkOutput' x1 x2
+    ⟩
+    def elimProduct_post (Elim : eliminator) {Output' : Type} (f : Elim.Output → Output') : eliminator :=
+      ⟨ Elim.toeliminator_inner, Output',
+        λ Γ topnames telescopes => f (Elim.mkOutput Γ topnames telescopes)⟩
+
+
+
     def litToInner : Expr → Expr := .app (.const ``eliminator.toeliminator_inner [])
     def litEmpty_D : Expr → Expr := .app (.const ``eliminator_inner.Empty_D []) ∘ litToInner
     def litExtend_D : Expr → Expr := .app (.const ``eliminator_inner.Extend_D []) ∘ litToInner
@@ -650,3 +690,38 @@ namespace elaborator
 
   end mainFunctions
 end elaborator
+
+namespace basicEliminators
+
+open preTy preTm
+open elaborator
+
+  def preElim_inner : eliminator_inner := ⟨
+      preCon,
+      preTy,
+      preTm,
+      preEMPTY,
+      preEXTEND,
+      preUU,
+      preEL,
+      prePI,
+      preEQ,
+      preVAR,
+      preAPP,
+      preTRANSP⟩
+
+  def GATdataElim_outer : eliminator_outer preElim_inner := ⟨ GATdata, GATdata.mk ⟩
+  def GATdataElim : eliminator := toEliminator GATdataElim_outer
+
+  def justGATElim : eliminator := ⟨preElim_inner, preCon, λ Γ _ _ => Γ⟩
+
+-- #check (GATdata,GATdata.mk) : @Sigma Type (λ O => preCon → List String → List (List (Option String)) → O)
+  -- def preElimProduct (Out1 : Type)
+
+  declare_syntax_cat condata_outer
+  syntax "[GATdata|" "]" : condata_outer
+  syntax "[GATdata|" con_inner "]" : condata_outer
+  syntax "[justGAT|" "]" : condata_outer
+  syntax "[justGAT|" con_inner "]" : condata_outer
+
+end basicEliminators
