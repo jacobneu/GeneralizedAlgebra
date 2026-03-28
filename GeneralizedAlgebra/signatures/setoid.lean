@@ -1,4 +1,4 @@
-import GeneralizedAlgebra.nouGAT
+import GeneralizedAlgebra.nouGAT_eliminate
 
 def 𝔖𝔢𝔱𝔬𝔦𝔡_data : GATdata := [GATdata|
     X : U,

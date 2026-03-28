@@ -1,4 +1,4 @@
-import GeneralizedAlgebra.nouGAT
+import GeneralizedAlgebra.nouGAT_eliminate
 
 def 𝔓𝔯𝔢𝔒𝔯𝔡_data : GATdata := [GATdata|
     X : U,

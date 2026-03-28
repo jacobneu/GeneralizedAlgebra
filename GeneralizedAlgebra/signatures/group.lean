@@ -1,4 +1,4 @@
-import GeneralizedAlgebra.nouGAT
+import GeneralizedAlgebra.nouGAT_eliminate
 
 def 𝔊𝔯𝔭_data : GATdata := [GATdata|
     M     : U,

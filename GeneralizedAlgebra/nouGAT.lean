@@ -427,14 +427,6 @@ namespace elaborator
     syntax gat_decl : con_inner
     syntax con_inner "," gat_decl : con_inner
     -- syntax "include" ident "as" "(" ident_list ");" con_inner : con_inner
-    -- declare_syntax_cat con_outer
-    -- syntax "⦃" "⦄" : con_outer
-    -- syntax "⦃" con_inner "⦄" : con_outer
-
-    declare_syntax_cat condata_outer
-    syntax "[GATdata|" "]" : condata_outer
-    syntax "[GATdata|" con_inner "]" : condata_outer
-    syntax "[rawGAT|" con_inner "]" : condata_outer
 
   end theSyntax
 
@@ -514,31 +506,58 @@ namespace elaborator
 
   end failureHelpers
 
+  section eliminator
 
-  structure eliminator where
-    (Con_D : Type)
-    (Ty_D : Type)
-    (Tm_D : Type)
-    (Empty_D : Con_D)
-    (Extend_D : Con_D → Ty_D → Con_D)
-    (UU_D : Ty_D)
-    (El_D : Tm_D → Ty_D)
-    (Pi_D : Tm_D → Ty_D → Ty_D)
-    (Eq_D : Tm_D → Tm_D → Ty_D)
-    (Var_D : Nat → Tm_D)
-    (App_D : Tm_D → Tm_D → Tm_D)
-    (Transp_D : Tm_D → Tm_D → Tm_D)
+    structure eliminator_inner where
+      (Con_D : Type)
+      (Ty_D : Type)
+      (Tm_D : Type)
+      (Empty_D : Con_D)
+      (Extend_D : Con_D → Ty_D → Con_D)
+      (UU_D : Ty_D)
+      (El_D : Tm_D → Ty_D)
+      (Pi_D : Tm_D → Ty_D → Ty_D)
+      (Eq_D : Tm_D → Tm_D → Ty_D)
+      (Var_D : Nat → Tm_D)
+      (App_D : Tm_D → Tm_D → Tm_D)
+      (Transp_D : Tm_D → Tm_D → Tm_D)
 
-  def litEmpty_D : Expr → Expr := .app (.const ``eliminator.Empty_D [])
-  def litExtend_D : Expr → Expr := .app (.const ``eliminator.Extend_D [])
-  def litUU_D : Expr → Expr := .app (.const ``eliminator.UU_D [])
-  def litEl_D : Expr → Expr := .app (.const ``eliminator.El_D [])
-  def litPi_D : Expr → Expr := .app (.const ``eliminator.Pi_D [])
-  def litEq_D : Expr → Expr := .app (.const ``eliminator.Eq_D [])
-  def litApp_D : Expr → Expr := .app (.const ``eliminator.App_D [])
-  def litTransp_D : Expr → Expr := .app (.const ``eliminator.Transp_D [])
-  def litVar_D : Expr → Expr := .app (.const ``eliminator.Var_D [])
+    structure eliminator extends eliminator_inner where
+      (Output : Type)
+      (mkOutput : Con_D → List String → List (List (Option String)) → Output)
 
+    def litToInner : Expr → Expr := .app (.const ``eliminator.toeliminator_inner [])
+    def litEmpty_D : Expr → Expr := .app (.const ``eliminator_inner.Empty_D []) ∘ litToInner
+    def litExtend_D : Expr → Expr := .app (.const ``eliminator_inner.Extend_D []) ∘ litToInner
+    def litUU_D : Expr → Expr := .app (.const ``eliminator_inner.UU_D []) ∘ litToInner
+    def litEl_D : Expr → Expr := .app (.const ``eliminator_inner.El_D []) ∘ litToInner
+    def litPi_D : Expr → Expr := .app (.const ``eliminator_inner.Pi_D []) ∘ litToInner
+    def litEq_D : Expr → Expr := .app (.const ``eliminator_inner.Eq_D []) ∘ litToInner
+    def litApp_D : Expr → Expr := .app (.const ``eliminator_inner.App_D []) ∘ litToInner
+    def litTransp_D : Expr → Expr := .app (.const ``eliminator_inner.Transp_D []) ∘ litToInner
+    def litVar_D : Expr → Expr := .app (.const ``eliminator_inner.Var_D []) ∘ litToInner
+
+    def litMk : Expr → Expr := .app (.const ``eliminator.mkOutput [])
+
+    def mkLitElim (litElim : Expr): Expr :=
+      mkAppN (.const ``eliminator.mk []) #[
+        mkAppN (.const ``eliminator_inner.mk []) #[
+          .app (.const ``eliminator_inner.Con_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+          .app (.const ``eliminator_inner.Ty_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+          .app (.const ``eliminator_inner.Tm_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+          .app (.const ``eliminator_inner.Empty_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+          .app (.const ``eliminator_inner.Extend_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+          .app (.const ``eliminator_inner.UU_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+          .app (.const ``eliminator_inner.El_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+          .app (.const ``eliminator_inner.Pi_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+          .app (.const ``eliminator_inner.Eq_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+          .app (.const ``eliminator_inner.Var_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+          .app (.const ``eliminator_inner.App_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+          .app (.const ``eliminator_inner.Transp_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim)],
+        .app (.const ``eliminator.Output []) litElim,
+        .app (.const ``eliminator.mkOutput []) litElim
+      ]
+  end eliminator
 
   section mainFunctions
 
@@ -602,6 +621,7 @@ namespace elaborator
         return (mkAppN (litEq_D Elim) #[tt1,tt2],metaEq mX mt1 mt2)
     | _ => throwError "TyFail"
 
+    def GlobalRawErrorMsg : Bool := false
 
     partial def elabGATCon_core (Elim : Expr) : Syntax → StateT st MetaM Expr
     | `(con_inner| $rest:con_inner , $i:ident : $g:gat_ty ) => do
@@ -617,60 +637,16 @@ namespace elaborator
         return mkAppN (litExtend_D Elim) #[litEmpty_D Elim, T]
     | _ => throwError "Con_coreFail"
 
-
-    partial def elabGATConData (Elim : Expr) : Syntax → MetaM Expr
-    | `(condata_outer| [GATdata| ] ) => do
+    def elabEmptyGAT (Elim : Expr) : MetaM Expr :=  do
         let emptyStrList ← mkListLit (.const ``String []) []
         let emptyLArgList ← mkListLit (.const ``metaArg []) []
-        let res ← mkAppM ``GATdata.mk  #[litEmpty_D Elim,emptyStrList,emptyLArgList]
-        return res
-    | `(condata_outer| [rawGAT| $s:con_inner ] ) => do
-        let (resCon,VV) ← StateT.run (elabGATCon_core Elim s) (stEmpty true)
-        let topList ← mkListLit (.const ``String []) (List.map mkStrLit VV.topnames)
-        let telescopes ← List.mapM mkMetaTyLit VV.telescopes >>= mkListLit (.const ``metaOut [])
-        let res ← mkAppM ``rawGAT.mk #[resCon,topList,telescopes]
-        return res
-    | `(condata_outer| [GATdata| $s:con_inner ] ) => do
-        let (resCon,VV) ← StateT.run (elabGATCon_core Elim s) (stEmpty false)
+        return mkAppN (litMk Elim) #[litEmpty_D Elim,emptyStrList,emptyLArgList]
+
+    def elabNonemptyGAT (Elim : Expr) (s : Syntax) : MetaM Expr := do
+        let (resCon,VV) ← StateT.run (elabGATCon_core Elim s) (stEmpty GlobalRawErrorMsg)
         let topList ← mkListLit (.const ``String []) (List.map mkStrLit (List.reverse VV.topnames))
         let telescopes ← List.mapM mkMetaTyLit' (List.reverse VV.telescopes) >>= mkListLit (.const ``StringOptList [])
-        let res ← mkAppM ``GATdata.mk #[resCon,topList,telescopes]
-        return res
-    | _ => throwError "ConFail"
+        return mkAppN (litMk Elim) #[resCon,topList,telescopes]
 
   end mainFunctions
-
-
-    def preElim : eliminator := ⟨
-        preCon,
-        preTy,
-        preTm,
-        preEMPTY,
-        preEXTEND,
-        preUU,
-        preEL,
-        prePI,
-        preEQ,
-        preVAR,
-        preAPP,
-        preTRANSP
-    ⟩
-
-    def preElimLit : Expr :=
-      mkAppN (.const ``eliminator.mk []) #[
-        .app (.const ``eliminator.Con_D []) (.const ``preElim []),
-        .app (.const ``eliminator.Ty_D []) (.const ``preElim []),
-        .app (.const ``eliminator.Tm_D []) (.const ``preElim []),
-        .app (.const ``eliminator.Empty_D []) (.const ``preElim []),
-        .app (.const ``eliminator.Extend_D []) (.const ``preElim []),
-        .app (.const ``eliminator.UU_D []) (.const ``preElim []),
-        .app (.const ``eliminator.El_D []) (.const ``preElim []),
-        .app (.const ``eliminator.Pi_D []) (.const ``preElim []),
-        .app (.const ``eliminator.Eq_D []) (.const ``preElim []),
-        .app (.const ``eliminator.Var_D []) (.const ``preElim []),
-        .app (.const ``eliminator.App_D []) (.const ``preElim []),
-        .app (.const ``eliminator.Transp_D []) (.const ``preElim [])
-      ]
-
-
-elab g:condata_outer : term => elabGATConData preElimLit g
+end elaborator
