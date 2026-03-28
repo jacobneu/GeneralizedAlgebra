@@ -3,7 +3,6 @@ import GeneralizedAlgebra.eliminate.AlgString
 
 open Nat
 open preTy preTm
-open wellCon
 
 def dalg s := s ++ "ᴰ"
 
