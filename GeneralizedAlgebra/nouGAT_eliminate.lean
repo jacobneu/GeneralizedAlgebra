@@ -4,6 +4,7 @@ import GeneralizedAlgebra.eliminate.AlgString
 open Lean Elab Meta
 open preTy preTm
 open elaborator
+open eliminator
 open basicEliminators
 
 

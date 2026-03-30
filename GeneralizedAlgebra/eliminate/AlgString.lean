@@ -3,6 +3,7 @@ import GeneralizedAlgebra.nouGAT
 
 open Nat
 open preTy preTm
+open eliminator
 open elaborator
 open basicEliminators
 
