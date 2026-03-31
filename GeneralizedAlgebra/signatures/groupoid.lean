@@ -1,4 +1,4 @@
-import GeneralizedAlgebra.nouGAT
+import GeneralizedAlgebra.nouGAT_eliminate
 
 def 𝔊𝔯𝔭𝔡_data : GATdata := [GATdata|
     Obj : U,

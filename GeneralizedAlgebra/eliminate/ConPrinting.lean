@@ -1,4 +1,4 @@
-import GeneralizedAlgebra.typecheck
+import GeneralizedAlgebra.signature
 
 open Nat
 open preTy preTm
@@ -37,8 +37,8 @@ def preConrepr : preCon → String :=
 instance : Repr preCon :=
 ⟨ λ 𝔊 _ => preConrepr 𝔊 ⟩
 
-instance GATRepr : Repr GAT :=
-⟨ λ 𝔊 _ =>  preConrepr (𝔊.toGATdata.con) ⟩
+-- instance GATRepr : Repr GAT :=
+-- ⟨ λ 𝔊 _ =>  preConrepr (𝔊.toGATdata.con) ⟩
 
 instance GATdataRepr : Repr GATdata :=
 ⟨ λ 𝔊 _ =>  preConrepr (𝔊.con) ⟩

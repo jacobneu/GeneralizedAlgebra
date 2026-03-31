@@ -1,4 +1,4 @@
-import GeneralizedAlgebra.nouGAT
+import GeneralizedAlgebra.nouGAT_eliminate
 
 def 𝔊𝔄𝔗ℭ𝔴𝔉_data : GATdata := [GATdata|
     Con : U,

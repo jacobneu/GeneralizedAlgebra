@@ -1,9 +1,10 @@
-import GeneralizedAlgebra.typecheck
+import GeneralizedAlgebra.nouGAT
 
 
 open Nat
 open preTy preTm
-open wellCon
+open elaborator
+open basicEliminators
 
 
 
@@ -44,3 +45,14 @@ def GATdataZip : GATdata → List String × List (preTy × List (Option String �
     (List.reverse theTopnames, List.zipWith GATdataZip_core thePreCon (List.reverse theTelescopes))
 
 def AlgStr_Con (𝔊 : GATdata) : List String := let z := GATdataZip 𝔊; AlgStr_Con_core z.1 z.2
+
+
+def AlgStrElim_outer : eliminator_outer preElim_inner := ⟨
+    List String,
+    λ Γ topnames telescopes =>
+        AlgStr_Con_core (List.reverse topnames) (List.zipWith GATdataZip_core Γ (List.reverse telescopes))
+⟩
+def AlgStrElim := toEliminator AlgStrElim_outer
+
+syntax "[AlgStr|" "]" : condata_outer
+syntax "[AlgStr|" con_inner "]" : condata_outer
