@@ -409,7 +409,7 @@ namespace elaborator
     syntax ident ":" gat_ty : gat_decl
 
     declare_syntax_cat gat_arg
-    syntax "(" ident ":" gat_tm ")" : gat_arg
+    syntax "(" ident+ ":" gat_tm ")" : gat_arg
     syntax "(" "_" ":" gat_tm ")" : gat_arg
     -- syntax "{" ident ":" gat_tm "}" : gat_arg
     syntax gat_tm : gat_arg
@@ -622,24 +622,6 @@ namespace elaborator
           return (mkAppN (litTransp_D Elim) #[t2,t1],metaTRANSP mt2 mt1,mresT)
     | _ => throwError "TmFail"
 
-    partial def elabGATArg (Elim : Expr) : Syntax → StateT st MetaM Expr
-    | `(gat_arg| ( $i:ident : $g:gat_tm ) ) => do
-      let (t,mt,mX) ← elabGATTm Elim g
-      failIfNotU "Failed to create argument" mt mX
-      extendTel (mkExpl i.getId.toString mt)
-      return t
-    | `(gat_arg| ( _ : $g:gat_tm ) ) => do
-      let (t,mt,mX) ← elabGATTm Elim g
-      failIfNotU "Failed to create argument" mt mX
-      extendTel (mkAnon mt)
-      return t
-    | `(gat_arg| $g:gat_tm ) => do
-      let (t,mt,mX) ← elabGATTm Elim g
-      failIfNotU "Failed to create argument" mt mX
-      extendTel (mkAnon mt)
-      return t
-    | _ => throwError "ArgFail"
-
     instance  : Inhabited (Syntax → StateT st MetaM (Expr × metaTyMarker)) where
       default _ := pure (.const ``true [],metaUU)
 
@@ -650,15 +632,39 @@ namespace elaborator
         let (t,mt,mX) ← elabGATTm Elim x
         failIfNotU "Bad El" mt mX
         return (mkAppN (litEl_D Elim) #[t],metaEl mt)
-    | `(gat_ty| $T:gat_arg ⇒ $T':gat_ty) => do
-        let domain ← elabGATArg Elim T
-        let (codomain,finalT) ← elabGATTy Elim T'
-        return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
     | `(gat_ty| $t1:gat_tm ≡ $t2:gat_tm) => do
         let (tt1,mt1,mX1) ← elabGATTm Elim t1
         let (tt2,mt2,mX2) ← elabGATTm Elim t2
         let mX ← failIfBadEq mt1 mt2 mX1 mX2
         return (mkAppN (litEq_D Elim) #[tt1,tt2],metaEq mX mt1 mt2)
+    | `(gat_ty| $T:gat_tm ⇒ $T':gat_ty) => do
+        let (domain,mt,mX) ← elabGATTm Elim T
+        failIfNotU "Failed to create argument" mt mX
+        extendTel (mkAnon mt)
+        let (codomain,finalT) ← elabGATTy Elim T'
+        return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
+    | `(gat_ty| ( _ : $T:gat_tm ) ⇒ $T':gat_ty) => do
+        let (domain,mt,mX) ← elabGATTm Elim T
+        failIfNotU "Failed to create argument" mt mX
+        extendTel (mkAnon mt)
+        let (codomain,finalT) ← elabGATTy Elim T'
+        return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
+    -- | `(gat_ty| ( $i:ident : $T:gat_tm ) ⇒ $T':gat_ty) => do
+    --     let (domain,mt,mX) ← elabGATTm Elim T
+    --     failIfNotU "Failed to create argument" mt mX
+    --     extendTel (mkExpl i.getId.toString mt)
+    --     let (codomain,finalT) ← elabGATTy Elim T'
+    --     return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
+    | `(gat_ty| ( $is:ident* : $T:gat_tm ) ⇒ $T':gat_ty) => do
+        Array.foldr (λ i getCodomain => do
+          let (domain,mt,mX) ← elabGATTm Elim T
+          failIfNotU "Failed to create argument" mt mX
+          extendTel (mkExpl i.getId.toString mt)
+          let (codomain,finalT) ← getCodomain
+          return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
+        ) (elabGATTy Elim T') is
+        -- let (codomain,finalT) ← getRes
+        -- return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
     | _ => throwError "TyFail"
 
     def GlobalRawErrorMsg : Bool := false
