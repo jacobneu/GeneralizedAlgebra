@@ -9,7 +9,6 @@ open basicEliminators
 
 
 
-syntax "⦃" "⦄" : condata_outer
 syntax "⦃" con_inner "⦄" : condata_outer
 
 
@@ -28,25 +27,17 @@ def fullElim : eliminator :=
         GAT.mk Γ topnames telescopes algStrList)
 
 def elabGATCon : Syntax → MetaM Expr
-| `(condata_outer| [GATdata| ] ) =>
-    elabEmptyGAT (mkLitElim (.const ``GATdataElim []))
 | `(condata_outer| [GATdata| $s:con_inner ] ) =>
-    elabNonemptyGAT (mkLitElim (.const ``GATdataElim [])) s
+    elabGAT (mkLitElim (.const ``GATdataElim [])) s
 
-| `(condata_outer| [justGAT| ] ) =>
-    elabEmptyGAT (mkLitElim (.const ``justGATElim []))
 | `(condata_outer| [justGAT| $s:con_inner ] ) =>
-    elabNonemptyGAT (mkLitElim (.const ``justGATElim [])) s
+    elabGAT (mkLitElim (.const ``justGATElim [])) s
 
-| `(condata_outer| [AlgStr| ] ) =>
-    elabEmptyGAT (mkLitElim (.const ``AlgStrElim []))
 | `(condata_outer| [AlgStr| $s:con_inner ] ) =>
-    elabNonemptyGAT (mkLitElim (.const ``AlgStrElim [])) s
+    elabGAT (mkLitElim (.const ``AlgStrElim [])) s
 
-| `(condata_outer| ⦃ ⦄ ) =>
-    elabEmptyGAT (mkLitElim (.const ``fullElim []))
 | `(condata_outer| ⦃ $s:con_inner ⦄ ) =>
-    elabNonemptyGAT (mkLitElim (.const ``fullElim [])) s
+    elabGAT (mkLitElim (.const ``fullElim [])) s
 | _ => throwError "Syntax fail"
 
 

@@ -406,11 +406,13 @@ namespace elaborator
     syntax gat_tm " ≡ " gat_tm : gat_ty
 
     declare_syntax_cat gat_decl
-    syntax ident ":" gat_ty : gat_decl
+    syntax ident+ ":" gat_ty : gat_decl
 
     declare_syntax_cat gat_arg
+    declare_syntax_cat gat_underscore
+    syntax "_" : gat_underscore
     syntax "(" ident+ ":" gat_tm ")" : gat_arg
-    syntax "(" "_" ":" gat_tm ")" : gat_arg
+    syntax "(" gat_underscore+ ":" gat_tm ")" : gat_arg
     -- syntax "{" ident ":" gat_tm "}" : gat_arg
     syntax gat_tm : gat_arg
 
@@ -424,8 +426,8 @@ namespace elaborator
     -- syntax ident_list "," ident : ident_list
 
     declare_syntax_cat con_inner
-    syntax gat_decl : con_inner
-    syntax con_inner "," gat_decl : con_inner
+    -- syntax gat_decl : con_inner
+    syntax gat_decl,* : con_inner
     -- syntax "include" ident "as" "(" ident_list ");" con_inner : con_inner
 
   end theSyntax
@@ -643,18 +645,6 @@ namespace elaborator
         extendTel (mkAnon mt)
         let (codomain,finalT) ← elabGATTy Elim T'
         return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
-    | `(gat_ty| ( _ : $T:gat_tm ) ⇒ $T':gat_ty) => do
-        let (domain,mt,mX) ← elabGATTm Elim T
-        failIfNotU "Failed to create argument" mt mX
-        extendTel (mkAnon mt)
-        let (codomain,finalT) ← elabGATTy Elim T'
-        return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
-    -- | `(gat_ty| ( $i:ident : $T:gat_tm ) ⇒ $T':gat_ty) => do
-    --     let (domain,mt,mX) ← elabGATTm Elim T
-    --     failIfNotU "Failed to create argument" mt mX
-    --     extendTel (mkExpl i.getId.toString mt)
-    --     let (codomain,finalT) ← elabGATTy Elim T'
-    --     return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
     | `(gat_ty| ( $is:ident* : $T:gat_tm ) ⇒ $T':gat_ty) => do
         Array.foldr (λ i getCodomain => do
           let (domain,mt,mX) ← elabGATTm Elim T
@@ -663,36 +653,36 @@ namespace elaborator
           let (codomain,finalT) ← getCodomain
           return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
         ) (elabGATTy Elim T') is
-        -- let (codomain,finalT) ← getRes
-        -- return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
+    | `(gat_ty| ( $is:gat_underscore* : $T:gat_tm ) ⇒ $T':gat_ty) => do
+        Array.foldr (λ _ getCodomain => do
+          let (domain,mt,mX) ← elabGATTm Elim T
+          failIfNotU "Failed to create argument" mt mX
+          extendTel (mkAnon mt)
+          let (codomain,finalT) ← getCodomain
+          return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
+        ) (elabGATTy Elim T') is
     | _ => throwError "TyFail"
+
+    def elabGATdecl (Elim : Expr) (getRest : StateT st MetaM Expr) : Syntax → StateT st MetaM Expr
+    | `(gat_decl|  $is:ident* : $g:gat_ty ) => do
+        Array.foldl (λ getRest' i => do
+          let restCon ← getRest'
+          setCurrentName i.getId.toString
+          let (T,finalT) ← elabGATTy Elim g
+          extendMain finalT
+          return mkAppN (litExtend_D Elim) #[restCon,T]
+        ) getRest is
+    | _ => throwError "GATdecl_Fail"
 
     def GlobalRawErrorMsg : Bool := false
 
-    partial def elabGATCon_core (Elim : Expr) : Syntax → StateT st MetaM Expr
-    | `(con_inner| $rest:con_inner , $i:ident : $g:gat_ty ) => do
-        let restCon ← elabGATCon_core Elim rest
-        setCurrentName i.getId.toString
-        let (T,finalT) ← elabGATTy Elim g
-        extendMain finalT
-        return mkAppN (litExtend_D Elim) #[restCon,T]
-    | `(con_inner| $i:ident : $g:gat_ty ) => do
-        setCurrentName i.getId.toString
-        let (T,finalT) ← elabGATTy Elim g
-        extendMain finalT
-        return mkAppN (litExtend_D Elim) #[litEmpty_D Elim, T]
-    | _ => throwError "Con_coreFail"
-
-    def elabEmptyGAT (Elim : Expr) : MetaM Expr :=  do
-        let emptyStrList ← mkListLit (.const ``String []) []
-        let emptyLArgList ← mkListLit (.const ``metaArg []) []
-        return mkAppN (litMk Elim) #[litEmpty_D Elim,emptyStrList,emptyLArgList]
-
-    def elabNonemptyGAT (Elim : Expr) (s : Syntax) : MetaM Expr := do
-        let (resCon,VV) ← StateT.run (elabGATCon_core Elim s) (stEmpty GlobalRawErrorMsg)
+    def elabGAT (Elim : Expr) : Syntax → MetaM Expr
+    | `(con_inner| $ds:gat_decl,* ) => do
+        let (resCon,VV) ← StateT.run (Array.foldl (elabGATdecl Elim) (return litEmpty_D Elim) ds.getElems) (stEmpty GlobalRawErrorMsg)
         let topList ← mkListLit (.const ``String []) (List.map mkStrLit (List.reverse VV.topnames))
         let telescopes ← List.mapM mkMetaTyLit' (List.reverse VV.telescopes) >>= mkListLit (.const ``StringOptList [])
         return mkAppN (litMk Elim) #[resCon,topList,telescopes]
+    | _ => throwError "GAT_Fail"
 
   end mainFunctions
 end elaborator
@@ -721,13 +711,9 @@ open elaborator
 
   def justGATElim : eliminator := ⟨preElim_inner, preCon, λ Γ _ _ => Γ⟩
 
--- #check (GATdata,GATdata.mk) : @Sigma Type (λ O => preCon → List String → List (List (Option String)) → O)
-  -- def preElimProduct (Out1 : Type)
 
   declare_syntax_cat condata_outer
-  syntax "[GATdata|" "]" : condata_outer
-  syntax "[GATdata|" con_inner "]" : condata_outer
-  syntax "[justGAT|" "]" : condata_outer
-  syntax "[justGAT|" con_inner "]" : condata_outer
+  syntax "[GATdata|" con_inner,* "]" : condata_outer
+  syntax "[justGAT|" con_inner,* "]" : condata_outer
 
 end basicEliminators
