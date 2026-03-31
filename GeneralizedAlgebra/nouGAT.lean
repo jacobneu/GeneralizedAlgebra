@@ -418,7 +418,7 @@ namespace elaborator
     -- syntax gat_tm : gat_input
     -- syntax "{" gat_tm "}" : gat_input
     syntax:60 gat_tm:60 gat_tm:61 : gat_tm
-    syntax:60 gat_tm:60 "{" gat_tm:61 "}" : gat_tm
+    syntax:60 gat_tm:60 "{" gat_tm:60 "}" : gat_tm
     syntax:58 gat_tm:58  "#⟨" gat_tm:59 "⟩" : gat_tm
     syntax gat_tm : gat_ty
     syntax gat_tm " ≡ " gat_tm : gat_ty
