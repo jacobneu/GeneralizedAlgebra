@@ -197,19 +197,22 @@ namespace nouGATmeta
         let mTT ← List.mapM mkMetaArgLit TT >>= mkListLit (.const ``metaOut' [])
         mkAppM ``Prod.mk #[mkStrLit $ "El (" ++ metaTm.toString t ++ ")",mTT]
 
+    def StringBool : Type := String × Bool
+    def mkStringBool (s : String) (b : Bool) : StringBool := (s,b)
+    def StringBoolOpt : Type := Option StringBool
+    def StringBoolOptList : Type := List StringBoolOpt
+
   -- Make literal for GATdata
-    def mkMetaArgLit' : metaArg → Expr -- :: Option String
-    | metaImpl i _ _ => mkApp (.app (.const ``some [Level.zero]) (.const ``String [])) $ mkStrLit i
-    | metaExpl i _ _ => mkApp (.app (.const ``some [Level.zero]) (.const ``String [])) $ mkStrLit i
-    | metaAnon _ _ => .app (.const ``none [Level.zero]) (.const ``String [])
+    def mkMetaArgLit' : metaArg → Expr -- :: Option (String × Bool)
+    | metaImpl i _ _ => mkApp (.app (.const ``some [Level.zero]) (.const ``StringBool [])) $ mkAppN (.const `nouGATmeta.mkStringBool []) #[mkStrLit i,.const ``false []]
+    | metaExpl i _ _ => mkApp (.app (.const ``some [Level.zero]) (.const ``StringBool [])) $ mkAppN (.const `nouGATmeta.mkStringBool []) #[mkStrLit i,.const ``true []]
+    | metaAnon _ _ => .app (.const ``none [Level.zero]) (.const ``StringBool [])
 
-    def StringOpt : Type := Option String
-    def StringOptList : Type := List StringOpt
 
-    def mkMetaTyLit' : metaTy → MetaM Expr -- :: List (Option String)
-    | (metaUU, TT) => mkListLit (.const ``StringOpt []) (List.map mkMetaArgLit' (List.reverse TT))
-    | (metaEq _ _ _, TT) => mkListLit (.const ``StringOpt []) (List.map mkMetaArgLit' (List.reverse TT))
-    | (metaEl _, TT) => mkListLit (.const ``StringOpt []) (List.map mkMetaArgLit' (List.reverse TT))
+    def mkMetaTyLit' : metaTy → MetaM Expr -- :: List (Option (String × Bool))
+    | (metaUU, TT) => mkListLit (.const ``StringBoolOpt []) (List.map mkMetaArgLit' (List.reverse TT))
+    | (metaEq _ _ _, TT) => mkListLit (.const ``StringBoolOpt []) (List.map mkMetaArgLit' (List.reverse TT))
+    | (metaEl _, TT) => mkListLit (.const ``StringBoolOpt []) (List.map mkMetaArgLit' (List.reverse TT))
   end literals
 
 end nouGATmeta
@@ -272,6 +275,12 @@ namespace elabState
 
   end toString
 
+
+  inductive argInstr : Type where
+  | firstExpl : argInstr
+  | firstImpl : argInstr
+  open argInstr
+
   section failure
     inductive errorCode : Type where
     | errOther : errorCode
@@ -282,6 +291,7 @@ namespace elabState
     | errOpen : metaTm → metaTy → errorCode
     | errKind : metaTm → metaTy → String → String → errorCode
     | errTooManyArgs : metaTm → metaTy → errorCode
+    | errImplExplMismatch : argInstr → errorCode
     open errorCode
 
     def errorCode.format (suberror : String) : errorCode → StateT st MetaM Format
@@ -315,6 +325,10 @@ namespace elabState
         let fs := metaTmFormat current mf
         let Fs := metaTyFormatDisp current 4 mF fs
         return (text $ suberror ++ ": Too many arguments supplied to") ++ fs ++ Fs
+    | errImplExplMismatch firstImpl =>
+        return (text $ suberror ++ ": Looked for implicit argument, found none")
+    | errImplExplMismatch firstExpl =>
+        return (text $ suberror ++ ": Looked for explicit argument, found none")
 
 
 
@@ -400,7 +414,11 @@ namespace elaborator
     declare_syntax_cat gat_tm
     syntax ident     : gat_tm
     syntax "(" gat_tm ")" : gat_tm
+    -- declare_syntax_cat gat_input
+    -- syntax gat_tm : gat_input
+    -- syntax "{" gat_tm "}" : gat_input
     syntax:60 gat_tm:60 gat_tm:61 : gat_tm
+    syntax:60 gat_tm:60 "{" gat_tm:61 "}" : gat_tm
     syntax:58 gat_tm:58  "#⟨" gat_tm:59 "⟩" : gat_tm
     syntax gat_tm : gat_ty
     syntax gat_tm " ≡ " gat_tm : gat_ty
@@ -413,20 +431,12 @@ namespace elaborator
     syntax "_" : gat_underscore
     syntax "(" ident+ ":" gat_tm ")" : gat_arg
     syntax "(" gat_underscore+ ":" gat_tm ")" : gat_arg
-    -- syntax "{" ident ":" gat_tm "}" : gat_arg
+    syntax "{" ident+ ":" gat_tm "}" : gat_arg
     syntax gat_tm : gat_arg
 
     syntax gat_arg "⇒" gat_ty : gat_ty
 
-
-    -- declare_syntax_cat ident_list
-    -- syntax ident : ident_list
-    -- syntax "_" : ident_list
-    -- syntax ident_list "," "_" : ident_list
-    -- syntax ident_list "," ident : ident_list
-
     declare_syntax_cat con_inner
-    -- syntax gat_decl : con_inner
     syntax gat_decl,* : con_inner
     -- syntax "include" ident "as" "(" ident_list ");" con_inner : con_inner
 
@@ -451,33 +461,55 @@ namespace elaborator
     | metaExpl _ _ m1, m2, res => if m1 = m2 then return res else elabFail suberror (errorCode.errType m1 m2)
     | metaAnon _ m1, m2, res => if m1 = m2 then return res else elabFail suberror (errorCode.errType m1 m2)
 
-    def locSubstTy (t : metaTm) : metaTy → StateT st MetaM (metaTy × metaArg)
+
+
+    open argInstr
+    def splitArgs : argInstr → List metaArg → StateT st MetaM (List metaArg × metaArg)
+    | argI, [] => elabFail "Cannot substitute argument" (errorCode.errImplExplMismatch argI)
+    | argI, firstArg :: rest => match (argI,firstArg) with
+      | (firstExpl,metaImpl _ _ _) => do
+          let (resList,resArg) ← splitArgs argI rest
+          return (firstArg::resList,resArg)
+      | (firstImpl,metaExpl _ _ _) => do
+          let (resList,resArg) ← splitArgs argI rest
+          return (firstArg::resList,resArg)
+      | (firstImpl,metaAnon _ _) => do
+          let (resList,resArg) ← splitArgs argI rest
+          return (firstArg::resList,resArg)
+      | (firstImpl,metaImpl _ _ _) => return (rest,firstArg)
+      | (firstExpl,metaExpl _ _ _) => return (rest,firstArg)
+      | (firstExpl,metaAnon _ _) => return (rest,firstArg)
+
+    def locSubstTy (argI : argInstr) (t : metaTm) : metaTy → StateT st MetaM (metaTy × metaArg)
     | (metaUU, args) => do
-        let (rest,arg) ← optFail "Tried to perform dummy substitution" (initLast args)
+        let (revRest,arg) ← splitArgs argI (List.reverse args)
+        let rest := List.reverse revRest
         let s := extractMetaTm arg
         return ((metaUU, (List.map (metaSubstArg s t) rest)),arg)
     | (metaEl finalT, args) => do
-        let (rest,arg) ← optFail "Tried to perform dummy substitution" (initLast args)
+        let (revRest,arg) ← splitArgs argI (List.reverse args)
+        let rest := List.reverse revRest
         let s := extractMetaTm arg
         return ((metaEl (metaSubstTm s t finalT), List.map (metaSubstArg s t) rest),arg)
     | (metaEq finalT ms mt, args) => do
-        let (rest,arg) ← optFail "Tried to perform dummy substitution" (initLast args)
+        let (revRest,arg) ← splitArgs argI (List.reverse args)
+        let rest := List.reverse revRest
         let s := extractMetaTm arg
         return ((metaEq (metaSubstTm s t finalT) (metaSubstTm s t ms) (metaSubstTm s t mt), List.map (metaSubstArg s t) rest),arg)
 
-    partial def metaTyApp (fnTm : metaTm) (fnTy : metaTy) (argTm : metaTm) (argTy : metaTy) : StateT st MetaM metaTy := match (fnTy,argTy) with
+    partial def metaTyApp (argI : argInstr) (fnTm : metaTm) (fnTy : metaTy) (argTm : metaTm) (argTy : metaTy) : StateT st MetaM metaTy := match (fnTy,argTy) with
     | (_, metaUU, _) => elabFail "Bad argument" (errorCode.errKind argTm argTy "a sort" "an element")
     | (_,  metaEq _ _ _, _) => elabFail "Bad argument" (errorCode.errKind argTm argTy "an equation" "an element")
     | (_,  metaEl  _,(_::_)) => elabFail "Bad argument" (errorCode.errOpen argTm argTy)
     | ((_, []), _) => elabFail "Bad function" (errorCode.errTooManyArgs fnTm fnTy)
     | ((metaUU, args), metaEl y, []) => do
-        let (finalT',x) ← locSubstTy argTm (metaUU, args)
+        let (finalT',x) ← locSubstTy argI argTm (metaUU, args)
         metaTyMatch "Bad application" x y finalT'
     | ((metaEl finalT,args), metaEl y, []) => do
-        let (finalT',x) ← locSubstTy argTm (metaEl finalT, args)
+        let (finalT',x) ← locSubstTy argI argTm (metaEl finalT, args)
         metaTyMatch "Bad application" x y finalT'
     | ((metaEq finalT ms mt, args) ,  metaEl y, []) => do
-        let (finalT',x) ← locSubstTy argTm (metaEq finalT ms mt,args)
+        let (finalT',x) ← locSubstTy argI argTm (metaEq finalT ms mt,args)
         metaTyMatch "Bad application" x y finalT'
 
 
@@ -526,9 +558,9 @@ namespace elaborator
 
     structure eliminator extends eliminator_inner where
       (Output : Type)
-      (mkOutput : Con_D → List String → List (List (Option String)) → Output)
+      (mkOutput : Con_D → List String → List (List (Option (String × Bool))) → Output)
 
-    def eliminator_outer (inn : eliminator_inner) : Type 1 := @Sigma Type (λ O => inn.Con_D → List String → List (List (Option String)) → O)
+    def eliminator_outer (inn : eliminator_inner) : Type 1 := @Sigma Type (λ O => inn.Con_D → List String → List (List (Option (String × Bool))) → O)
 
     def elimProduct_outer {inn : eliminator_inner} (EO1 EO2 : eliminator_outer inn) : eliminator_outer inn :=
       ⟨ EO1.1 × EO2.1, λ Γ topnames telescopes => (EO1.2 Γ topnames telescopes,EO2.2 Γ topnames telescopes)⟩
@@ -557,7 +589,7 @@ namespace elaborator
       E1.Output × E2.Output,
       λ (x1,x2) topnames telescopes => (E1.mkOutput x1 topnames telescopes, E2.mkOutput x2 topnames telescopes)
     ⟩
-    def elimProduct' (E1 E2 : eliminator) (Output' : Type) (mkOutput' : E1.Con_D → E2.Con_D → List String → List (List (Option String)) → Output'): eliminator := ⟨
+    def elimProduct' (E1 E2 : eliminator) (Output' : Type) (mkOutput' : E1.Con_D → E2.Con_D → List String → List (List (Option (String × Bool))) → Output'): eliminator := ⟨
       elimProduct_inner E1.toeliminator_inner E2.toeliminator_inner,
       Output',
       λ (x1,x2) => mkOutput' x1 x2
@@ -612,7 +644,12 @@ namespace elaborator
     | `(gat_tm| $g1:gat_tm $g2:gat_tm ) => do
           let (t1,mt1,mA1) ← elabGATTm Elim g1
           let (t2,mt2,mA2) ← elabGATTm Elim g2
-          let mRes ← metaTyApp mt1 mA1 mt2 mA2
+          let mRes ← metaTyApp argInstr.firstExpl mt1 mA1 mt2 mA2
+          return (mkAppN (litApp_D Elim) #[t1,t2], metaAPP mt1 mt2,mRes)
+    | `(gat_tm| $g1:gat_tm { $g2:gat_tm } ) => do
+          let (t1,mt1,mA1) ← elabGATTm Elim g1
+          let (t2,mt2,mA2) ← elabGATTm Elim g2
+          let mRes ← metaTyApp argInstr.firstImpl mt1 mA1 mt2 mA2
           return (mkAppN (litApp_D Elim) #[t1,t2], metaAPP mt1 mt2,mRes)
     | `(gat_tm| $i:ident ) => do
           let (mb,m,b) ← varTelLkup i.getId.toString
@@ -653,6 +690,14 @@ namespace elaborator
           let (codomain,finalT) ← getCodomain
           return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
         ) (elabGATTy Elim T') is
+    | `(gat_ty| { $is:ident* : $T:gat_tm } ⇒ $T':gat_ty) => do
+        Array.foldr (λ i getCodomain => do
+          let (domain,mt,mX) ← elabGATTm Elim T
+          failIfNotU "Failed to create argument" mt mX
+          extendTel (mkImpl i.getId.toString mt)
+          let (codomain,finalT) ← getCodomain
+          return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
+        ) (elabGATTy Elim T') is
     | `(gat_ty| ( $is:gat_underscore* : $T:gat_tm ) ⇒ $T':gat_ty) => do
         Array.foldr (λ _ getCodomain => do
           let (domain,mt,mX) ← elabGATTm Elim T
@@ -680,7 +725,7 @@ namespace elaborator
     | `(con_inner| $ds:gat_decl,* ) => do
         let (resCon,VV) ← StateT.run (Array.foldl (elabGATdecl Elim) (return litEmpty_D Elim) ds.getElems) (stEmpty GlobalRawErrorMsg)
         let topList ← mkListLit (.const ``String []) (List.map mkStrLit (List.reverse VV.topnames))
-        let telescopes ← List.mapM mkMetaTyLit' (List.reverse VV.telescopes) >>= mkListLit (.const ``StringOptList [])
+        let telescopes ← List.mapM mkMetaTyLit' (List.reverse VV.telescopes) >>= mkListLit (.const ``StringBoolOptList [])
         return mkAppN (litMk Elim) #[resCon,topList,telescopes]
     | _ => throwError "GAT_Fail"
 

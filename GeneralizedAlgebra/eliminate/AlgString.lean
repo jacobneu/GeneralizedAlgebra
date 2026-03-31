@@ -16,7 +16,7 @@ def AlgStr_Tm : List String → preTm → String
 | topnames, preTRANSP _ s => AlgStr_Tm topnames s
 | _, _ => ""
 
-def AlgStr_Ty : List String → preTy → List (Option String × preTm) → String
+def AlgStr_Ty : List String → preTy → List (Option (String × Bool) × preTm) → String
 | _, preUU, _ => "Set"
 | topnames, preEL t, _ =>
     AlgStr_Tm topnames t
@@ -24,11 +24,14 @@ def AlgStr_Ty : List String → preTy → List (Option String × preTm) → Stri
     AlgStr_Tm topnames s ++ " = " ++ AlgStr_Tm topnames t
 | topnames, prePI _ Y, (none,t) ::trest =>
     AlgStr_Tm topnames t ++ " → " ++ AlgStr_Ty (""::topnames) Y trest
-| topnames, prePI _ Y, (some s,t) ::trest =>
+| topnames, prePI _ Y, (some (s,true),t) ::trest =>
     "(" ++ s ++ " : " ++ AlgStr_Tm topnames t ++ ") → " ++ AlgStr_Ty (s::topnames) Y trest
+| topnames, prePI _ Y, (some (s,false),_) ::trest =>
+    -- "{" ++ s ++ " : " ++ AlgStr_Tm topnames t ++ "} → " ++
+    AlgStr_Ty (s::topnames) Y trest
 | _, _, _ => ""
 
-def AlgStr_Con_core : List String → List (preTy × List (Option String × preTm)) → List String
+def AlgStr_Con_core : List String → List (preTy × List (Option (String × Bool) × preTm)) → List String
 | [s],[(X,tt)] =>
     [s ++ " : " ++ AlgStr_Ty [] X tt]
 | s::ss, (X,tt)::rest => -- ⟨X::XS,s::ss,(tt,_)::tts⟩ =>
@@ -36,11 +39,11 @@ def AlgStr_Con_core : List String → List (preTy × List (Option String × preT
     [s ++ " : " ++ AlgStr_Ty ss X tt]
 | _,_ => []
 
-def GATdataZip_core : preTy → List (Option String) → preTy × List (Option String × preTm)
+def GATdataZip_core : preTy → List (Option (String × Bool)) → preTy × List (Option (String × Bool) × preTm)
 | prePI X Y, o::TT => (prePI X Y,(o,X) :: (GATdataZip_core Y TT).2)
 | T, _ => (T,[])
 
-def GATdataZip : GATdata → List String × List (preTy × List (Option String × preTm))
+def GATdataZip : GATdata → List String × List (preTy × List (Option (String × Bool) × preTm))
 | ⟨thePreCon, theTopnames, theTelescopes⟩ =>
     (List.reverse theTopnames, List.zipWith GATdataZip_core thePreCon (List.reverse theTelescopes))
 
