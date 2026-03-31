@@ -28,7 +28,7 @@ def DAlgStr_Con_core : preCon → List (List String) → List String → List St
     DAlgStr_Con_core XS tts ss ++ [dalg s ++ " : " ++ DAlgStr_Ty ss tt s X ]
 | _,_,_ => []
 
-def genVars_core : Nat → List (List (Option String)) → List (List String) → List (List String)
+def genVars_core : Nat → List (List (Option (String × Bool))) → List (List String) → List (List String)
 | _, [],_ => []
 | acc, []::AS, given => []::genVars_core acc AS given
 -- | acc, []::AS, [] => []::genVars_core acc AS []
@@ -45,13 +45,13 @@ def genVars_core : Nat → List (List (Option String)) → List (List String) �
 --     | headStr::rest => (s1::headStr)::rest
 --     | [] => []
 | acc, ((some s)::as)::AS, [] => match genVars_core acc (as::AS) [] with
-    | headStr::rest => (s::headStr)::rest
+    | headStr::rest => (s.1::headStr)::rest
     | [] => []
 | acc, ((some s)::as)::AS, ([]::givenRest) => match genVars_core acc (as::AS) ([]::givenRest) with
-    | headStr::rest => (s::headStr)::rest
+    | headStr::rest => (s.1::headStr)::rest
     | [] => []
 
-def genVars (input : List (List (Option String))) (given : List (List String) := []) : List (List String) := genVars_core 0 (List.reverse input) given
+def genVars (input : List (List (Option (String × Bool)))) (given : List (List String) := []) : List (List String) := genVars_core 0 (List.reverse input) given
 
 def DAlgStr_Con (𝔊 : GATdata) (teleNames : List (List String) := []): List String :=
 let telescopeNames := List.reverse (genVars 𝔊.telescopes teleNames)

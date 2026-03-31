@@ -15,7 +15,7 @@ syntax "⦃" con_inner "⦄" : condata_outer
 structure GAT where
     (con : preCon)
     (topnames : List String)
-    (telescopes : List (List (Option String)))
+    (telescopes : List (List (Option (String × Bool))))
     (algStr : List String)
 
 def fullElim : eliminator :=

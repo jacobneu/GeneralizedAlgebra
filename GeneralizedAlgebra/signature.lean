@@ -89,4 +89,4 @@ def substTy : Nat → preTm → preTy → preTy
 structure GATdata where
   (con : preCon)
   (topnames : List String)
-  (telescopes : List (List (Option String)))
+  (telescopes : List (List (Option (String × Bool))))
