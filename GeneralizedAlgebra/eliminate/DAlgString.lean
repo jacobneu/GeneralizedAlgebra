@@ -14,7 +14,6 @@ def DAlgStr_Tm : List String → preTm → String
 | topnames, preVAR n => dalg (AlgStr_Tm topnames (preVAR n))
 | topnames, preAPP f s => DAlgStr_Tm topnames f ++ " " ++ mkParen (AlgStr_Tm topnames s) ++ " " ++ mkParen (DAlgStr_Tm topnames s)
 | topnames, preTRANSP _ s => DAlgStr_Tm topnames s
-| _, holeTm => "?"
 
 def DAlgStr_Ty : List String → List String → String → preTy → String
 | _, _, algS, preUU => algS ++ " → Set"
