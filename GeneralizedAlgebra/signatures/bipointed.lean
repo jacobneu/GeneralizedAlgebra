@@ -1,7 +1,7 @@
 import GeneralizedAlgebra.signatures.pointed
 
 def 𝔅_data : GATdata :=
-  [GATdata| X : U, x : X, x' : X ]
+  [GATdata| X : U, x x' : X ]
 
 -- def 𝔅 : GAT := ⟨
 --   𝔅_data,
