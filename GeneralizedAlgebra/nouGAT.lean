@@ -219,21 +219,27 @@ namespace eliminator
     structure eliminator_inner where
       (Con_D : Type)
       (Ty_D : Con_D → Type)
-      (Tm_D : Con_D → Type)
+      (Tm_D : (Γ : Con_D) → Ty_D Γ → Type)
       (Empty_D : Con_D)
       (Extend_D : (Γ : Con_D) → Ty_D Γ → Con_D)
       (UU_D : (Γ : Con_D) → Ty_D Γ)
-      (El_D : (Γ : Con_D) → Tm_D Γ → Ty_D Γ)
-      (Pi_D : (Γ : Con_D) → (X : Tm_D Γ) → Ty_D (Extend_D Γ (El_D Γ X)) → Ty_D Γ)
-      (Eq_D : (Γ : Con_D) → Tm_D Γ → Tm_D Γ → Ty_D Γ)
-      (Var_D : (Γ : Con_D) → Ty_D Γ → Nat → Tm_D Γ)
-      (App_D : (Γ : Con_D) → Tm_D Γ → Tm_D Γ → Tm_D Γ)
-      (Transp_D : (Γ : Con_D) → Tm_D Γ → Tm_D Γ → Tm_D Γ)
+      (El_D : (Γ : Con_D) → Tm_D Γ (UU_D Γ) → Ty_D Γ)
+      (Pi_D : (Γ : Con_D) → (X : Tm_D Γ (UU_D Γ)) → Ty_D (Extend_D Γ (El_D Γ X)) → Ty_D Γ)
+      (Eq_D : (Γ : Con_D) → (X : Tm_D Γ (UU_D Γ)) → Tm_D Γ (El_D Γ X) → Tm_D Γ (El_D Γ X) → Ty_D Γ)
+      (WkTy_D : (Γ : Con_D) → (A : Ty_D Γ) → Ty_D Γ → Ty_D (Extend_D Γ A))
+      (WkTm_D : (Γ : Con_D) → (A B : Ty_D Γ) → Tm_D Γ B → Tm_D (Extend_D Γ A) (WkTy_D Γ A B))
+      (V_D : (Γ : Con_D) → (A : Ty_D Γ) → Tm_D (Extend_D Γ A) (WkTy_D Γ A A))
+      (SubstTy_D : (Γ : Con_D) → (X : Tm_D Γ (UU_D Γ)) → Ty_D (Extend_D Γ (El_D Γ X)) → Tm_D Γ (El_D Γ X) → Ty_D Γ)
+      (SubstTm_D : (Γ : Con_D) → (X : Tm_D Γ (UU_D Γ)) → Tm_D (Extend_D Γ (El_D Γ X)) (UU_D (Extend_D Γ (El_D Γ X))) → (x : Tm_D Γ (El_D Γ X)) → Tm_D Γ (UU_D Γ))
+      (App_D : (Γ : Con_D) → (X : Tm_D Γ (UU_D Γ)) → (Y : Ty_D (Extend_D Γ (El_D Γ X))) → Tm_D Γ (Pi_D Γ X Y) → (x : Tm_D Γ (El_D Γ X)) → Tm_D Γ (SubstTy_D Γ X Y x))
+      (Transp_D : (Γ : Con_D) → (X : Tm_D Γ (UU_D Γ)) → (Y : Tm_D (Extend_D Γ (El_D Γ X)) (UU_D (Extend_D Γ (El_D Γ X))))  → (x x' : Tm_D Γ (El_D Γ X)) → Tm_D Γ (Eq_D Γ X x x') → Tm_D Γ (El_D Γ (SubstTm_D Γ X Y x)) → Tm_D Γ (El_D Γ (SubstTm_D Γ X Y x')))
 
     structure eliminator extends eliminator_inner where
       (Output : Type)
       (mkOutput : Con_D → List String → List (List (Option String)) → Output)
 
+
+  section combinators
     def eliminator_outer (inn : eliminator_inner) : Type 1 := @Sigma Type (λ O => inn.Con_D → List String → List (List (Option String)) → O)
 
     def elimProduct_outer {inn : eliminator_inner} (EO1 EO2 : eliminator_outer inn) : eliminator_outer inn :=
@@ -244,36 +250,36 @@ namespace eliminator
 
     def toEliminator {inn : eliminator_inner} (outt : eliminator_outer inn) : eliminator := ⟨inn, outt.1,outt.2⟩
 
-    def elimProduct_inner (E1 E2 : eliminator_inner) : eliminator_inner := ⟨
-        E1.Con_D × E2.Con_D,
-        λ (Γ1,Γ2) => E1.Ty_D Γ1 × E2.Ty_D Γ2,
-        λ (Γ1,Γ2) => E1.Tm_D Γ1 × E2.Tm_D Γ2,
-        (E1.Empty_D,E2.Empty_D),
-        λ (x1,x2) (y1,y2) => (E1.Extend_D x1 y1,E2.Extend_D x2 y2),
-        λ (Γ1,Γ2) => (E1.UU_D Γ1,E2.UU_D Γ2),
-        λ (Γ1,Γ2) (x1,x2) => (E1.El_D Γ1 x1,E2.El_D Γ2 x2),
-        λ (Γ1,Γ2) (x1,x2) (y1,y2) => (E1.Pi_D Γ1 x1 y1,E2.Pi_D Γ2 x2 y2),
-        λ (Γ1,Γ2) (x1,x2) (y1,y2) => (E1.Eq_D Γ1 x1 y1,E2.Eq_D Γ2 x2 y2),
-        λ (Γ1,Γ2) (A1,A2) n => (E1.Var_D Γ1 A1 n,E2.Var_D Γ2 A2 n),
-        λ (Γ1,Γ2) (x1,x2) (y1,y2) => (E1.App_D Γ1 x1 y1,E2.App_D Γ2 x2 y2),
-        λ (Γ1,Γ2) (x1,x2) (y1,y2) => (E1.Transp_D Γ1 x1 y1,E2.Transp_D Γ2 x2 y2)
-      ⟩
-    def elimProduct (E1 E2 : eliminator) : eliminator := ⟨
-      elimProduct_inner E1.toeliminator_inner E2.toeliminator_inner,
-      E1.Output × E2.Output,
-      λ (x1,x2) topnames telescopes => (E1.mkOutput x1 topnames telescopes, E2.mkOutput x2 topnames telescopes)
-    ⟩
-    def elimProduct' (E1 E2 : eliminator) (Output' : Type) (mkOutput' : E1.Con_D → E2.Con_D → List String → List (List (Option String)) → Output'): eliminator := ⟨
-      elimProduct_inner E1.toeliminator_inner E2.toeliminator_inner,
-      Output',
-      λ (x1,x2) => mkOutput' x1 x2
-    ⟩
+    -- def elimProduct_inner (E1 E2 : eliminator_inner) : eliminator_inner := ⟨
+    --     E1.Con_D × E2.Con_D,
+    --     λ (Γ1,Γ2) => E1.Ty_D Γ1 × E2.Ty_D Γ2,
+    --     λ (Γ1,Γ2) => E1.Tm_D Γ1 × E2.Tm_D Γ2,
+    --     (E1.Empty_D,E2.Empty_D),
+    --     λ (x1,x2) (y1,y2) => (E1.Extend_D x1 y1,E2.Extend_D x2 y2),
+    --     λ (Γ1,Γ2) => (E1.UU_D Γ1,E2.UU_D Γ2),
+    --     λ (Γ1,Γ2) (x1,x2) => (E1.El_D Γ1 x1,E2.El_D Γ2 x2),
+    --     λ (Γ1,Γ2) (x1,x2) (y1,y2) => (E1.Pi_D Γ1 x1 y1,E2.Pi_D Γ2 x2 y2),
+    --     λ (Γ1,Γ2) (x1,x2) (y1,y2) => (E1.Eq_D Γ1 x1 y1,E2.Eq_D Γ2 x2 y2),
+    --     λ (Γ1,Γ2) (A1,A2) n => (E1.Var_D Γ1 A1 n,E2.Var_D Γ2 A2 n),
+    --     λ (Γ1,Γ2) (x1,x2) (y1,y2) => (E1.App_D Γ1 x1 y1,E2.App_D Γ2 x2 y2),
+    --     λ (Γ1,Γ2) (x1,x2) (y1,y2) => (E1.Transp_D Γ1 x1 y1,E2.Transp_D Γ2 x2 y2)
+    --   ⟩
+    -- def elimProduct (E1 E2 : eliminator) : eliminator := ⟨
+    --   elimProduct_inner E1.toeliminator_inner E2.toeliminator_inner,
+    --   E1.Output × E2.Output,
+    --   λ (x1,x2) topnames telescopes => (E1.mkOutput x1 topnames telescopes, E2.mkOutput x2 topnames telescopes)
+    -- ⟩
+    -- def elimProduct' (E1 E2 : eliminator) (Output' : Type) (mkOutput' : E1.Con_D → E2.Con_D → List String → List (List (Option String)) → Output'): eliminator := ⟨
+    --   elimProduct_inner E1.toeliminator_inner E2.toeliminator_inner,
+    --   Output',
+    --   λ (x1,x2) => mkOutput' x1 x2
+    -- ⟩
     def elimProduct_post (Elim : eliminator) {Output' : Type} (f : Elim.Output → Output') : eliminator :=
       ⟨ Elim.toeliminator_inner, Output',
         λ Γ topnames telescopes => f (Elim.mkOutput Γ topnames telescopes)⟩
+  end combinators
 
-
-
+  section literals
     def litToInner : Expr → Expr := .app (.const ``eliminator.toeliminator_inner [])
     def litEmpty_D : Expr → Expr := .app (.const ``eliminator_inner.Empty_D []) ∘ litToInner
     def litExtend_D : Expr → Expr := .app (.const ``eliminator_inner.Extend_D []) ∘ litToInner
@@ -281,32 +287,68 @@ namespace eliminator
     def litEl_D : Expr → Expr := .app (.const ``eliminator_inner.El_D []) ∘ litToInner
     def litPi_D : Expr → Expr := .app (.const ``eliminator_inner.Pi_D []) ∘ litToInner
     def litEq_D : Expr → Expr := .app (.const ``eliminator_inner.Eq_D []) ∘ litToInner
+    def litV_D : Expr → Expr := .app (.const ``eliminator_inner.V_D []) ∘ litToInner
+    def litWkTm_D : Expr → Expr := .app (.const ``eliminator_inner.WkTm_D []) ∘ litToInner
+    def litWkTy_D : Expr → Expr := .app (.const ``eliminator_inner.WkTy_D []) ∘ litToInner
+    def litSubstTy_D : Expr → Expr := .app (.const ``eliminator_inner.SubstTy_D []) ∘ litToInner
+    def litSubstTm_D : Expr → Expr := .app (.const ``eliminator_inner.SubstTm_D []) ∘ litToInner
     def litApp_D : Expr → Expr := .app (.const ``eliminator_inner.App_D []) ∘ litToInner
     def litTransp_D : Expr → Expr := .app (.const ``eliminator_inner.Transp_D []) ∘ litToInner
-    def litVar_D : Expr → Expr := .app (.const ``eliminator_inner.Var_D []) ∘ litToInner
+    -- def litVar_D : Expr → Expr := .app (.const ``eliminator_inner.Var_D []) ∘ litToInner
 
     def litMk : Expr → Expr := .app (.const ``eliminator.mkOutput [])
 
-    def mkLitElim (litElim : Expr): Expr :=
-      mkAppN (.const ``eliminator.mk []) #[
-        mkAppN (.const ``eliminator_inner.mk []) #[
-          .app (.const ``eliminator_inner.Con_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
-          .app (.const ``eliminator_inner.Ty_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
-          .app (.const ``eliminator_inner.Tm_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
-          .app (.const ``eliminator_inner.Empty_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
-          .app (.const ``eliminator_inner.Extend_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
-          .app (.const ``eliminator_inner.UU_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
-          .app (.const ``eliminator_inner.El_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
-          .app (.const ``eliminator_inner.Pi_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
-          .app (.const ``eliminator_inner.Eq_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
-          .app (.const ``eliminator_inner.Var_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
-          .app (.const ``eliminator_inner.App_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
-          .app (.const ``eliminator_inner.Transp_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim)],
-        .app (.const ``eliminator.Output []) litElim,
-        .app (.const ``eliminator.mkOutput []) litElim
-      ]
-  end eliminator
+    -- def mkLitElim (litElim : Expr): Expr :=
+    --   mkAppN (.const ``eliminator.mk []) #[
+    --     mkAppN (.const ``eliminator_inner.mk []) #[
+    --       .app (.const ``eliminator_inner.Con_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+    --       .app (.const ``eliminator_inner.Ty_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+    --       .app (.const ``eliminator_inner.Tm_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+    --       .app (.const ``eliminator_inner.Empty_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+    --       .app (.const ``eliminator_inner.Extend_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+    --       .app (.const ``eliminator_inner.UU_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+    --       .app (.const ``eliminator_inner.El_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+    --       .app (.const ``eliminator_inner.Pi_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+    --       .app (.const ``eliminator_inner.Eq_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+    --       .app (.const ``eliminator_inner.Var_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+    --       .app (.const ``eliminator_inner.App_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+    --       .app (.const ``eliminator_inner.Transp_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim)],
+    --     .app (.const ``eliminator.Output []) litElim,
+    --     .app (.const ``eliminator.mkOutput []) litElim
+    --   ]
+    end literals
+end eliminator
 
+namespace performEliminate
+
+  open nouGATmeta
+  open eliminator
+  open metaTm metaTyMarker metaArg metaArgMarker
+
+  #eval List.foldl (λ s n => "(" ++ s ++ Nat.repr n ++ ")" ) "z" [0,1]
+  #check eliminator_inner.Pi_D
+
+    -- def eliminateArg (Elim : eliminator) (Γ : Elim.Con_D)
+    def eliminateTerm {Elim : eliminator} (Γ : Elim.Con_D) {A : Elim.Ty_D Γ} (mt : metaTm) (offset : Nat) : Elim.Tm_D Γ A := sorry
+
+    def eliminateTel (Elim : eliminator) (Γ : Elim.Con_D) : metaTyMarker → List metaTm → Elim.Ty_D Γ
+    | metaUU, [] => Elim.UU_D Γ
+    | metaEl mX, [] => Elim.El_D Γ (eliminateTerm Γ mX 0)
+    | metaEq mX ms mt, [] =>
+        Elim.Eq_D Γ (eliminateTerm Γ mX 0) (eliminateTerm Γ ms 0) (eliminateTerm Γ mt 0)
+    | finalT, X::XS =>
+        let eX := eliminateTerm Γ X (X::XS).length
+        let Γ' := Elim.Extend_D Γ (Elim.El_D Γ eX)
+        Elim.Pi_D Γ eX (eliminateTel Elim Γ' finalT XS)
+
+    def mkEliminate (Elim : eliminator) (tele : List metaTy) : Elim.Con_D :=
+        List.foldl
+          (λ Γ (finalT,TT) =>
+            Elim.Extend_D Γ (eliminateTel Elim Γ finalT (List.reverse (List.map extractMetaTm TT))))
+          Elim.Empty_D
+          (List.reverse tele)
+
+end performEliminate
 
 namespace elabState
 
@@ -319,13 +361,13 @@ namespace elabState
       (topnames : List String)
       (telescopes : List metaTy)
       (currentName : Option String)
-      (currentTel : List metaArg)
+      (currentTel : List (Expr × metaArg))
       (rawMode : Bool)
       (Elim : Expr)
-      (currentCon : Expr)
+      (partialCons : List Expr)
       (tyStack : List ((Expr × metaTyMarker)))
 
-    def stEmpty (raw : Bool) (Elim : Expr) : st := ⟨[],[],none,[],raw,Elim,litEmpty_D Elim,[]⟩
+    def stEmpty (raw : Bool) (Elim : Expr) : st := ⟨[],[],none,[],raw,Elim,[litEmpty_D Elim],[]⟩
 
   section toString
 
@@ -335,7 +377,7 @@ namespace elabState
       | none => "???" ++ (if current.rawMode then "[" ++ Nat.repr n ++ "]" else "")
     | metaLOC g b => let gIndex := current.topnames.length;
       if g = gIndex then match current.currentTel[b]? with
-        | some a => (extractName a) ++ (if current.rawMode then "[" ++ Nat.repr g ++ ","++ Nat.repr b ++ "]" else "")
+        | some a => (extractName a.2) ++ (if current.rawMode then "[" ++ Nat.repr g ++ ","++ Nat.repr b ++ "]" else "")
         | none => "???" ++ (if current.rawMode then "[" ++ Nat.repr g ++ ","++ Nat.repr b ++ "]" else "")
       else
       match current.telescopes[gIndex - g - 1]? with
@@ -429,7 +471,7 @@ namespace elabState
         let errFmt ← err.format suberror
         throwError (nest 0 <| (align true) ++ "Error: " ++ errFmt)
            ++ (match current.currentName with | some s => (nest 2 <| (align true) ++ "while laborating constructor: " ++ s) | _ => "")
-           ++ (match current.currentTel with | [] => "" | l => (nest 2 <| (align true) ++ "telescope: " ++ formatList 4 (List.reverse $ List.map (λ a => "- " ++ metaArgFormat current a) l)))
+           ++ (match current.currentTel with | [] => "" | l => (nest 2 <| (align true) ++ "telescope: " ++ formatList 4 (List.reverse $ List.map (λ a => "- " ++ metaArgFormat current a.2) l)))
            ++ (nest 2 <| (align true) ++ "previous: " ++ formatList 4 (List.map (previousFormat current) $ List.reverse $ List.zip current.topnames current.telescopes))
            ++ (nest 2 <| (align true) ++ "tyStack: " ++ formatList 4
            (List.map (metaTyMarkerFormat current ∘ Prod.snd) current.tyStack))
@@ -446,19 +488,20 @@ namespace elabState
       let current ← get
       let theName ← optFail "getting name for extension" current.currentName
       let ((newTy,finalT),restStack) ← optFail "popping tyStack for extension" (do let x ← List.head? current.tyStack; let xs ← List.tail? current.tyStack; return (x,xs))
+      let currentCon ← optFail "getting head of partialCons for extension" (List.head? current.partialCons)
       set $ st.mk
         (theName::current.topnames)
-        ((finalT,current.currentTel)::current.telescopes)
+        ((finalT,List.map Prod.snd current.currentTel)::current.telescopes)
         none
         []
         current.rawMode
         current.Elim
-        (mkAppN (litExtend_D current.Elim) #[current.currentCon,newTy])
+        (mkAppN (litExtend_D current.Elim) #[currentCon,newTy] :: current.partialCons)
         restStack
 
     def pushTy (newTy : Expr) (newTyMark : metaTyMarker) : StateT st MetaM Unit := do
       let current ← get
-      set $ st.mk current.topnames current.telescopes current.currentName current.currentTel current.rawMode current.Elim current.currentCon ((newTy,newTyMark)::current.tyStack)
+      set $ st.mk current.topnames current.telescopes current.currentName current.currentTel current.rawMode current.Elim current.partialCons ((newTy,newTyMark)::current.tyStack)
 
     def extendTel (newArgMark : metaArgMarker) (newTy : Expr) (mnewTy : metaTm) : StateT st MetaM Unit := do
       let current ← get
@@ -467,7 +510,7 @@ namespace elabState
         | mkImpl i mX => metaImpl i (metaLOC gIndex 0) (localWkTm mX)
         | mkExpl i mX => metaExpl i (metaLOC gIndex 0) (localWkTm mX)
         | mkAnon mX => metaAnon (metaLOC gIndex 0) (localWkTm mX)
-      set $ st.mk current.topnames current.telescopes current.currentName (newArg::List.map localWkArg current.currentTel) current.rawMode current.Elim current.currentCon ((newTy,metaEl mnewTy)::current.tyStack)
+      set $ st.mk current.topnames current.telescopes current.currentName ((newTy,newArg)::List.map (λ (e,a) => (e,localWkArg a)) current.currentTel) current.rawMode current.Elim current.partialCons ((newTy,metaEl mnewTy)::current.tyStack)
       -- pushTy newTy (metaEl mnewTy)
 
   end extend
@@ -482,7 +525,7 @@ namespace elabState
     def varTelLkup_core (key : String) : StateT st MetaM (Option (metaTm × metaTy × Nat)) := do
         let current ← get
         let gIndex := current.topnames.length
-        match findIdxElem (argMatch key) current.currentTel with
+        match findIdxElem (argMatch key) (List.unzip current.currentTel).2 with
         | some (idx,a) => return some (metaLOC gIndex idx,(metaEl (extractMetaSort a),[]),idx)
         | none => match findIdxElem (λ (s,_) => s == key) (List.zip current.topnames current.telescopes) with
           | some (idx,_,T) => return (metaGLOB (gIndex - idx - 1),T,idx + current.currentTel.length)
@@ -490,15 +533,15 @@ namespace elabState
 
     def setCurrentName (theName : String) : StateT st MetaM Unit := do
       let current ← get
-      set $ st.mk current.topnames current.telescopes (some theName) current.currentTel current.rawMode current.Elim current.currentCon current.tyStack
+      set $ st.mk current.topnames current.telescopes (some theName) current.currentTel current.rawMode current.Elim current.partialCons current.tyStack
 
     def getCurrentTel : StateT st MetaM (List metaArg) := do
       let current ← get
-      return current.currentTel
+      return (List.unzip current.currentTel).2
 
-    def getCurrentCon : StateT st MetaM Expr := do
+    def getCurrentCon (loc : String) : StateT st MetaM Expr := do
       let current ← get
-      return current.currentCon
+      optFail ("getting current cons at " ++ loc) (List.head? current.partialCons)
 
     def getElim : StateT st MetaM Expr := do
       let current ← get
@@ -507,7 +550,7 @@ namespace elabState
     def popTy : StateT st MetaM (Expr × metaTyMarker) := do
       let current ← get
       let (z,restStack) ← optFail "popping tyStack" (do let x ← List.head? current.tyStack; let xs ← List.tail? current.tyStack; return (x,xs))
-      set $ st.mk current.topnames current.telescopes current.currentName current.currentTel current.rawMode current.Elim current.currentCon restStack
+      set $ st.mk current.topnames current.telescopes current.currentName current.currentTel current.rawMode current.Elim current.partialCons restStack
       return z
 
 
@@ -649,6 +692,23 @@ namespace elaborator
     instance  : Inhabited (Syntax → StateT st MetaM (Expr × metaTm × metaTy)) where
       default _ := pure (.const ``true [],metaGLOB 0,metaUU, [])
 
+#check eliminator_inner.WkTm_D
+#check eliminator_inner.WkTy_D
+
+
+    /-
+      (A₀, ⋄)
+      (A₁, ⋄ ▷ A₀)
+      (A₂, ⋄ ▷ A₀ ▷ A₁)
+
+    -/
+    -- def litVar_D_core (Elim : Expr) : Nat → List (Expr × Expr)→ Option Expr
+    -- | 0, _::(A,Γ)::_ => some $ mkAppN (litV_D Elim) #[Γ,A]
+    -- | succ b, _::(A,Γ)::rest => some $ mkAppN (litWkTm_D Elim) #[Γ,]
+    -- | _,_ => none
+
+    -- def litVar_D (Elim : Expr)
+
     partial def elabGATTm : Syntax → StateT st MetaM (Expr × metaTm × metaTy)
     | `(gat_tm| ( $g:gat_tm ) ) => elabGATTm g
     | `(gat_tm| $g1:gat_tm $g2:gat_tm ) => do
@@ -659,15 +719,15 @@ namespace elaborator
           let (t1,mt1,mA1) ← elabGATTm g1
           let (t2,mt2,mA2) ← elabGATTm g2
           let mRes ← metaTyApp mt1 mA1 mt2 mA2
-          let Γ ← getCurrentCon
+          let Γ ← getCurrentCon "elabGATTm apply"
           return (mkAppN (litApp_D Elim) #[Γ,t1,t2], metaAPP mt1 mt2,mRes)
     | `(gat_tm| $i:ident ) => do
           let Elim ← getElim
           let (mb,m,b) ← varTelLkup i.getId.toString
-          let Γ ← getCurrentCon
+          let Γ ← getCurrentCon "elabGATTm ident"
           -- let (Texpr,_) ← popTy
           let Texpr := mkAppN (litUU_D Elim) #[Γ]
-          return (mkAppN (litVar_D Elim) #[Γ,Texpr,mkNatLit b],mb,m)
+          return (mkAppN (litVar_D Elim b) #[Γ,Texpr],mb,m)
     | `(gat_tm| $g1 #⟨ $g2 ⟩ ) => do
           let Elim ← getElim
           -- let Γ ← getCurrentCon
@@ -676,7 +736,7 @@ namespace elaborator
           let (t1,mt1,mX1) ← elabGATTm g1
           let (t2,mt2,mX2) ← elabGATTm g2
           let mresT ← failIfBadTransp mt2 mt1 mX2 mX1
-          let Γ ← getCurrentCon
+          let Γ ← getCurrentCon "elabGATTm transp"
           return (mkAppN (litTransp_D Elim) #[Γ,t2,t1],metaTRANSP mt2 mt1,mresT)
     | _ => throwError "TmFail"
 
@@ -707,11 +767,11 @@ namespace elaborator
     partial def elabGATTy : Syntax → StateT st MetaM Unit
     | `(gat_ty| U ) => do
         let Elim ← getElim
-        let Γ ← getCurrentCon
+        let Γ ← getCurrentCon "elabGATTy U"
         pushTy (mkAppN (litUU_D Elim) #[Γ]) metaUU
     | `(gat_ty| $x:gat_tm ) => do
         let Elim ← getElim
-        let Γ ← getCurrentCon
+        let Γ ← getCurrentCon "elabGATTy El"
         -- pushTy (mkAppN (litUU_D Elim) #[Γ]) metaUU
         let (t,mt,mX) ← elabGATTm x
         failIfNotU "Bad El" mt mX
@@ -722,7 +782,7 @@ namespace elaborator
         let (codomain,finalT) ← popTy
         let (domain,_) ← popTy
         let Elim ← getElim
-        let Γ ← getCurrentCon
+        let Γ ← getCurrentCon "elabGATTy ⇒"
         pushTy (mkAppN (litPi_D Elim) #[Γ,domain,codomain]) finalT
     | `(gat_ty| $t1:gat_tm ≡ $t2:gat_tm) => do
         let Elim ← getElim
@@ -732,22 +792,24 @@ namespace elaborator
         let (tt1,mt1,mX1) ← elabGATTm t1
         let (tt2,mt2,mX2) ← elabGATTm t2
         let mX ← failIfBadEq mt1 mt2 mX1 mX2
-        let Γ ← getCurrentCon
+        let Γ ← getCurrentCon "elabGATTy Eq"
         pushTy (mkAppN (litEq_D Elim) #[Γ,tt1,tt2]) (metaEq mX mt1 mt2)
     | _ => throwError "TyFail"
 
     def GlobalRawErrorMsg : Bool := false
 
-    partial def elabGATCon_core : Syntax → StateT st MetaM Unit
+    partial def elabGATCon_core : Syntax → StateT st MetaM Expr
     | `(con_inner| $rest:con_inner , $i:ident : $g:gat_ty ) => do
-        elabGATCon_core rest
+        let _ ← elabGATCon_core rest
         setCurrentName i.getId.toString
         elabGATTy g
         extendMain
+        getCurrentCon "elabGATCon_core extend"
     | `(con_inner| $i:ident : $g:gat_ty ) => do
         setCurrentName i.getId.toString
         elabGATTy g
         extendMain
+        getCurrentCon "elabGATCon_core final"
     | _ => throwError "Con_coreFail"
 
     def elabEmptyGAT (Elim : Expr) : MetaM Expr :=  do
@@ -756,10 +818,10 @@ namespace elaborator
         return mkAppN (litMk Elim) #[litEmpty_D Elim,emptyStrList,emptyLArgList]
 
     def elabNonemptyGAT (Elim : Expr) (s : Syntax) : MetaM Expr := do
-        let (_,VV) ← StateT.run (elabGATCon_core s) (stEmpty GlobalRawErrorMsg Elim)
+        let (resCon,VV) ← StateT.run (elabGATCon_core s) (stEmpty GlobalRawErrorMsg Elim)
         let topList ← mkListLit (.const ``String []) (List.map mkStrLit (List.reverse VV.topnames))
         let telescopes ← List.mapM mkMetaTyLit' (List.reverse VV.telescopes) >>= mkListLit (.const ``StringOptList [])
-        return mkAppN (litMk Elim) #[VV.currentCon,topList,telescopes]
+        return mkAppN (litMk Elim) #[resCon,topList,telescopes]
 
   end mainFunctions
 end elaborator
@@ -773,16 +835,21 @@ open elaborator
   def preElim_inner : eliminator_inner := ⟨
       preCon,
       λ _ => preTy,
-      λ _ => preTm,
+      λ _ _ => preTm,
       preEMPTY,
       preEXTEND,
       λ _ => preUU,
       λ _ => preEL,
       λ _ => prePI,
-      λ _ => preEQ,
-      λ _ _ => preVAR,
-      λ _ => preAPP,
-      λ _ => preTRANSP⟩
+      λ _ _ => preEQ,
+      λ _ _ => preWkTy,
+      λ _ _ _ => preWkTm,
+      λ _ _ => preVAR 0,
+      λ _ _ Y x => substTy 0 x Y,
+      λ _ _ Y x => substTm 0 x Y,
+      λ _ _ _ => preAPP,
+      λ _ _ _ _ _ => preTRANSP
+      ⟩
 
   def GATdataElim_outer : eliminator_outer preElim_inner := ⟨ GATdata, GATdata.mk ⟩
   def GATdataElim : eliminator := toEliminator GATdataElim_outer
