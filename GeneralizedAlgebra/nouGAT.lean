@@ -265,6 +265,11 @@ namespace elabState
     | (metaUU, TT) => formatList ind ((List.map (text ∘ metaArgFormat current) (List.reverse TT)) ++ [text " ⊢ ",outername ++ " : U"])
     | (metaEq _ ms mt, TT) => formatList ind ((List.map (text ∘ metaArgFormat current) (List.reverse TT)) ++ [text " ⊢ ",outername ++ " : " ++ (metaTmFormat current ms) ++ " = " ++ (metaTmFormat current mt)])
 
+    def metaTyMarkerFormat (current : st) : metaTyMarker → String
+    | metaUU => "UU"
+    | metaEl mX => "El (" ++ metaTmFormat current mX ++ ")"
+    | metaEq mX ms mt => "Eq " ++ metaTmFormat current mX ++ " " ++ metaTmFormat current ms ++ " " ++ metaTmFormat current mt
+
     def metaTyFormat (current : st) (theTy : metaTy) (outername := "_") : Format := match theTy with
     | (metaEl mX, TT) => (String.intercalate ", " (List.map (metaArgFormat current) (List.reverse TT))) ++ " ⊢ " ++ outername ++ " : " ++ (metaTmFormat current mX)
     | (metaUU, TT) => (String.intercalate ", " (List.map (metaArgFormat current) (List.reverse TT))) ++ " ⊢ " ++ outername ++ " : U"
@@ -292,6 +297,7 @@ namespace elabState
     | errKind : metaTm → metaTy → String → String → errorCode
     | errTooManyArgs : metaTm → metaTy → errorCode
     | errImplExplMismatch : argInstr → errorCode
+    | errUnsolvedImplicits : metaTm → metaTm → metaTyMarker → List metaArg → List metaArg → errorCode
     open errorCode
 
     def errorCode.format (suberror : String) : errorCode → StateT st MetaM Format
@@ -302,7 +308,7 @@ namespace elabState
         let current ← get
         let s1 := metaTmFormat current m1
         let s2 := metaTmFormat current m2
-        return text $ "expected " ++ s1 ++ ", got " ++ s2
+        return text $ suberror ++ ": expected " ++ s1 ++ ", got " ++ s2
     | errType2 s1 m1 s2 m2 => do
         let current ← get
         return (text $ suberror ++ ": Type mismatch: ")
@@ -329,6 +335,16 @@ namespace elabState
         return (text $ suberror ++ ": Looked for implicit argument, found none")
     | errImplExplMismatch firstExpl =>
         return (text $ suberror ++ ": Looked for explicit argument, found none")
+    | errUnsolvedImplicits v w x y z => do
+        let current ← get
+        return (text $ suberror ++ ": unsolved implicit args. Dump: ")
+          ++ (nest 4 <| (align true) ++ metaTmFormat current v)
+          ++ (nest 4 <| (align true) ++ metaTmFormat current w)
+          ++ (nest 4 <| (align true) ++ metaTyMarkerFormat current x)
+          ++ (nest 4 <| (align true) ++ String.intercalate ", " (List.map (metaArgFormat current) y))
+          ++ (nest 4 <| (align true) ++ String.intercalate ", " (List.map (metaArgFormat current) z))
+
+        -- String.intercalate ", " (List.map (metaTmFormat current ∘ extractMetaTm) args))
 
 
 
@@ -456,15 +472,41 @@ namespace elaborator
         let init := List.dropLast l
         return (init,last)
 
-    def metaTyMatch (suberror : String): metaArg → metaTm → metaTy → StateT st MetaM metaTy
-    | metaImpl _ _ m1, m2, res => if m1 = m2 then return res else elabFail suberror (errorCode.errType m1 m2)
-    | metaExpl _ _ m1, m2, res => if m1 = m2 then return res else elabFail suberror (errorCode.errType m1 m2)
-    | metaAnon _ m1, m2, res => if m1 = m2 then return res else elabFail suberror (errorCode.errType m1 m2)
+    def tryUnify : metaTm → metaTm → List (metaTm × metaTm)
+    | _,_ => []
+
+    def subTm (super : metaTm) (sub : metaTm) : Bool :=
+      super = sub || match super with
+        | metaAPP m1 m2 => subTm m1 sub || subTm m2 sub
+        | metaTRANSP m1 m2 => subTm m1 sub || subTm m2 sub
+        | _ => false
+
+    def metaTyMatch_core (fuel : Nat) (suberror : String) (m1 : metaTm) (m2 : metaTm) (finalT : metaTyMarker) (revPrior : List metaArg) (revAfter : List metaArg) : StateT st MetaM metaTy :=
+      match fuel with
+      | succ f =>
+        let priorSorts := List.map extractMetaTm revPrior
+        match List.filter (subTm m1) priorSorts with
+        | [] =>
+          if m1 = m2 then return (finalT,List.reverse revAfter) else elabFail suberror (errorCode.errType m1 m2)
+        | _ =>
+            match tryUnify m1 m2 with
+            | [] => elabFail suberror (errorCode.errUnsolvedImplicits m1 m2 finalT revPrior revAfter)
+            | substs =>
+                let m1' := List.foldl (λ m (old,new) => metaSubstTm m old new) m1 substs
+                let revPrior' := List.filter (λ a => not (List.elem (extractMetaTm a) (List.map Prod.fst substs))) revPrior
+                metaTyMatch_core f suberror m1' m2 finalT revPrior' revAfter
+      | 0 => elabFail "Ran out of fuel!" (errorCode.errOther)
+
+    def metaTyMatch := metaTyMatch_core 10000
+    -- | metaExpl _ _ m1, m2, finalT, [], revAfter =>
+    --     if m1 = m2 then return (finalT,List.reverse revAfter) else elabFail suberror (errorCode.errType m1 m2)
+    -- | metaAnon _ m1, m2, finalT, [], revAfter =>
+    --     if m1 = m2 then return (finalT,List.reverse revAfter) else elabFail suberror (errorCode.errType m1 m2)
 
 
 
     open argInstr
-    def splitArgs : argInstr → List metaArg → StateT st MetaM (List metaArg × metaArg)
+    def splitArgs : argInstr → List metaArg → StateT st MetaM (List metaArg × metaArg × List metaArg)
     | argI, [] => elabFail "Cannot substitute argument" (errorCode.errImplExplMismatch argI)
     | argI, firstArg :: rest => match (argI,firstArg) with
       | (firstExpl,metaImpl _ _ _) => do
@@ -476,26 +518,23 @@ namespace elaborator
       | (firstImpl,metaAnon _ _) => do
           let (resList,resArg) ← splitArgs argI rest
           return (firstArg::resList,resArg)
-      | (firstImpl,metaImpl _ _ _) => return (rest,firstArg)
-      | (firstExpl,metaExpl _ _ _) => return (rest,firstArg)
-      | (firstExpl,metaAnon _ _) => return (rest,firstArg)
+      | (firstImpl,metaImpl _ _ _) => return ([],firstArg,rest)
+      | (firstExpl,metaExpl _ _ _) => return ([],firstArg,rest)
+      | (firstExpl,metaAnon _ _) => return ([],firstArg,rest)
 
-    def locSubstTy (argI : argInstr) (t : metaTm) : metaTy → StateT st MetaM (metaTy × metaArg)
+    def locSubstTy (argI : argInstr) (t : metaTm) : metaTy → StateT st MetaM (metaTyMarker × List metaArg × metaArg × List metaArg)
     | (metaUU, args) => do
-        let (revRest,arg) ← splitArgs argI (List.reverse args)
-        let rest := List.reverse revRest
+        let (revPrior,arg,revAfter) ← splitArgs argI (List.reverse args)
         let s := extractMetaTm arg
-        return ((metaUU, (List.map (metaSubstArg s t) rest)),arg)
+        return (metaUU, revPrior, arg, List.map (metaSubstArg s t) revAfter)
     | (metaEl finalT, args) => do
-        let (revRest,arg) ← splitArgs argI (List.reverse args)
-        let rest := List.reverse revRest
+        let (revPrior,arg,revAfter) ← splitArgs argI (List.reverse args)
         let s := extractMetaTm arg
-        return ((metaEl (metaSubstTm s t finalT), List.map (metaSubstArg s t) rest),arg)
+        return (metaEl (metaSubstTm s t finalT), revPrior, arg, List.map (metaSubstArg s t) revAfter)
     | (metaEq finalT ms mt, args) => do
-        let (revRest,arg) ← splitArgs argI (List.reverse args)
-        let rest := List.reverse revRest
+        let (revPrior,arg,revAfter) ← splitArgs argI (List.reverse args)
         let s := extractMetaTm arg
-        return ((metaEq (metaSubstTm s t finalT) (metaSubstTm s t ms) (metaSubstTm s t mt), List.map (metaSubstArg s t) rest),arg)
+        return (metaEq (metaSubstTm s t finalT) (metaSubstTm s t ms) (metaSubstTm s t mt), revPrior, arg, List.map (metaSubstArg s t) revAfter)
 
     partial def metaTyApp (argI : argInstr) (fnTm : metaTm) (fnTy : metaTy) (argTm : metaTm) (argTy : metaTy) : StateT st MetaM metaTy := match (fnTy,argTy) with
     | (_, metaUU, _) => elabFail "Bad argument" (errorCode.errKind argTm argTy "a sort" "an element")
@@ -503,14 +542,14 @@ namespace elaborator
     | (_,  metaEl  _,(_::_)) => elabFail "Bad argument" (errorCode.errOpen argTm argTy)
     | ((_, []), _) => elabFail "Bad function" (errorCode.errTooManyArgs fnTm fnTy)
     | ((metaUU, args), metaEl y, []) => do
-        let (finalT',x) ← locSubstTy argI argTm (metaUU, args)
-        metaTyMatch "Bad application" x y finalT'
+        let (finalT',revPrior,x,revAfter) ← locSubstTy argI argTm (metaUU, args)
+        metaTyMatch "Bad application" (extractMetaTm x) y finalT' revPrior revAfter
     | ((metaEl finalT,args), metaEl y, []) => do
-        let (finalT',x) ← locSubstTy argI argTm (metaEl finalT, args)
-        metaTyMatch "Bad application" x y finalT'
+        let (finalT',revPrior,x,revAfter) ← locSubstTy argI argTm (metaEl finalT, args)
+        metaTyMatch "Bad application" (extractMetaTm x) y finalT' revPrior revAfter
     | ((metaEq finalT ms mt, args) ,  metaEl y, []) => do
-        let (finalT',x) ← locSubstTy argI argTm (metaEq finalT ms mt,args)
-        metaTyMatch "Bad application" x y finalT'
+        let (finalT',revPrior,x,revAfter) ← locSubstTy argI argTm (metaEq finalT ms mt,args)
+        metaTyMatch "Bad application" (extractMetaTm x) y finalT' revPrior revAfter
 
 
     partial def failIfBadTransp (tm1 tm2 : metaTm) (T1 T2 : metaTy) : StateT st MetaM metaTy := match (T1,T2) with
