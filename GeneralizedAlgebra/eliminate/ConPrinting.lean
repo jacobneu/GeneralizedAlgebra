@@ -1,4 +1,4 @@
-import GeneralizedAlgebra.typecheck
+import GeneralizedAlgebra.signature
 
 open Nat
 open preTy preTm
@@ -10,19 +10,19 @@ match s.toNat? with
 | _ => s ++ "[wk]"
 
 def preTmrepr : preTm → String
-| preAPP (preAPP (preAPP (preAPP (preAPP f t1) t2) t3) t4) t5 => paren (preTmrepr f) ++ " @ " ++ paren (preTmrepr t1) ++ " @ " ++ paren (preTmrepr t2) ++ " @ " ++ paren (preTmrepr t3) ++ " @ " ++ paren (preTmrepr t4) ++ " @ " ++ paren (preTmrepr t5)
-| preAPP (preAPP (preAPP (preAPP f t1) t2) t3) t4 => paren (preTmrepr f) ++ " @ " ++ paren (preTmrepr t1) ++ " @ " ++ paren (preTmrepr t2) ++ " @ " ++ paren (preTmrepr t3) ++ " @ " ++ paren (preTmrepr t4)
-| preAPP (preAPP (preAPP f t1) t2) t3 => paren (preTmrepr f) ++ " @ " ++ paren (preTmrepr t1) ++ " @ " ++ paren (preTmrepr t2) ++ " @ " ++ paren (preTmrepr t3)
-| preAPP (preAPP f t1) t2 => paren (preTmrepr f) ++ " @ " ++ paren (preTmrepr t1) ++ " @ " ++ paren (preTmrepr t2)
-| preAPP f t =>   paren (preTmrepr f) ++ " @ " ++ paren (preTmrepr t)
+| preAPP (preAPP (preAPP (preAPP (preAPP f t1) t2) t3) t4) t5 => mkParen (preTmrepr f) ++ " @ " ++ mkParen (preTmrepr t1) ++ " @ " ++ mkParen (preTmrepr t2) ++ " @ " ++ mkParen (preTmrepr t3) ++ " @ " ++ mkParen (preTmrepr t4) ++ " @ " ++ mkParen (preTmrepr t5)
+| preAPP (preAPP (preAPP (preAPP f t1) t2) t3) t4 => mkParen (preTmrepr f) ++ " @ " ++ mkParen (preTmrepr t1) ++ " @ " ++ mkParen (preTmrepr t2) ++ " @ " ++ mkParen (preTmrepr t3) ++ " @ " ++ mkParen (preTmrepr t4)
+| preAPP (preAPP (preAPP f t1) t2) t3 => mkParen (preTmrepr f) ++ " @ " ++ mkParen (preTmrepr t1) ++ " @ " ++ mkParen (preTmrepr t2) ++ " @ " ++ mkParen (preTmrepr t3)
+| preAPP (preAPP f t1) t2 => mkParen (preTmrepr f) ++ " @ " ++ mkParen (preTmrepr t1) ++ " @ " ++ mkParen (preTmrepr t2)
+| preAPP f t =>   mkParen (preTmrepr f) ++ " @ " ++ mkParen (preTmrepr t)
 | preVAR n => Nat.repr n
-| preTRANSP eq y => "transp " ++ paren (preTmrepr eq) ++ " " ++ paren (preTmrepr y)
+| preTRANSP eq y => "transp " ++ mkParen (preTmrepr eq) ++ " " ++ mkParen (preTmrepr y)
 
 def preTyrepr : preTy → String
 | preUU => "U"
-| preEQ s t => "Eq " ++ paren (preTmrepr s)  ++ " " ++ paren (preTmrepr t)
-| preEL X => "El " ++ paren (preTmrepr X)
-| prePI X Y => "Π " ++ paren (preTmrepr X) ++ " " ++ paren (preTyrepr Y)
+| preEQ s t => "Eq " ++ mkParen (preTmrepr s)  ++ " " ++ mkParen (preTmrepr t)
+| preEL X => "El " ++ mkParen (preTmrepr X)
+| prePI X Y => "Π " ++ mkParen (preTmrepr X) ++ " " ++ mkParen (preTyrepr Y)
 
 
 
@@ -37,8 +37,8 @@ def preConrepr : preCon → String :=
 instance : Repr preCon :=
 ⟨ λ 𝔊 _ => preConrepr 𝔊 ⟩
 
-instance GATRepr : Repr GAT :=
-⟨ λ 𝔊 _ =>  preConrepr (𝔊.toGATdata.con) ⟩
+-- instance GATRepr : Repr GAT :=
+-- ⟨ λ 𝔊 _ =>  preConrepr (𝔊.toGATdata.con) ⟩
 
 instance GATdataRepr : Repr GATdata :=
 ⟨ λ 𝔊 _ =>  preConrepr (𝔊.con) ⟩

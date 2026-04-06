@@ -27,4 +27,4 @@ def parensUnnecessary (s : String) : Bool :=
    Option.isSome (stripOuterParen s >>= List.foldl parenCounter (some 0))
 || (Option.isNone $ List.find? Char.isWhitespace $ String.toList s)
 
-def paren (s:String):String := if parensUnnecessary s then s else "("++s++")"
+def mkParen (s:String):String := if parensUnnecessary s then s else "("++s++")"
