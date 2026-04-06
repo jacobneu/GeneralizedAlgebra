@@ -77,10 +77,31 @@ namespace nouGATmeta
     | metaAPP m1 m2 => "metaAPP (" ++ metaTm.toString m1 ++ ") (" ++ metaTm.toString m2 ++ ")"
     | metaTRANSP m1 m2 => "metaTRANSP (" ++ metaTm.toString m1 ++ ") (" ++ metaTm.toString m2 ++ ")"
 
+    def metaTm.toString' : metaTm → String
+    | metaGLOB n => "GLOB " ++ Nat.repr n
+    | metaLOC g b => "LOC (" ++ Nat.repr g ++ "," ++ Nat.repr b ++ ")"
+    | metaAPP m1 m2 => mkParen m1.toString' ++ " @ " ++ mkParen m2.toString'
+    | metaTRANSP m1 m2 => "TRANSP " ++ mkParen m1.toString' ++ " " ++ mkParen m2.toString'
+
     def metaArg.toString
     | metaImpl i _ _ => "Impl(" ++ i ++ ")"
     | metaExpl i _ _ => "Expl("++ i ++ ")"
     | metaAnon _ _ => "Anon"
+
+    def metaArg.toString'
+    | metaImpl i mt mX => "{"++ i ++ "=" ++ mkParen mt.toString' ++ " : " ++ mkParen mX.toString' ++ "}"
+    | metaExpl i mt mX => "("++ i ++ "=" ++ mkParen mt.toString' ++ " : " ++ mkParen mX.toString' ++ ")"
+    | metaAnon mt mX => "(_=" ++ mkParen mt.toString' ++ " : " ++ mkParen mX.toString' ++ ")"
+
+    def metaTy.toFormat : metaTy → Format
+    | (metaUU,args) => (text  "metaUU")
+          ++ (nest 3 <| (align true) ++ "[" ++ String.intercalate ", " (List.map metaArg.toString' args) ++ "]")
+    | (metaEl mX,args) => (text "metaEl " ++ mkParen mX.toString')
+          ++ (nest 3 <| (align true) ++ "[" ++ String.intercalate ", " (List.map metaArg.toString' args) ++ "]")
+    | (metaEq mX ms mt,args) =>  (text $ "metaEq " ++ String.intercalate " " [mkParen mX.toString',mkParen ms.toString',mkParen mt.toString'])
+          ++ (nest 3 <| (align true) ++ "[" ++ String.intercalate ", " (List.map metaArg.toString' args) ++ "]")
+
+    instance : Repr metaTy := ⟨λ t _ => metaTy.toFormat t⟩
   end toString
 
   section extractionComparison
@@ -178,24 +199,21 @@ namespace nouGATmeta
     | metaAPP m1 m2 => mkApp2 (.const ``metaAPP []) (mkMetaTmLit m1) (mkMetaTmLit m2)
     | metaTRANSP m1 m2 => mkApp2 (.const ``metaTRANSP []) (mkMetaTmLit m1) (mkMetaTmLit m2)
 
-    def mkMetaArgLit : metaArg → MetaM Expr -- :: String × metaTm
-    | metaImpl i mt mX => mkAppM `Prod.mk #[mkStrLit $ i ++ "=" ++ mt.toString,mkMetaTmLit mX]
-    | metaExpl i mt mX => mkAppM `Prod.mk #[mkStrLit $ i ++ "=" ++ mt.toString,mkMetaTmLit mX]
-    | metaAnon mt mX => mkAppM `Prod.mk #[mkStrLit $ "_=" ++ mt.toString,mkMetaTmLit mX]
+    def mkMetaArgLit : metaArg → MetaM Expr -- :: metaArg
+    | metaImpl i mt mX => mkAppM ``metaImpl #[mkStrLit $ i,mkMetaTmLit mt,mkMetaTmLit mX]
+    | metaExpl i mt mX => mkAppM ``metaExpl #[mkStrLit $ i,mkMetaTmLit mt,mkMetaTmLit mX]
+    | metaAnon mt mX => mkAppM ``metaAnon #[mkMetaTmLit mt,mkMetaTmLit mX]
 
-    def metaOut := String × List (String × metaTm)
-    def metaOut' := String × metaTm
-
-    def mkMetaTyLit : metaTy → MetaM Expr -- :: String × List (String × metaTm)
+    def mkMetaTyLit : metaTy → MetaM Expr -- :: metaTy
     | (metaUU, TT) => do
-        let mTT ← List.mapM mkMetaArgLit TT >>= mkListLit (.const ``metaOut' [])
-        mkAppM ``Prod.mk #[mkStrLit "UU",mTT]
+        let mTT ← List.mapM mkMetaArgLit TT >>= mkListLit (.const ``metaArg [])
+        mkAppM ``Prod.mk #[.const ``metaUU [],mTT]
     | (metaEq X s t, TT) => do
-        let mTT ← List.mapM mkMetaArgLit TT >>= mkListLit (.const ``metaOut' [])
-        mkAppM ``Prod.mk #[mkStrLit $ "Eq _(" ++ metaTm.toString X ++")(" ++ metaTm.toString s ++ ") (" ++ metaTm.toString t ++ ")",mTT]
+        let mTT ← List.mapM mkMetaArgLit TT >>= mkListLit (.const ``metaArg [])
+        mkAppM ``Prod.mk #[mkAppN (.const ``metaEq []) #[mkMetaTmLit X,mkMetaTmLit s,mkMetaTmLit t],mTT]
     | (metaEl t, TT) => do
-        let mTT ← List.mapM mkMetaArgLit TT >>= mkListLit (.const ``metaOut' [])
-        mkAppM ``Prod.mk #[mkStrLit $ "El (" ++ metaTm.toString t ++ ")",mTT]
+        let mTT ← List.mapM mkMetaArgLit TT >>= mkListLit (.const ``metaArg [])
+        mkAppM ``Prod.mk #[.app (.const ``metaEl []) (mkMetaTmLit t),mTT]
 
     def StringBool : Type := String × Bool
     def mkStringBool (s : String) (b : Bool) : StringBool := (s,b)
@@ -441,12 +459,6 @@ namespace elaborator
     -- syntax "include" ident "as" "(" ident_list ");" con_inner : con_inner
 
   end theSyntax
-
-  -- The rawGAT type
-    structure rawGAT where
-      (con : preCon)
-      (topnames : List String)
-      (telescopes : List metaOut)
 
   -- Failure-prone helper functions
   section failureHelpers
@@ -719,46 +731,65 @@ namespace elaborator
         ) getRest is
     | _ => throwError "GATdecl_Fail"
 
-    def GlobalRawErrorMsg : Bool := false
 
     def elabGAT (Elim : Expr) : Syntax → MetaM Expr
     | `(con_inner| $ds:gat_decl,* ) => do
-        let (resCon,VV) ← StateT.run (Array.foldl (elabGATdecl Elim) (return litEmpty_D Elim) ds.getElems) (stEmpty GlobalRawErrorMsg)
+        let (resCon,VV) ← StateT.run (Array.foldl (elabGATdecl Elim) (return litEmpty_D Elim) ds.getElems) (stEmpty false)
         let topList ← mkListLit (.const ``String []) (List.map mkStrLit (List.reverse VV.topnames))
         let telescopes ← List.mapM mkMetaTyLit' (List.reverse VV.telescopes) >>= mkListLit (.const ``StringBoolOptList [])
         return mkAppN (litMk Elim) #[resCon,topList,telescopes]
     | _ => throwError "GAT_Fail"
+
 
   end mainFunctions
 end elaborator
 
 namespace basicEliminators
 
-open preTy preTm
-open elaborator
+  open preTy preTm
+  open nouGATmeta
+  open elabState
+  open elaborator
 
-  def preElim_inner : eliminator_inner := ⟨
-      preCon,
-      preTy,
-      preTm,
-      preEMPTY,
-      preEXTEND,
-      preUU,
-      preEL,
-      prePI,
-      preEQ,
-      preVAR,
-      preAPP,
-      preTRANSP⟩
+    def preElim_inner : eliminator_inner := ⟨
+        preCon,
+        preTy,
+        preTm,
+        preEMPTY,
+        preEXTEND,
+        preUU,
+        preEL,
+        prePI,
+        preEQ,
+        preVAR,
+        preAPP,
+        preTRANSP⟩
 
-  def GATdataElim_outer : eliminator_outer preElim_inner := ⟨ GATdata, GATdata.mk ⟩
-  def GATdataElim : eliminator := toEliminator GATdataElim_outer
+    def GATdataElim_outer : eliminator_outer preElim_inner := ⟨ GATdata, GATdata.mk ⟩
+    def GATdataElim : eliminator := toEliminator GATdataElim_outer
 
-  def justGATElim : eliminator := ⟨preElim_inner, preCon, λ Γ _ _ => Γ⟩
+    def justGATElim : eliminator := ⟨preElim_inner, preCon, λ Γ _ _ => Γ⟩
 
 
-  declare_syntax_cat condata_outer
-  syntax "[GATdata|" con_inner,* "]" : condata_outer
-  syntax "[justGAT|" con_inner,* "]" : condata_outer
+    declare_syntax_cat condata_outer
+    syntax "[GATdata|" con_inner,* "]" : condata_outer
+    syntax "[justGAT|" con_inner,* "]" : condata_outer
+    syntax "[rawGAT|" con_inner,* "]" : condata_outer
+
+
+  section rawGAT
+    structure rawGAT where
+      (con : preCon)
+      (topnames : List String)
+      (telescopes : List metaTy)
+
+    def elabGATraw  : Syntax → MetaM Expr
+    | `(con_inner| $ds:gat_decl,* ) => do
+        let (resCon,VV) ← StateT.run (Array.foldl (elabGATdecl (mkLitElim (.const ``justGATElim []))) (return (.const ``preEMPTY [])) ds.getElems) (stEmpty true)
+        let topList ← mkListLit (.const ``String []) (List.map mkStrLit VV.topnames)
+        let telescopes ← List.mapM mkMetaTyLit VV.telescopes >>= mkListLit (.const ``metaTy [])
+        return mkAppN (.const ``rawGAT.mk []) #[resCon,topList,telescopes]
+    | _ => throwError "rawGAT_Fail"
+  end rawGAT
 
 end basicEliminators
