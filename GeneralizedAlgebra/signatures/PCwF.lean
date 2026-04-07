@@ -1,6 +1,6 @@
 import GeneralizedAlgebra.nouGAT_eliminate
 
-def 𝔓ℭ𝔴𝔉_data := [GATdata|
+def 𝔓ℭ𝔴𝔉 : GAT := ⦃
     Con : U,
     Sub : Con ⇒ Con ⇒ U,
     id  : (Γ : Con) ⇒ Sub Γ Γ,
@@ -80,4 +80,4 @@ def 𝔓ℭ𝔴𝔉_data := [GATdata|
         ≡ γ,
     invl_Ty    : ( Γ : Con ) ⇒ (A : Ty Γ) ⇒
         neg_Ty Γ (neg_Ty Γ A) ≡ A
-]
+⦄

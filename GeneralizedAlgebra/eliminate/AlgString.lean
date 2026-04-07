@@ -74,13 +74,6 @@ def GATdataZip_core : preTy → List (Option (String × Bool)) → preTy × List
 | prePI X Y, o::TT => (prePI X Y,o :: (GATdataZip_core Y TT).2)
 | T, _ => (T,[])
 
-def GATdataZip : GATdata → List String × List (preTy × List (Option (String × Bool)))
-| ⟨thePreCon, theTopnames, theTelescopes⟩ =>
-    (theTopnames, List.zipWith GATdataZip_core thePreCon  theTelescopes)
-
-def AlgStr_Con (𝔊 : GATdata) : List String :=
-    let z := GATdataZip 𝔊; AlgStr_Con_core (List.reverse z.1) (List.reverse z.2)
-
 
 def AlgStrElim_outer : eliminator_outer preElim_inner := ⟨
     List String,

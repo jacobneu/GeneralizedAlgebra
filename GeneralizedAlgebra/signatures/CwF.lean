@@ -1,6 +1,6 @@
 import GeneralizedAlgebra.nouGAT_eliminate
 
-def ℭ𝔴𝔉_data  := [GATdata|
+def ℭ𝔴𝔉 : GAT  := ⦃
     Con : U,
     Sub : Con ⇒ Con ⇒ U,
     id  : (Γ : Con) ⇒ Sub Γ Γ,
@@ -58,4 +58,4 @@ def ℭ𝔴𝔉_data  := [GATdata|
     ext_η   : (Γ : Con) ⇒ (A : Ty Γ) ⇒
               pair (ext Γ A) Γ A (p Γ A) (v Γ A)
               ≡ id (ext Γ A)
-]
+⦄
