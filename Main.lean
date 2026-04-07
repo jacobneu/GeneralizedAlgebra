@@ -12,7 +12,8 @@ def main : List String → IO PUnit
           List.forM  ([G ++ " = ◇"] ++ List.map (" ▷ " ++ basicEliminators.augTyrepr ·) (List.reverse 𝔊.augcon)) IO.println
       | "Alg" => λ G 𝔊 =>
           List.forM (["record " ++ G ++ "-Alg where "] ++ List.map ("    " ++ ·) 𝔊.algStr) IO.println
-      -- | "DAlg" => printDAlg
+      | "DAlg" => λ G 𝔊 =>
+          List.forM (["record " ++ G ++ "-DAlg (" ++ (String.intercalate "," 𝔊.topnames) ++ ") where"] ++ List.map ("    " ++ ·) 𝔊.dalgStr) IO.println
       | _ => λ _ _ => IO.println "Error: unknown command"
     theCmd frakStr theGAT
 | _ => IO.println "Error: command and GAT not supplied"

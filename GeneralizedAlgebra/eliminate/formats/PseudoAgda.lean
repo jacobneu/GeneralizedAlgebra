@@ -49,17 +49,16 @@ def psExp.toStringParen : Nat → psExp → String
 | 0,_ => ""
 
 
-def groupTel : Nat → List (String × psExp) → List String × String × List (String × psExp)
-| _, [] => ([],"",[])
-| n, [(i,tt)] => ([i],psExp.toString_core n tt,[])
-| n, (i,tt)::(i',tt')::res =>
-    let tts := psExp.toString_core n tt
-    let tts' := psExp.toString_core n tt'
-    if tts = tts'
-    then
-      let (others,_,remainder) := groupTel n ((i',tt')::res)
-      (i::others,tts,remainder)
-    else ([i],tts,(i',tt')::res)
+def groupTel : List (String × String) → List (List String × String)
+| [] => []
+| [(i,tt)] => [([i],tt)]
+| (i,tt) :: (i',tt') :: rest => let res := groupTel $ (i',tt') :: rest
+    match (tt==tt', res) with
+    -- res should not be empty
+    | (true,[]) => [([i,i'],tt)]
+    | (false,[]) => [([i],tt),([i'],tt')]
+    | (false,tel') => ([i],tt)::tel'
+    | (true,(is,_)::tel') => (i::is,tt)::tel'
 
 def psExp.toString_core : Nat → psExp → String
 | _, psLit s => s
@@ -72,15 +71,20 @@ def psExp.toString_core : Nat → psExp → String
 | _, psR [] => ""
 | succ n, psPar xs => String.intercalate " " (List.map (psExp.toStringParen n) xs)
 | succ n, psNopar xs => String.intercalate " " (List.map (psExp.toString_core n) xs)
-| succ n, psDep [] body => match body with
-    | psDep _ _ => psExp.toString_core n body
-    | _ =>  " → " ++ psExp.toString_core n body
 | succ n, psDep tel body =>
-    let (is,tts,remainder) := groupTel (succ n) tel
-    "(" ++ String.intercalate " " is ++ " : " ++ tts ++ ")" ++ psExp.toString_core n (psDep remainder body)
+    let telsplits := groupTel $ List.map (λ (i,tt) => (i,psExp.toString_core n tt)) tel
+    let telStr := String.intercalate "" $ List.map (λ (is,tt) => "(" ++ String.intercalate " " is ++ " : " ++ tt ++ ")") telsplits
+    match body with
+    | psDepI _ _ => telStr ++ psExp.toString_core n body
+    | psDep _ _ => telStr ++ psExp.toString_core n body
+    | _ => telStr ++ " → " ++ psExp.toString_core n body
 | succ n, psDepI tel body =>
-    let (is,tts,remainder) := groupTel (succ n) tel
-    "{" ++ String.intercalate " " is ++ " : " ++ tts ++ "}" ++ psExp.toString_core n (psDep remainder body)
+    let telsplits := groupTel $ List.map (λ (i,tt) => (i,psExp.toString_core n tt)) tel
+    let telStr := String.intercalate "" $ List.map (λ (is,tt) => "{" ++ String.intercalate " " is ++ " : " ++ tt ++ "}") telsplits
+    match body with
+    | psDepI _ _ => telStr ++ psExp.toString_core n body
+    | psDep _ _ => telStr ++ psExp.toString_core n body
+    | _ => telStr ++ " → " ++ psExp.toString_core n body
 | succ n, psDecorate tt f => f (psExp.toString_core n tt)
 | 0, _ => ""
 end
@@ -89,4 +93,4 @@ def psExp.strictify : psExp → psExp
 | psNopar xs => psPar xs
 | z => z
 
-def psExp.toString : psExp → String := psExp.toString_core 1000000
+def psExp.toString : psExp → String := psExp.toString_core 10000
