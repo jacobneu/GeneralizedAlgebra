@@ -72,7 +72,9 @@ def psExp.toString_core : Nat → psExp → String
 | _, psR [] => ""
 | succ n, psPar xs => String.intercalate " " (List.map (psExp.toStringParen n) xs)
 | succ n, psNopar xs => String.intercalate " " (List.map (psExp.toString_core n) xs)
-| succ n, psDep [] body =>  " → " ++ psExp.toString_core n body
+| succ n, psDep [] body => match body with
+    | psDep _ _ => psExp.toString_core n body
+    | _ =>  " → " ++ psExp.toString_core n body
 | succ n, psDep tel body =>
     let (is,tts,remainder) := groupTel (succ n) tel
     "(" ++ String.intercalate " " is ++ " : " ++ tts ++ ")" ++ psExp.toString_core n (psDep remainder body)

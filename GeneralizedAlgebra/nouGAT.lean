@@ -266,7 +266,7 @@ namespace elabState
         | none => "???" ++ (if current.rawMode then "[" ++ Nat.repr g ++ ","++ Nat.repr b ++ "]" else "")
       | none => "???" ++ (if current.rawMode then "[" ++ Nat.repr g ++ ","++ Nat.repr b ++ "]" else "")
     | metaAPP m1 m2 => mkParen (metaTmFormat current m1) ++ " " ++ mkParen (metaTmFormat current m2)
-    | metaTRANSP m1 m2 =>  mkParen (metaTmFormat current m2) ++ " #⟨" ++ metaTm.toString m1 ++ "⟩"
+    | metaTRANSP m1 m2 =>  mkParen (metaTmFormat current m2) ++ " #⟨" ++ metaTmFormat current m1 ++ "⟩"
 
     def metaArgFormat (current : st) : metaArg → String
     | metaImpl i mt mX => "{" ++ i ++ (if current.rawMode then "=" ++ mt.toString else "") ++ " : " ++ metaTmFormat current mX ++ "}"
@@ -562,15 +562,21 @@ namespace elaborator
       (Extend_D : Con_D → Ty_D → Con_D)
       (UU_D : Ty_D)
       (El_D : Tm_D → Ty_D)
-      (Pi_D : Tm_D → Ty_D → Ty_D)
+      (Pix_D : Tm_D → Ty_D → Ty_D)
+      (Pii_D : Tm_D → Ty_D → Ty_D)
       (Eq_D : Tm_D → Tm_D → Ty_D)
       (Var_D : Nat → Tm_D)
-      (App_D : Tm_D → Tm_D → Tm_D)
+      (Appx_D : Tm_D → Tm_D → Tm_D)
+      (Appi_D : Tm_D → Tm_D → Tm_D)
       (Transp_D : Tm_D → Tm_D → Tm_D)
 
     structure eliminator extends eliminator_inner where
       (Output : Type)
       (mkOutput : Con_D → List String → List (List (Option (String × Bool))) → Output)
+
+    def dummy : eliminator := ⟨⟨
+      Unit, Unit, Unit, (), λ _ _ => (), (), λ _ => (), λ _ _ => (), λ _ _ => (), λ _ _ => (), λ _ => (), λ _ _ => (), λ _ _ => (), λ _ _ => ()
+    ⟩, Unit, λ _ _ _ => ()⟩
 
     def eliminator_outer (inn : eliminator_inner) : Type 1 := @Sigma Type (λ O => inn.Con_D → List String → List (List (Option (String × Bool))) → O)
 
@@ -590,10 +596,12 @@ namespace elaborator
         λ (x1,x2) (y1,y2) => (E1.Extend_D x1 y1,E2.Extend_D x2 y2),
         (E1.UU_D,E2.UU_D),
         λ (x1,x2) => (E1.El_D x1,E2.El_D x2),
-        λ (x1,x2) (y1,y2) => (E1.Pi_D x1 y1,E2.Pi_D x2 y2),
+        λ (x1,x2) (y1,y2) => (E1.Pix_D x1 y1,E2.Pix_D x2 y2),
+        λ (x1,x2) (y1,y2) => (E1.Pii_D x1 y1,E2.Pii_D x2 y2),
         λ (x1,x2) (y1,y2) => (E1.Eq_D x1 y1,E2.Eq_D x2 y2),
         λ n => (E1.Var_D n,E2.Var_D n),
-        λ (x1,x2) (y1,y2) => (E1.App_D x1 y1,E2.App_D x2 y2),
+        λ (x1,x2) (y1,y2) => (E1.Appx_D x1 y1,E2.Appx_D x2 y2),
+        λ (x1,x2) (y1,y2) => (E1.Appi_D x1 y1,E2.Appi_D x2 y2),
         λ (x1,x2) (y1,y2) => (E1.Transp_D x1 y1,E2.Transp_D x2 y2)
       ⟩
     def elimProduct (E1 E2 : eliminator) : eliminator := ⟨
@@ -606,7 +614,12 @@ namespace elaborator
       Output',
       λ (x1,x2) => mkOutput' x1 x2
     ⟩
-    def elimProduct_post (Elim : eliminator) {Output' : Type} (f : Elim.Output → Output') : eliminator :=
+    def elimProductMany : List (Sigma (λ elim_inner => eliminator_outer elim_inner × List (eliminator_outer elim_inner))) → eliminator
+    | [] => dummy -- avoid this
+    | [⟨_,eo1,eos⟩] => toEliminator $ List.foldl elimProduct_outer eo1 eos
+    | ⟨_,eo1,eos⟩::rest => elimProduct (toEliminator $ List.foldl elimProduct_outer eo1 eos) (elimProductMany rest)
+
+    def elim_post (Elim : eliminator) {Output' : Type} (f : Elim.Output → Output') : eliminator :=
       ⟨ Elim.toeliminator_inner, Output',
         λ Γ topnames telescopes => f (Elim.mkOutput Γ topnames telescopes)⟩
 
@@ -617,9 +630,11 @@ namespace elaborator
     def litExtend_D : Expr → Expr := .app (.const ``eliminator_inner.Extend_D []) ∘ litToInner
     def litUU_D : Expr → Expr := .app (.const ``eliminator_inner.UU_D []) ∘ litToInner
     def litEl_D : Expr → Expr := .app (.const ``eliminator_inner.El_D []) ∘ litToInner
-    def litPi_D : Expr → Expr := .app (.const ``eliminator_inner.Pi_D []) ∘ litToInner
+    def litPix_D : Expr → Expr := .app (.const ``eliminator_inner.Pix_D []) ∘ litToInner
+    def litPii_D : Expr → Expr := .app (.const ``eliminator_inner.Pii_D []) ∘ litToInner
     def litEq_D : Expr → Expr := .app (.const ``eliminator_inner.Eq_D []) ∘ litToInner
-    def litApp_D : Expr → Expr := .app (.const ``eliminator_inner.App_D []) ∘ litToInner
+    def litAppx_D : Expr → Expr := .app (.const ``eliminator_inner.Appx_D []) ∘ litToInner
+    def litAppi_D : Expr → Expr := .app (.const ``eliminator_inner.Appi_D []) ∘ litToInner
     def litTransp_D : Expr → Expr := .app (.const ``eliminator_inner.Transp_D []) ∘ litToInner
     def litVar_D : Expr → Expr := .app (.const ``eliminator_inner.Var_D []) ∘ litToInner
 
@@ -635,10 +650,12 @@ namespace elaborator
           .app (.const ``eliminator_inner.Extend_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
           .app (.const ``eliminator_inner.UU_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
           .app (.const ``eliminator_inner.El_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
-          .app (.const ``eliminator_inner.Pi_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+          .app (.const ``eliminator_inner.Pix_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+          .app (.const ``eliminator_inner.Pii_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
           .app (.const ``eliminator_inner.Eq_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
           .app (.const ``eliminator_inner.Var_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
-          .app (.const ``eliminator_inner.App_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+          .app (.const ``eliminator_inner.Appx_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
+          .app (.const ``eliminator_inner.Appi_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim),
           .app (.const ``eliminator_inner.Transp_D []) (.app (.const ``eliminator.toeliminator_inner []) litElim)],
         .app (.const ``eliminator.Output []) litElim,
         .app (.const ``eliminator.mkOutput []) litElim
@@ -657,12 +674,12 @@ namespace elaborator
           let (t1,mt1,mA1) ← elabGATTm Elim g1
           let (t2,mt2,mA2) ← elabGATTm Elim g2
           let mRes ← metaTyApp argInstr.firstExpl mt1 mA1 mt2 mA2
-          return (mkAppN (litApp_D Elim) #[t1,t2], metaAPP mt1 mt2,mRes)
+          return (mkAppN (litAppx_D Elim) #[t1,t2], metaAPP mt1 mt2,mRes)
     | `(gat_tm| $g1:gat_tm { $g2:gat_tm } ) => do
           let (t1,mt1,mA1) ← elabGATTm Elim g1
           let (t2,mt2,mA2) ← elabGATTm Elim g2
           let mRes ← metaTyApp argInstr.firstImpl mt1 mA1 mt2 mA2
-          return (mkAppN (litApp_D Elim) #[t1,t2], metaAPP mt1 mt2,mRes)
+          return (mkAppN (litAppi_D Elim) #[t1,t2], metaAPP mt1 mt2,mRes)
     | `(gat_tm| $i:ident ) => do
           let (mb,m,b) ← varTelLkup i.getId.toString
           return (mkAppN (litVar_D Elim) #[mkNatLit b],mb,m)
@@ -693,14 +710,14 @@ namespace elaborator
         failIfNotU "Failed to create argument" mt mX
         extendTel (mkAnon mt)
         let (codomain,finalT) ← elabGATTy Elim T'
-        return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
+        return (mkAppN (litPix_D Elim) #[domain,codomain],finalT)
     | `(gat_ty| ( $is:ident* : $T:gat_tm ) ⇒ $T':gat_ty) => do
         Array.foldr (λ i getCodomain => do
           let (domain,mt,mX) ← elabGATTm Elim T
           failIfNotU "Failed to create argument" mt mX
           extendTel (mkExpl i.getId.toString mt)
           let (codomain,finalT) ← getCodomain
-          return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
+          return (mkAppN (litPix_D Elim) #[domain,codomain],finalT)
         ) (elabGATTy Elim T') is
     | `(gat_ty| { $is:ident* : $T:gat_tm } ⇒ $T':gat_ty) => do
         Array.foldr (λ i getCodomain => do
@@ -708,7 +725,7 @@ namespace elaborator
           failIfNotU "Failed to create argument" mt mX
           extendTel (mkImpl i.getId.toString mt)
           let (codomain,finalT) ← getCodomain
-          return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
+          return (mkAppN (litPii_D Elim) #[domain,codomain],finalT)
         ) (elabGATTy Elim T') is
     | `(gat_ty| ( $is:gat_underscore* : $T:gat_tm ) ⇒ $T':gat_ty) => do
         Array.foldr (λ _ getCodomain => do
@@ -716,7 +733,7 @@ namespace elaborator
           failIfNotU "Failed to create argument" mt mX
           extendTel (mkAnon mt)
           let (codomain,finalT) ← getCodomain
-          return (mkAppN (litPi_D Elim) #[domain,codomain],finalT)
+          return (mkAppN (litPix_D Elim) #[domain,codomain],finalT)
         ) (elabGATTy Elim T') is
     | _ => throwError "TyFail"
 
@@ -760,8 +777,10 @@ namespace basicEliminators
         preUU,
         preEL,
         prePI,
+        prePI,
         preEQ,
         preVAR,
+        preAPP,
         preAPP,
         preTRANSP⟩
 
@@ -791,5 +810,58 @@ namespace basicEliminators
         return mkAppN (.const ``rawGAT.mk []) #[resCon,topList,telescopes]
     | _ => throwError "rawGAT_Fail"
   end rawGAT
+
+  section augGAT
+    inductive augTm : Type where
+    | augVAR : Nat → augTm
+    | augAPPx : augTm → augTm → augTm
+    | augAPPi : augTm → augTm → augTm
+    | augTRANSP : augTm → augTm → augTm
+
+    inductive augTy : Type where
+    | augUU : augTy
+    | augEL : augTm → augTy
+    | augPIx : augTm → augTy → augTy
+    | augPIi : augTm → augTy → augTy
+    | augEQ : augTm → augTm → augTy
+
+    open augTm augTy
+
+    def augElim_inner : eliminator_inner := ⟨
+        List augTy,
+        augTy,
+        augTm,
+        [],
+        λ 𝔊 A => A :: 𝔊,
+        augUU,
+        augEL,
+        augPIx,
+        augPIi,
+        augEQ,
+        augVAR,
+        augAPPx,
+        augAPPi,
+        augTRANSP⟩
+
+    def augElim_outer : eliminator_outer augElim_inner := ⟨ List augTy, λ 𝒜 _ _ => 𝒜 ⟩
+
+    def augTmrepr : augTm → String
+    -- | augAPPx (augAPPx (augAPPx (augAPPx (augAPPx f t1) t2) t3) t4) t5 => mkParen (augTmrepr f) ++ " @ " ++ mkParen (augTmrepr t1) ++ " @ " ++ mkParen (augTmrepr t2) ++ " @ " ++ mkParen (augTmrepr t3) ++ " @ " ++ mkParen (augTmrepr t4) ++ " @ " ++ mkParen (augTmrepr t5)
+    -- | augAPPx (augAPPx (augAPPx (augAPPx f t1) t2) t3) t4 => mkParen (augTmrepr f) ++ " @ " ++ mkParen (augTmrepr t1) ++ " @ " ++ mkParen (augTmrepr t2) ++ " @ " ++ mkParen (augTmrepr t3) ++ " @ " ++ mkParen (augTmrepr t4)
+    -- | augAPPx (augAPPx (augAPPx f t1) t2) t3 => mkParen (augTmrepr f) ++ " @ " ++ mkParen (augTmrepr t1) ++ " @ " ++ mkParen (augTmrepr t2) ++ " @ " ++ mkParen (augTmrepr t3)
+    -- | augAPPx (augAPPx f t1) t2 => mkParen (augTmrepr f) ++ " @ " ++ mkParen (augTmrepr t1) ++ " @ " ++ mkParen (augTmrepr t2)
+    | augAPPx f t =>   mkParen (augTmrepr f) ++ " @ " ++ mkParen (augTmrepr t)
+    | augAPPi f t =>   mkParen (augTmrepr f) ++ " @ {" ++ augTmrepr t ++ "}"
+    | augVAR n => Nat.repr n
+    | augTRANSP eq y => "transp " ++ mkParen (augTmrepr eq) ++ " " ++ mkParen (augTmrepr y)
+
+    def augTyrepr : augTy → String
+    | augUU => "U"
+    | augEQ s t => "Eq " ++ mkParen (augTmrepr s)  ++ " " ++ mkParen (augTmrepr t)
+    | augEL X => "El " ++ mkParen (augTmrepr X)
+    | augPIx X Y => "Π " ++ mkParen (augTmrepr X) ++ " " ++ mkParen (augTyrepr Y)
+    | augPIi X Y => "Π {" ++ augTmrepr X ++ "} " ++ mkParen (augTyrepr Y)
+
+  end augGAT
 
 end basicEliminators

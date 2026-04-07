@@ -16,15 +16,18 @@ structure GAT where
     (con : preCon)
     (topnames : List String)
     (telescopes : List (List (Option (String × Bool))))
+    (augcon : List augTy)
     (algStr : List String)
 
 def fullElim : eliminator :=
-    elimProduct_post
-        (toEliminator $ List.foldl elimProduct_outer GATdataElim_outer [
-            AlgStrElim_outer
-        ])
-    (λ (⟨Γ,topnames,telescopes⟩,algStrList) =>
-        GAT.mk Γ topnames telescopes algStrList)
+    elim_post (
+        elimProductMany [
+            ⟨_,GATdataElim_outer,[]⟩,
+            ⟨_,augElim_outer,[AlgStrElim_outer]⟩
+        ]
+        )
+    (λ (⟨Γ,topnames,telescopes⟩,augcon,algStrList) =>
+        GAT.mk Γ topnames telescopes augcon algStrList)
 
 def elabGATCon : Syntax → MetaM Expr
 | `(condata_outer| [GATdata| $s:con_inner ] ) =>

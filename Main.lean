@@ -8,6 +8,8 @@ def main : List String → IO PUnit
     let theCmd := match theCmdStr with
       | "Con" => λ G (𝔊 : GAT) =>
           List.forM  ([G ++ " = ◇"] ++ List.map (" ▷ " ++ preTyrepr ·) (List.reverse 𝔊.con)) IO.println
+      | "augcon" => λ G 𝔊 =>
+          List.forM  ([G ++ " = ◇"] ++ List.map (" ▷ " ++ basicEliminators.augTyrepr ·) (List.reverse 𝔊.augcon)) IO.println
       | "Alg" => λ G 𝔊 =>
           List.forM (["record " ++ G ++ "-Alg where "] ++ List.map ("    " ++ ·) 𝔊.algStr) IO.println
       -- | "DAlg" => printDAlg
