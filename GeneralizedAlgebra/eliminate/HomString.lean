@@ -1,4 +1,4 @@
-import GeneralizedAlgebra.eliminate.DAlgString
+import GeneralizedAlgebra.eliminate.AlgString
 
 open Nat
 open elaborator
@@ -6,11 +6,6 @@ open basicEliminators
 open augTy augTm
 open psExp
 
-
-def homFor sl := (parenFor sl) ++ "ᴹ"
-def homFn s := s ++ "ᴹ"
-def zeroFn s := s ++ "₀"
-def oneFn s := s ++ "₁"
 
 
 def HomStr_Tm : List String → augTm → psExp
@@ -59,5 +54,4 @@ def HomStrElim_outer : eliminator_outer augElim_inner := ⟨
 def HomStrElim := toEliminator HomStrElim_outer
 
 
-syntax "[HomStr|" "]" : condata_outer
 syntax "[HomStr|" con_inner "]" : condata_outer

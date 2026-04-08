@@ -7,20 +7,12 @@ open augTy augTm
 open psExp
 
 
-def dalgFor sl := (parenFor sl) ++ "ᴰ"
-def dalgFn s := s ++ "ᴰ"
-
 
 def DAlgStr_Tm : List String → augTm → psExp
 | topnames, augVAR n => psDecorate (AlgStr_Tm topnames (augVAR n)) dalgFn
 | topnames, augAPPx f s => psL [DAlgStr_Tm topnames f /-, AlgStr_Tm topnames s-/, DAlgStr_Tm topnames s]
 | topnames, augAPPi f _ => DAlgStr_Tm topnames f --psL [DAlgStr_Tm topnames f, AlgStr_Tm topnames s, DAlgStr_Tm topnames s]
 | topnames, augTRANSP _ s => DAlgStr_Tm topnames s
-
-def getName : StateM Nat String := do
-  let x ← get
-  set $ succ x
-  return "X_" ++ Nat.repr x
 
 
 def DAlgStr_Ty : List String → List (Option (String × Bool)) → psExp → augTy → StateM Nat psExp
@@ -60,5 +52,4 @@ def DAlgStrElim_outer : eliminator_outer augElim_inner := ⟨
 ⟩
 def DAlgStrElim := toEliminator DAlgStrElim_outer
 
-syntax "[DAlgStr|" "]" : condata_outer
 syntax "[DAlgStr|" con_inner "]" : condata_outer

@@ -59,5 +59,4 @@ def AlgStrElim_outer : eliminator_outer augElim_inner := ⟨
 ⟩
 def AlgStrElim := toEliminator AlgStrElim_outer
 
-syntax "[AlgStr|" "]" : condata_outer
 syntax "[AlgStr|" con_inner "]" : condata_outer

@@ -791,9 +791,9 @@ namespace basicEliminators
 
 
     declare_syntax_cat condata_outer
-    syntax "[GATdata|" con_inner,* "]" : condata_outer
-    syntax "[justGAT|" con_inner,* "]" : condata_outer
-    syntax "[rawGAT|" con_inner,* "]" : condata_outer
+    syntax "[GATdata|" con_inner "]" : condata_outer
+    syntax "[justGAT|" con_inner "]" : condata_outer
+    syntax "[rawGAT|" con_inner "]" : condata_outer
 
 
   section rawGAT

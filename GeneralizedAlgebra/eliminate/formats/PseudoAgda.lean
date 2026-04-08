@@ -94,3 +94,30 @@ def psExp.strictify : psExp → psExp
 | z => z
 
 def psExp.toString : psExp → String := psExp.toString_core 10000
+
+
+
+def dalgFor sl := (parenFor sl) ++ "ᴰ"
+def dalgFn s := s ++ "ᴰ"
+
+def homFor sl := (parenFor sl) ++ "ᴹ"
+def homFn s := s ++ "ᴹ"
+def zeroFn s := s ++ "₀"
+def oneFn s := s ++ "₁"
+
+
+def threeFormat n := let ns := Nat.repr n
+    match ns.length with
+    | 1 => "00" ++ ns
+    | 2 => "0" ++ ns
+    | _ => ns
+def varFormat n := "x✝" ++ threeFormat n ++ "✝"
+
+def getName : StateM Nat String := do
+  let x ← get
+  set $ succ x
+  return varFormat x
+
+
+def mkReplace reps s :=
+    (List.foldl (λ (s',n) rep => (String.replace s' (varFormat n) rep,succ n)) (s,0) reps).1
