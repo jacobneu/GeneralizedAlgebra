@@ -14,6 +14,8 @@ def main : List String → IO PUnit
           List.forM (["record " ++ G ++ "-Alg where "] ++ List.map ("    " ++ ·) 𝔊.algStr) IO.println
       | "DAlg" => λ G 𝔊 =>
           List.forM (["record " ++ G ++ "-DAlg (" ++ (String.intercalate "," 𝔊.topnames) ++ ") where"] ++ List.map ("    " ++ ·) 𝔊.dalgStr) IO.println
+      | "Hom" => λ G 𝔊 =>
+          List.forM (["record " ++ G ++ "-Hom (" ++ (String.intercalate "," (List.map zeroFn 𝔊.topnames)) ++ ") (" ++ (String.intercalate "," (List.map oneFn 𝔊.topnames)) ++ ") where"] ++ List.map ("    " ++ ·) 𝔊.homStr) IO.println
       | _ => λ _ _ => IO.println "Error: unknown command"
     theCmd frakStr theGAT
 | _ => IO.println "Error: command and GAT not supplied"

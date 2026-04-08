@@ -1,5 +1,6 @@
 import GeneralizedAlgebra.nouGAT
 import GeneralizedAlgebra.eliminate.DAlgString
+import GeneralizedAlgebra.eliminate.HomString
 
 open Lean Elab Meta
 open preTy preTm
@@ -19,16 +20,17 @@ structure GAT where
     (augcon : List augTy)
     (algStr : List String)
     (dalgStr : List String)
+    (homStr : List String)
 
 def fullElim : eliminator :=
     elim_post (
         elimProductMany [
             ⟨_,GATdataElim_outer,[]⟩,
-            ⟨_,augElim_outer,[AlgStrElim_outer,DAlgStrElim_outer]⟩
+            ⟨_,augElim_outer,[AlgStrElim_outer,DAlgStrElim_outer,HomStrElim_outer]⟩
         ]
         )
-    (λ (⟨Γ,topnames,telescopes⟩,⟨augcon,algstr⟩,dalgstr) =>
-        GAT.mk Γ topnames telescopes augcon algstr dalgstr
+    (λ (⟨Γ,topnames,telescopes⟩,⟨⟨augcon,algstr⟩,dalgstr⟩,homstr) =>
+        GAT.mk Γ topnames telescopes augcon algstr dalgstr homstr
         )
 
 def elabGATCon : Syntax → MetaM Expr
@@ -46,6 +48,9 @@ def elabGATCon : Syntax → MetaM Expr
 
 | `(condata_outer| [DAlgStr| $s:con_inner ] ) =>
     elabGAT (mkLitElim (.const ``DAlgStrElim [])) s
+
+| `(condata_outer| [HomStr| $s:con_inner ] ) =>
+    elabGAT (mkLitElim (.const ``HomStrElim [])) s
 
 | `(condata_outer| ⦃ $s:con_inner ⦄ ) =>
     elabGAT (mkLitElim (.const ``fullElim [])) s
