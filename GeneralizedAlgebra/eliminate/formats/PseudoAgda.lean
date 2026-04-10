@@ -106,6 +106,10 @@ def zeroFn s := s ++ "₀"
 def oneFn s := s ++ "₁"
 
 
+def OuterToString (f : String → String) : Option (String × Bool) → psExp → Option String
+| some (s,true), pe => return collapseFor [f s, ":", pe.toString]
+| _,_ => none
+
 def threeFormat n := let ns := Nat.repr n
     match ns.length with
     | 1 => "00" ++ ns
@@ -113,11 +117,19 @@ def threeFormat n := let ns := Nat.repr n
     | _ => ns
 def varFormat n := "x✝" ++ threeFormat n ++ "✝"
 
-def getName : StateM Nat String := do
+
+def getName {m}[Monad m] : StateT Nat m String := do
   let x ← get
   set $ succ x
   return varFormat x
 
 
-def mkReplace reps s :=
+def mkReplaceVF reps s :=
     (List.foldl (λ (s',n) rep => (String.replace s' (varFormat n) rep,succ n)) (s,0) reps).1
+
+def mkReplace reps s :=
+    List.foldl (λ s' (tgt,rep) => String.replace s' tgt rep) s reps
+
+
+notation i " /w " ll => List.map (mkReplace ll) i
+notation s " ⧸ " i => (varFormat i,s)

@@ -9,13 +9,13 @@ def main : List String → IO PUnit
       | "Con" => λ G (𝔊 : GAT) =>
           List.forM  ([G ++ " = ◇"] ++ List.map (" ▷ " ++ preTyrepr ·) (List.reverse 𝔊.con)) IO.println
       | "augcon" => λ G 𝔊 =>
-          List.forM  ([G ++ " = ◇"] ++ List.map (" ▷ " ++ basicEliminators.augTyrepr ·) (List.reverse 𝔊.augcon)) IO.println
+          List.forM  ([G ++ " = ◇"] ++ List.map (" ▷ " ++ basicEliminators.augTy.toString ·) (List.reverse 𝔊.augcon)) IO.println
       | "Alg" => λ G 𝔊 =>
-          List.forM (["record " ++ G ++ "-Alg where "] ++ List.map ("    " ++ mkReplace reps ·) 𝔊.algStr) IO.println
+          List.forM (["record " ++ G ++ "-Alg where "] ++ List.map ("    " ++ mkReplaceVF reps ·) 𝔊.algStr) IO.println
       | "DAlg" => λ G 𝔊 =>
-          List.forM (["record " ++ G ++ "-DAlg (" ++ (String.intercalate "," 𝔊.topnames) ++ ") where"] ++ List.map ("    " ++  mkReplace reps ·) 𝔊.dalgStr) IO.println
+          List.forM (["record " ++ G ++ "-DAlg (" ++ (String.intercalate "," 𝔊.topnames) ++ ") where"] ++ List.map ("    " ++  mkReplaceVF reps ·) 𝔊.dalgStr) IO.println
       | "Hom" => λ G 𝔊 =>
-          List.forM (["record " ++ G ++ "-Hom (" ++ (String.intercalate "," (List.map zeroFn 𝔊.topnames)) ++ ") (" ++ (String.intercalate "," (List.map oneFn 𝔊.topnames)) ++ ") where"] ++ List.map ("    " ++  mkReplace reps ·) 𝔊.homStr) IO.println
+          List.forM (["record " ++ G ++ "-Hom (" ++ (String.intercalate "," (List.map zeroFn 𝔊.topnames)) ++ ") (" ++ (String.intercalate "," (List.map oneFn 𝔊.topnames)) ++ ") where"] ++ List.map ("    " ++  mkReplaceVF reps ·) 𝔊.homStr) IO.println
       | _ => λ _ _ => IO.println "Error: unknown command"
     theCmd frakStr theGAT
 | _ => IO.println "Error: command and GAT not supplied"

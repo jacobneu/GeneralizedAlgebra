@@ -3,43 +3,45 @@ import GeneralizedAlgebra.eliminate.AlgString
 open Nat
 open elaborator
 open basicEliminators
-open augTy augTm
+open augTy augTm augTyMarker
 open psExp
 
 
 
-def HomStr_Tm : List String → augTm → psExp
-| topnames, augVAR n => psDecorate (AlgStr_Tm topnames (augVAR n)) homFn
-| topnames, augAPPx f _ => HomStr_Tm topnames f/-, psDecorate (AlgStr_Tm topnames s) zeroFn-/
-| topnames, augAPPi f _ => HomStr_Tm topnames f/-, psDecorate (AlgStr_Tm topnames s) zeroFn-/
--- | topnames, augAPPi f _ => HomStr_Tm topnames f --psL [HomStr_Tm topnames f, AlgStr_Tm topnames s, HomStr_Tm topnames s]
+def HomStr_Tm : List (Option (String × Bool)) → augTm → Option psExp
+| topnames, augVAR n => (psDecorate · homFn) <$> AlgStr_Tm topnames (augVAR n)
+| topnames, augAPPx f _ => HomStr_Tm topnames f
+| topnames, augAPPi f _ => HomStr_Tm topnames f
 | topnames, augTRANSP _ s => HomStr_Tm topnames s
 
 
-def HomStr_Ty : List String → List (Option (String × Bool)) → psExp → psExp → augTy → StateM Nat psExp
-| _, _, alg0, alg1, augUU => return psNopar [alg0,psLit "→",alg1]
-| topnames, _, alg0, alg1, augEL tt => return psNopar [psL [HomStr_Tm topnames tt, alg0], psLit "=", alg1]
-| topnames, t::ts, alg0, alg1, augPIx X Y => do
-    let strt ← (match t with
-      | none => getName
-      | some (i,_) => return i)
-    let resY ← HomStr_Ty (strt::topnames) ts (psL [alg0,psLit $ zeroFn strt]) (psL [alg1,psR [HomStr_Tm topnames X,psLit $ zeroFn strt]]) Y
-    return psDepI [(zeroFn strt,AlgStr_Tm (List.map zeroFn topnames) X)] resY
-| topnames, t::ts, alg0, alg1, augPIi X Y => do
-    let strt ← (match t with
-      | none => getName
-      | some (i,_) => return i)
-    let resY ← HomStr_Ty (strt::topnames) ts alg0 alg1 Y
-    return psDepI [(zeroFn strt,AlgStr_Tm (List.map zeroFn topnames) X)] resY
-| _, _, _, _, augEQ _ _ => return psLit "⊤"
-| _, _, _, _, _ => return psLit ""
+def HomStr_Ty : List (Option (String × Bool)) → psExp → psExp → augTyMarker → StateT Nat Option psExp
+| _, alg0, alg1, augUU => return psNopar [alg0,psLit "→",alg1]
+| topnames, alg0, alg1, augEL X => do
+    let sX ← HomStr_Tm topnames X
+    return psNopar [psL [sX, alg0], psLit "=", alg1]
+| topnames, alg0, alg1, augPI o X Y => do
+    let strt ← (match o with
+      | none => (·,true) <$> getName
+      | _ => o)
+    let aX0 ← AlgStr_Tm (List.map (Option.map (λ v => (zeroFn v.1,v.2))) topnames) X
+    let hX ← HomStr_Tm topnames X
+    let alg0' := if strt.2 then psL [alg0,psLit $ zeroFn strt.1] else alg0
+    let alg1' := if strt.2 then psL [alg1,psR [hX,psLit $ zeroFn strt.1]] else alg1
+    let hY ← HomStr_Ty (strt::topnames) alg0' alg1' Y
+    return psDepI [(zeroFn strt.1,aX0)] hY
+| _, _, _, augEQ _ _ => return psLit "⊤"
 
-def HomStr_Con_core : List String → List (augTy × List (Option (String × Bool))) → StateM Nat (List String)
-| s::ss,(X,tt)::tts => do
-    let restts ← HomStr_Con_core ss tts
-    let resX ← HomStr_Ty ss tt (psLit $ zeroFn s) (psLit $ oneFn s) X
-    return restts ++ [collapseFor $ [homFn s, ":", psExp.toString resX ]]
-| _,_ => return []
+
+def HomStr_Con_core : List augTy → StateT Nat Option (List String)
+| mkAugTy (some (s,true)) aT :: augCon => do
+    let res ← HomStr_Con_core augCon
+    let firstname ← HomStr_Ty (getTopnames augCon) (psLit $ zeroFn s) (psLit $ oneFn s) aT
+    let finalStr ← OuterToString homFn (some (s,true)) firstname
+    return res ++ [finalStr]
+| [] => return []
+| _ => none
+
 
 def isntTrivial s := match List.reverse (String.toList s) with
 | '⊤'::_ => false
@@ -47,11 +49,11 @@ def isntTrivial s := match List.reverse (String.toList s) with
 
 def HomStrElim_outer : eliminator_outer augElim_inner := ⟨
     List String,
-    λ Γ topnames telescopes =>
-        List.filter isntTrivial
-        (StateT.run (HomStr_Con_core (List.reverse topnames) (List.zipWith GATdataZip_core Γ (List.reverse telescopes))) 0).1
+    λ Γ topnames telescopes => match
+        (StateT.run (HomStr_Con_core (augCombine Γ topnames telescopes)) 0) with
+        | some (ll,_) => List.filter isntTrivial ll
+        | none => []
 ⟩
 def HomStrElim := toEliminator HomStrElim_outer
-
 
 syntax "[HomStr|" con_inner "]" : condata_outer

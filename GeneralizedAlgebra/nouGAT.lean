@@ -818,50 +818,97 @@ namespace basicEliminators
     | augAPPi : augTm → augTm → augTm
     | augTRANSP : augTm → augTm → augTm
 
-    inductive augTy : Type where
-    | augUU : augTy
-    | augEL : augTm → augTy
-    | augPIx : augTm → augTy → augTy
-    | augPIi : augTm → augTy → augTy
-    | augEQ : augTm → augTm → augTy
+    inductive augTyMarker' : Type where
+    | augUU' : augTyMarker'
+    | augEL' : augTm → augTyMarker'
+    | augPIx' : augTm → augTyMarker' → augTyMarker'
+    | augPIi' : augTm → augTyMarker' → augTyMarker'
+    | augEQ' : augTm → augTm → augTyMarker'
 
-    open augTm augTy
+    inductive augTyMarker : Type where
+    | augUU : augTyMarker
+    | augEL : augTm → augTyMarker
+    | augPI : Option (String × Bool) → augTm → augTyMarker → augTyMarker
+    | augEQ : augTm → augTm → augTyMarker
+
+    inductive augTy : Type where
+    | mkAugTy : Option (String × Bool) → augTyMarker → augTy
+
+    open augTm augTy augTyMarker augTyMarker'
 
     def augElim_inner : eliminator_inner := ⟨
-        List augTy,
-        augTy,
+        List augTyMarker',
+        augTyMarker',
         augTm,
         [],
         λ 𝔊 A => A :: 𝔊,
-        augUU,
-        augEL,
-        augPIx,
-        augPIi,
-        augEQ,
+        augUU',
+        augEL',
+        augPIx',
+        augPIi',
+        augEQ',
         augVAR,
         augAPPx,
         augAPPi,
         augTRANSP⟩
 
-    def augElim_outer : eliminator_outer augElim_inner := ⟨ List augTy, λ 𝒜 _ _ => 𝒜 ⟩
+    def augCombine_single : augTyMarker' → List (Option (String × Bool)) → Option augTyMarker
+    | augUU', [] => return augUU
+    | augEL' X, [] => return augEL X
+    | augEQ' t1 t2, [] => return augEQ t1 t2
+    | augPIx' X Y, some (s,true) :: tele => do
+        let resY ← augCombine_single Y tele
+        return augPI (some (s,true)) X resY
+    | augPIx' X Y, none :: tele => do
+        let resY ← augCombine_single Y tele
+        return augPI none X resY
+    | augPIi' X Y, some (s,false) :: tele => do
+        let resY ← augCombine_single Y tele
+        return augPI (some (s,false)) X resY
+    | _,_ => none
 
-    def augTmrepr : augTm → String
-    -- | augAPPx (augAPPx (augAPPx (augAPPx (augAPPx f t1) t2) t3) t4) t5 => mkParen (augTmrepr f) ++ " @ " ++ mkParen (augTmrepr t1) ++ " @ " ++ mkParen (augTmrepr t2) ++ " @ " ++ mkParen (augTmrepr t3) ++ " @ " ++ mkParen (augTmrepr t4) ++ " @ " ++ mkParen (augTmrepr t5)
-    -- | augAPPx (augAPPx (augAPPx (augAPPx f t1) t2) t3) t4 => mkParen (augTmrepr f) ++ " @ " ++ mkParen (augTmrepr t1) ++ " @ " ++ mkParen (augTmrepr t2) ++ " @ " ++ mkParen (augTmrepr t3) ++ " @ " ++ mkParen (augTmrepr t4)
-    -- | augAPPx (augAPPx (augAPPx f t1) t2) t3 => mkParen (augTmrepr f) ++ " @ " ++ mkParen (augTmrepr t1) ++ " @ " ++ mkParen (augTmrepr t2) ++ " @ " ++ mkParen (augTmrepr t3)
-    -- | augAPPx (augAPPx f t1) t2 => mkParen (augTmrepr f) ++ " @ " ++ mkParen (augTmrepr t1) ++ " @ " ++ mkParen (augTmrepr t2)
-    | augAPPx f t =>   mkParen (augTmrepr f) ++ " @ " ++ mkParen (augTmrepr t)
-    | augAPPi f t =>   mkParen (augTmrepr f) ++ " @ {" ++ augTmrepr t ++ "}"
+    def augCombine_core : List augTyMarker' → List String → List (List (Option (String × Bool))) → Option (List augTy)
+    | aT::augRest, s::topnames, tele::telescopes => do
+      let firstTy ← augCombine_single aT tele
+      let res ← augCombine_core augRest topnames telescopes
+      return mkAugTy (some (s,true)) firstTy :: res
+    | [], [], [] => return []
+    | _, _, _ => none
+
+    def augCombine (augCon : List augTyMarker') (topnames : List String) (telescopes : List (List (Option (String × Bool)))) : List augTy := match augCombine_core augCon (List.reverse topnames) (List.reverse telescopes) with
+    | some l => l
+    | none => []
+
+    def augElim_outer : eliminator_outer augElim_inner := ⟨ List augTy, augCombine ⟩
+
+    def augElim : eliminator := toEliminator augElim_outer
+
+    def augTm.toString : augTm → String
+    -- | augAPPx (augAPPx (augAPPx (augAPPx (augAPPx f t1) t2) t3) t4) t5 => mkParen (augTm.toString f) ++ " @ " ++ mkParen (augTm.toString t1) ++ " @ " ++ mkParen (augTm.toString t2) ++ " @ " ++ mkParen (augTm.toString t3) ++ " @ " ++ mkParen (augTm.toString t4) ++ " @ " ++ mkParen (augTm.toString t5)
+    -- | augAPPx (augAPPx (augAPPx (augAPPx f t1) t2) t3) t4 => mkParen (augTm.toString f) ++ " @ " ++ mkParen (augTm.toString t1) ++ " @ " ++ mkParen (augTm.toString t2) ++ " @ " ++ mkParen (augTm.toString t3) ++ " @ " ++ mkParen (augTm.toString t4)
+    -- | augAPPx (augAPPx (augAPPx f t1) t2) t3 => mkParen (augTm.toString f) ++ " @ " ++ mkParen (augTm.toString t1) ++ " @ " ++ mkParen (augTm.toString t2) ++ " @ " ++ mkParen (augTm.toString t3)
+    -- | augAPPx (augAPPx f t1) t2 => mkParen (augTm.toString f) ++ " @ " ++ mkParen (augTm.toString t1) ++ " @ " ++ mkParen (augTm.toString t2)
+    | augAPPx f t =>   mkParen (augTm.toString f) ++ " @ " ++ mkParen (augTm.toString t)
+    | augAPPi f t =>   mkParen (augTm.toString f) ++ " @ {" ++ augTm.toString t ++ "}"
     | augVAR n => Nat.repr n
-    | augTRANSP eq y => "transp " ++ mkParen (augTmrepr eq) ++ " " ++ mkParen (augTmrepr y)
+    | augTRANSP eq y => "transp " ++ mkParen (augTm.toString eq) ++ " " ++ mkParen (augTm.toString y)
 
-    def augTyrepr : augTy → String
+    def augTyMarker.toString : augTyMarker → String
     | augUU => "U"
-    | augEQ s t => "Eq " ++ mkParen (augTmrepr s)  ++ " " ++ mkParen (augTmrepr t)
-    | augEL X => "El " ++ mkParen (augTmrepr X)
-    | augPIx X Y => "Π " ++ mkParen (augTmrepr X) ++ " " ++ mkParen (augTyrepr Y)
-    | augPIi X Y => "Π {" ++ augTmrepr X ++ "} " ++ mkParen (augTyrepr Y)
+    | augEL X => X.toString
+    | augEQ s t => mkParen s.toString  ++ " = " ++ mkParen t.toString
+    | augPI none X Y => X.toString ++ " ⇒ " ++ Y.toString
+    | augPI (some (s,true)) X Y => "(" ++ s ++ " : " ++ X.toString ++ ") ⇒ " ++ Y.toString
+    | augPI (some (s,false)) X Y => "{" ++ s ++ " : " ++ X.toString ++ "} ⇒ " ++ Y.toString
 
+    def augTy.toString : augTy → String
+    | mkAugTy none aT => "_ : " ++ aT.toString
+    | mkAugTy (some (s,true)) aT => "(" ++ s ++ " : " ++ aT.toString ++ ")"
+    | mkAugTy (some (s,false)) aT => "{" ++ s ++ " : " ++ aT.toString ++ "}"
+
+    instance : Repr augTy := ⟨ λ a _ => augTy.toString a ⟩
+
+    syntax "[augcon|" con_inner "]" : condata_outer
   end augGAT
 
 end basicEliminators

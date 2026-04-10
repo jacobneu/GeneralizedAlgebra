@@ -40,6 +40,9 @@ def elabGATCon : Syntax → MetaM Expr
 | `(condata_outer| [justGAT| $s:con_inner ] ) =>
     elabGAT (mkLitElim (.const ``justGATElim [])) s
 
+| `(condata_outer| [augcon| $s:con_inner ] ) =>
+    elabGAT (mkLitElim (.const ``augElim [])) s
+
 | `(condata_outer| [rawGAT| $s:con_inner ] ) =>
     elabGATraw s
 
