@@ -1,4 +1,4 @@
-
+import Lean.Syntax
 open Nat
 
 def stripFirstParen : List Char → Option (List Char)
@@ -53,3 +53,8 @@ def ArgMarker.map (f : String → String) : ArgMarker → ArgMarker
 | Anon => Anon
 | Expl s => Expl (f s)
 | Impl s => Impl (f s)
+
+def ArgMarker.getName : ArgMarker → String
+| Anon => "_"
+| Expl s => s
+| Impl s => s

@@ -16,7 +16,7 @@ syntax "⦃" con_inner "⦄" : condata_outer
 structure GAT where
     (con : preCon)
     (topnames : List String)
-    (telescopes : List (List (Option (String × Bool))))
+    (telescopes : List (List ArgMarker))
     (augcon : List augTy)
     (algStr : List String)
     (dalgStr : List String)

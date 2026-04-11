@@ -5,6 +5,7 @@ open Lean Elab Meta
 open preTy preTm
 open Std Format
 open Nat
+open ArgMarker
 
 
 namespace nouGATmeta
@@ -17,17 +18,19 @@ namespace nouGATmeta
     | metaTRANSP : metaTm → metaTm → metaTm
     open metaTm
 
-    inductive metaArgMarker : Type where
-    | mkImpl : String → metaTm → metaArgMarker
-    | mkExpl : String → metaTm → metaArgMarker
-    | mkAnon : metaTm → metaArgMarker
-    open metaArgMarker
+    -- inductive metaArgMarker : Type where
+    -- | mkImpl : String → metaTm → metaArgMarker
+    -- | mkExpl : String → metaTm → metaArgMarker
+    -- | mkAnon : metaTm → metaArgMarker
+    -- open metaArgMarker
 
-    inductive metaArg : Type where
-    | metaImpl : String → metaTm → metaTm → metaArg
-    | metaExpl : String → metaTm → metaTm → metaArg
-    | metaAnon : metaTm → metaTm → metaArg
-    open metaArg
+    -- inductive metaArg : Type where
+    -- | metaImpl : String → metaTm → metaTm → metaArg
+    -- | metaExpl : String → metaTm → metaTm → metaArg
+    -- | metaAnon : metaTm → metaTm → metaArg
+    -- open metaArg
+    def metaArgMarker : Type := ArgMarker × metaTm
+    def metaArg : Type := ArgMarker × metaTm × metaTm
 
     inductive metaTyMarker : Type where
     | metaUU : metaTyMarker
@@ -83,15 +86,15 @@ namespace nouGATmeta
     | metaAPP m1 m2 => mkParen m1.toString' ++ " @ " ++ mkParen m2.toString'
     | metaTRANSP m1 m2 => "TRANSP " ++ mkParen m1.toString' ++ " " ++ mkParen m2.toString'
 
-    def metaArg.toString
-    | metaImpl i _ _ => "Impl(" ++ i ++ ")"
-    | metaExpl i _ _ => "Expl("++ i ++ ")"
-    | metaAnon _ _ => "Anon"
+    def metaArg.toString : metaArg → String
+    | (Impl i, _, _) => "Impl(" ++ i ++ ")"
+    | (Expl i, _, _) => "Expl("++ i ++ ")"
+    | (Anon, _, _) => "Anon"
 
-    def metaArg.toString'
-    | metaImpl i mt mX => "{"++ i ++ "=" ++ mkParen mt.toString' ++ " : " ++ mkParen mX.toString' ++ "}"
-    | metaExpl i mt mX => "("++ i ++ "=" ++ mkParen mt.toString' ++ " : " ++ mkParen mX.toString' ++ ")"
-    | metaAnon mt mX => "(_=" ++ mkParen mt.toString' ++ " : " ++ mkParen mX.toString' ++ ")"
+    def metaArg.toString' : metaArg → String
+    | (Impl i, mt, mX) => "{"++ i ++ "=" ++ mkParen mt.toString' ++ " : " ++ mkParen mX.toString' ++ "}"
+    | (Expl i, mt, mX) => "("++ i ++ "=" ++ mkParen mt.toString' ++ " : " ++ mkParen mX.toString' ++ ")"
+    | (Anon, mt, mX) => "(_=" ++ mkParen mt.toString' ++ " : " ++ mkParen mX.toString' ++ ")"
 
     def metaTy.toFormat : metaTy → Format
     | (metaUU,args) => (text  "metaUU")
@@ -106,27 +109,18 @@ namespace nouGATmeta
 
   section extractionComparison
   -- Extraction & comparison
-    def extractMetaTm : metaArg → metaTm
-    | metaImpl _ m _ => m
-    | metaExpl _ m _ => m
-    | metaAnon m _ => m
+    def extractMetaTm (mA : metaArg) : metaTm := mA.2.1
 
-    def extractMetaSort : metaArg → metaTm
-    | metaImpl _ _ m => m
-    | metaExpl _ _ m => m
-    | metaAnon _ m => m
+    def extractMetaSort (mA : metaArg) : metaTm := mA.2.2
 
     def extractTel : metaTy → List metaArg := Prod.snd
 
-    def extractName : metaArg → String
-    | metaImpl i _ _ => i
-    | metaExpl i _ _ => i
-    | metaAnon _ _ => "_"
+    def extractName (mA : metaArg) : String := mA.1.getName
 
     def argMatch (key : String) : metaArg → Bool
-    | metaImpl i _ _ => key=i
-    | metaExpl i _ _ => key=i
-    | metaAnon _ _ => false
+    | (Impl i, _, _) => key=i
+    | (Expl i, _, _) => key=i
+    | (Anon, _, _) => false
   end extractionComparison
 
   section weakening
@@ -137,15 +131,11 @@ namespace nouGATmeta
     | metaAPP f t => metaAPP (metaWkTm f) (metaWkTm t)
     | metaTRANSP f t => metaTRANSP (metaWkTm f) (metaWkTm t)
 
-    def metaWkArg
-    | metaImpl i mt mX => metaImpl i (metaWkTm mt) (metaWkTm mX)
-    | metaExpl i mt mX => metaExpl i (metaWkTm mt) (metaWkTm mX)
-    | metaAnon mt mX => metaAnon (metaWkTm mt) (metaWkTm mX)
+    def metaWkArg : metaArg → metaArg
+    | (mA,mt, mX) => (mA, metaWkTm mt, metaWkTm mX)
 
-    def metaWkSortOnly
-    | metaImpl i mt mX => metaImpl i mt (metaWkTm mX)
-    | metaExpl i mt mX => metaExpl i mt (metaWkTm mX)
-    | metaAnon mt mX => metaAnon mt (metaWkTm mX)
+    def metaWkSortOnly : metaArg → metaArg
+    | (mA,mt, mX) => (mA, mt, metaWkTm mX)
 
     def metaWkTy : metaTy → metaTy
     | (metaEl t, TT) => (metaEl (metaWkTm t), List.map metaWkArg TT)
@@ -164,15 +154,11 @@ namespace nouGATmeta
     | metaAPP f t => metaAPP (localWkTm f) (localWkTm t)
     | metaTRANSP f t => metaTRANSP (localWkTm f) (localWkTm t)
 
-    def localWkSortOnly
-    | metaImpl i mt mX => metaImpl i mt (localWkTm mX)
-    | metaExpl i mt mX => metaExpl i mt (localWkTm mX)
-    | metaAnon mt mX => metaAnon mt (localWkTm mX)
+    def localWkSortOnly : metaArg → metaArg
+    | (mA,mt, mX) => (mA, mt, localWkTm mX)
 
-    def localWkArg
-    | metaImpl i mt mX => metaImpl i (localWkTm mt) (localWkTm mX)
-    | metaExpl i mt mX => metaExpl i (localWkTm mt) (localWkTm mX)
-    | metaAnon mt mX => metaAnon (localWkTm mt) (localWkTm mX)
+    def localWkArg : metaArg → metaArg
+    | (mA,mt, mX) => (mA, localWkTm mt, localWkTm mX)
 
   end weakening
 
@@ -185,9 +171,7 @@ namespace nouGATmeta
     | z => z
 
     def metaSubstArg (s t : metaTm) : metaArg → metaArg
-    | metaImpl i mt mX => metaImpl i (metaSubstTm s t mt) (metaSubstTm s t mX)
-    | metaExpl i mt mX => metaExpl i (metaSubstTm s t mt) (metaSubstTm s t mX)
-    | metaAnon mt mX => metaAnon (metaSubstTm s t mt) (metaSubstTm s t mX)
+    | (mA, mt, mX) => (mA, metaSubstTm s t mt, metaSubstTm s t mX)
 
   end substitution
 
@@ -199,10 +183,15 @@ namespace nouGATmeta
     | metaAPP m1 m2 => mkApp2 (.const ``metaAPP []) (mkMetaTmLit m1) (mkMetaTmLit m2)
     | metaTRANSP m1 m2 => mkApp2 (.const ``metaTRANSP []) (mkMetaTmLit m1) (mkMetaTmLit m2)
 
+    def ArgMarker.mkLit : ArgMarker → Expr
+    | Anon => .const ``Anon []
+    | Expl i => .app (.const ``Expl []) (mkStrLit i)
+    | Impl i => .app (.const ``Impl []) (mkStrLit i)
+
     def mkMetaArgLit : metaArg → MetaM Expr -- :: metaArg
-    | metaImpl i mt mX => mkAppM ``metaImpl #[mkStrLit $ i,mkMetaTmLit mt,mkMetaTmLit mX]
-    | metaExpl i mt mX => mkAppM ``metaExpl #[mkStrLit $ i,mkMetaTmLit mt,mkMetaTmLit mX]
-    | metaAnon mt mX => mkAppM ``metaAnon #[mkMetaTmLit mt,mkMetaTmLit mX]
+    | (mA, mt, mX) => do
+        let mSnd ← mkAppM ``Prod.mk #[mkMetaTmLit mt,mkMetaTmLit mX]
+        mkAppM ``Prod.mk #[ArgMarker.mkLit mA,mSnd]
 
     def mkMetaTyLit : metaTy → MetaM Expr -- :: metaTy
     | (metaUU, TT) => do
@@ -217,20 +206,16 @@ namespace nouGATmeta
 
     def StringBool : Type := String × Bool
     def mkStringBool (s : String) (b : Bool) : StringBool := (s,b)
-    def StringBoolOpt : Type := Option StringBool
-    def StringBoolOptList : Type := List StringBoolOpt
 
   -- Make literal for GATdata
-    def mkMetaArgLit' : metaArg → Expr -- :: Option (String × Bool)
-    | metaImpl i _ _ => mkApp (.app (.const ``some [Level.zero]) (.const ``StringBool [])) $ mkAppN (.const `nouGATmeta.mkStringBool []) #[mkStrLit i,.const ``false []]
-    | metaExpl i _ _ => mkApp (.app (.const ``some [Level.zero]) (.const ``StringBool [])) $ mkAppN (.const `nouGATmeta.mkStringBool []) #[mkStrLit i,.const ``true []]
-    | metaAnon _ _ => .app (.const ``none [Level.zero]) (.const ``StringBool [])
+    def mkMetaArgLit' : metaArg → Expr -- :: ArgMarker
+    | (mA,_,_) => ArgMarker.mkLit mA
 
 
-    def mkMetaTyLit' : metaTy → MetaM Expr -- :: List (Option (String × Bool))
-    | (metaUU, TT) => mkListLit (.const ``StringBoolOpt []) (List.map mkMetaArgLit' (List.reverse TT))
-    | (metaEq _ _ _, TT) => mkListLit (.const ``StringBoolOpt []) (List.map mkMetaArgLit' (List.reverse TT))
-    | (metaEl _, TT) => mkListLit (.const ``StringBoolOpt []) (List.map mkMetaArgLit' (List.reverse TT))
+    def mkMetaTyLit' : metaTy → MetaM Expr -- :: List ArgMarker
+    | (metaUU, TT) => mkListLit (.const ``ArgMarker []) (List.map mkMetaArgLit' (List.reverse TT))
+    | (metaEq _ _ _, TT) => mkListLit (.const ``ArgMarker []) (List.map mkMetaArgLit' (List.reverse TT))
+    | (metaEl _, TT) => mkListLit (.const ``ArgMarker []) (List.map mkMetaArgLit' (List.reverse TT))
   end literals
 
 end nouGATmeta
@@ -238,7 +223,7 @@ end nouGATmeta
 namespace elabState
 
   open nouGATmeta
-  open metaTm metaTyMarker metaArg metaArgMarker
+  open metaTm metaTyMarker metaArg
 
     structure st where
       (topnames : List String)
@@ -269,9 +254,7 @@ namespace elabState
     | metaTRANSP m1 m2 =>  mkParen (metaTmFormat current m2) ++ " #⟨" ++ metaTmFormat current m1 ++ "⟩"
 
     def metaArgFormat (current : st) : metaArg → String
-    | metaImpl i mt mX => "{" ++ i ++ (if current.rawMode then "=" ++ mt.toString else "") ++ " : " ++ metaTmFormat current mX ++ "}"
-    | metaExpl i mt mX => "(" ++ i ++ (if current.rawMode then "=" ++ mt.toString else "") ++ " : " ++ metaTmFormat current mX ++ ")"
-    | metaAnon mt mX => "_" ++ (if current.rawMode then "=" ++ mt.toString else "") ++ " : " ++ metaTmFormat current mX
+    | (mA,mt,mX) => (if current.rawMode then mA.map (· ++ "=" ++ mt.toString) else mA).toString (metaTmFormat current mX)
 
     def formatList (ind : Nat) : List Format → Format
     | [] => ""
@@ -376,10 +359,7 @@ namespace elabState
     def extendTel (newArgMark : metaArgMarker) : StateT st MetaM Unit := do
       let current ← get
       let gIndex := current.topnames.length
-      let newArg := match newArgMark with
-        | mkImpl i mX => metaImpl i (metaLOC gIndex 0) (localWkTm mX)
-        | mkExpl i mX => metaExpl i (metaLOC gIndex 0) (localWkTm mX)
-        | mkAnon mX => metaAnon (metaLOC gIndex 0) (localWkTm mX)
+      let newArg := (newArgMark.1,metaLOC gIndex 0,localWkTm newArgMark.2)
       set (st.mk current.topnames current.telescopes current.currentName (newArg::List.map localWkArg current.currentTel) current.rawMode)
   end extend
 
@@ -420,7 +400,7 @@ namespace elaborator
 
     open nouGATmeta
     open elabState
-    open metaTm metaArg metaArgMarker metaTyMarker
+    open metaTm metaArg metaTyMarker
     open Nat
 
   section theSyntax
@@ -469,28 +449,24 @@ namespace elaborator
         return (init,last)
 
     def metaTyMatch (suberror : String): metaArg → metaTm → metaTy → StateT st MetaM metaTy
-    | metaImpl _ _ m1, m2, res => if m1 = m2 then return res else elabFail suberror (errorCode.errType m1 m2)
-    | metaExpl _ _ m1, m2, res => if m1 = m2 then return res else elabFail suberror (errorCode.errType m1 m2)
-    | metaAnon _ m1, m2, res => if m1 = m2 then return res else elabFail suberror (errorCode.errType m1 m2)
+    | (_,_,m1), m2, res => if m1 = m2 then return res else elabFail suberror (errorCode.errType m1 m2)
 
 
 
     open argInstr
     def splitArgs : argInstr → List metaArg → StateT st MetaM (List metaArg × metaArg)
     | argI, [] => elabFail "Cannot substitute argument" (errorCode.errImplExplMismatch argI)
-    | argI, firstArg :: rest => match (argI,firstArg) with
-      | (firstExpl,metaImpl _ _ _) => do
+    | argI, firstArg :: rest => match (argI,firstArg.1) with
+      | (firstExpl,Impl _) => do
           let (resList,resArg) ← splitArgs argI rest
           return (firstArg::resList,resArg)
-      | (firstImpl,metaExpl _ _ _) => do
+      | (firstImpl,Expl _) => do
           let (resList,resArg) ← splitArgs argI rest
           return (firstArg::resList,resArg)
-      | (firstImpl,metaAnon _ _) => do
+      | (firstImpl,Anon) => do
           let (resList,resArg) ← splitArgs argI rest
           return (firstArg::resList,resArg)
-      | (firstImpl,metaImpl _ _ _) => return (rest,firstArg)
-      | (firstExpl,metaExpl _ _ _) => return (rest,firstArg)
-      | (firstExpl,metaAnon _ _) => return (rest,firstArg)
+      | _ => return (rest,firstArg)
 
     def locSubstTy (argI : argInstr) (t : metaTm) : metaTy → StateT st MetaM (metaTy × metaArg)
     | (metaUU, args) => do
@@ -572,13 +548,13 @@ namespace elaborator
 
     structure eliminator extends eliminator_inner where
       (Output : Type)
-      (mkOutput : Con_D → List String → List (List (Option (String × Bool))) → Output)
+      (mkOutput : Con_D → List String → List (List ArgMarker) → Output)
 
     def dummy : eliminator := ⟨⟨
       Unit, Unit, Unit, (), λ _ _ => (), (), λ _ => (), λ _ _ => (), λ _ _ => (), λ _ _ => (), λ _ => (), λ _ _ => (), λ _ _ => (), λ _ _ => ()
     ⟩, Unit, λ _ _ _ => ()⟩
 
-    def eliminator_outer (inn : eliminator_inner) : Type 1 := @Sigma Type (λ O => inn.Con_D → List String → List (List (Option (String × Bool))) → O)
+    def eliminator_outer (inn : eliminator_inner) : Type 1 := @Sigma Type (λ O => inn.Con_D → List String → List (List ArgMarker) → O)
 
     def elimProduct_outer {inn : eliminator_inner} (EO1 EO2 : eliminator_outer inn) : eliminator_outer inn :=
       ⟨ EO1.1 × EO2.1, λ Γ topnames telescopes => (EO1.2 Γ topnames telescopes,EO2.2 Γ topnames telescopes)⟩
@@ -609,7 +585,7 @@ namespace elaborator
       E1.Output × E2.Output,
       λ (x1,x2) topnames telescopes => (E1.mkOutput x1 topnames telescopes, E2.mkOutput x2 topnames telescopes)
     ⟩
-    def elimProduct' (E1 E2 : eliminator) (Output' : Type) (mkOutput' : E1.Con_D → E2.Con_D → List String → List (List (Option (String × Bool))) → Output'): eliminator := ⟨
+    def elimProduct' (E1 E2 : eliminator) (Output' : Type) (mkOutput' : E1.Con_D → E2.Con_D → List String → List (List ArgMarker) → Output'): eliminator := ⟨
       elimProduct_inner E1.toeliminator_inner E2.toeliminator_inner,
       Output',
       λ (x1,x2) => mkOutput' x1 x2
@@ -708,14 +684,14 @@ namespace elaborator
     | `(gat_ty| $T:gat_tm ⇒ $T':gat_ty) => do
         let (domain,mt,mX) ← elabGATTm Elim T
         failIfNotU "Failed to create argument" mt mX
-        extendTel (mkAnon mt)
+        extendTel (Anon,mt)
         let (codomain,finalT) ← elabGATTy Elim T'
         return (mkAppN (litPix_D Elim) #[domain,codomain],finalT)
     | `(gat_ty| ( $is:ident* : $T:gat_tm ) ⇒ $T':gat_ty) => do
         Array.foldr (λ i getCodomain => do
           let (domain,mt,mX) ← elabGATTm Elim T
           failIfNotU "Failed to create argument" mt mX
-          extendTel (mkExpl i.getId.toString mt)
+          extendTel (Expl i.getId.toString, mt)
           let (codomain,finalT) ← getCodomain
           return (mkAppN (litPix_D Elim) #[domain,codomain],finalT)
         ) (elabGATTy Elim T') is
@@ -723,7 +699,7 @@ namespace elaborator
         Array.foldr (λ i getCodomain => do
           let (domain,mt,mX) ← elabGATTm Elim T
           failIfNotU "Failed to create argument" mt mX
-          extendTel (mkImpl i.getId.toString mt)
+          extendTel (Impl i.getId.toString, mt)
           let (codomain,finalT) ← getCodomain
           return (mkAppN (litPii_D Elim) #[domain,codomain],finalT)
         ) (elabGATTy Elim T') is
@@ -731,7 +707,7 @@ namespace elaborator
         Array.foldr (λ _ getCodomain => do
           let (domain,mt,mX) ← elabGATTm Elim T
           failIfNotU "Failed to create argument" mt mX
-          extendTel (mkAnon mt)
+          extendTel (Anon, mt)
           let (codomain,finalT) ← getCodomain
           return (mkAppN (litPix_D Elim) #[domain,codomain],finalT)
         ) (elabGATTy Elim T') is
@@ -748,12 +724,13 @@ namespace elaborator
         ) getRest is
     | _ => throwError "GATdecl_Fail"
 
+    def AMList := List ArgMarker
 
     def elabGAT (Elim : Expr) : Syntax → MetaM Expr
     | `(con_inner| $ds:gat_decl,* ) => do
         let (resCon,VV) ← StateT.run (Array.foldl (elabGATdecl Elim) (return litEmpty_D Elim) ds.getElems) (stEmpty false)
         let topList ← mkListLit (.const ``String []) (List.map mkStrLit (List.reverse VV.topnames))
-        let telescopes ← List.mapM mkMetaTyLit' (List.reverse VV.telescopes) >>= mkListLit (.const ``StringBoolOptList [])
+        let telescopes ← List.mapM mkMetaTyLit' (List.reverse VV.telescopes) >>= mkListLit (.const ``AMList [])
         return mkAppN (litMk Elim) #[resCon,topList,telescopes]
     | _ => throwError "GAT_Fail"
 
@@ -853,22 +830,22 @@ namespace basicEliminators
         augAPPi,
         augTRANSP⟩
 
-    def augCombine_single : augTyMarker' → List (Option (String × Bool)) → Option augTyMarker
+    def augCombine_single : augTyMarker' → List ArgMarker → Option augTyMarker
     | augUU', [] => return augUU
     | augEL' X, [] => return augEL X
     | augEQ' t1 t2, [] => return augEQ t1 t2
-    | augPIx' X Y, some (s,true) :: tele => do
+    | augPIx' X Y, Expl s :: tele => do
         let resY ← augCombine_single Y tele
         return augPI (Expl s) X resY
-    | augPIx' X Y, none :: tele => do
+    | augPIx' X Y, Anon :: tele => do
         let resY ← augCombine_single Y tele
         return augPI Anon X resY
-    | augPIi' X Y, some (s,false) :: tele => do
+    | augPIi' X Y, Impl s :: tele => do
         let resY ← augCombine_single Y tele
         return augPI (Impl s) X resY
     | _,_ => none
 
-    def augCombine_core : List augTyMarker' → List String → List (List (Option (String × Bool))) → Option (List augTy)
+    def augCombine_core : List augTyMarker' → List String → List (List ArgMarker) → Option (List augTy)
     | aT::augRest, s::topnames, tele::telescopes => do
       let firstTy ← augCombine_single aT tele
       let res ← augCombine_core augRest topnames telescopes
@@ -876,7 +853,7 @@ namespace basicEliminators
     | [], [], [] => return []
     | _, _, _ => none
 
-    def augCombine (augCon : List augTyMarker') (topnames : List String) (telescopes : List (List (Option (String × Bool)))) : List augTy := match augCombine_core augCon (List.reverse topnames) (List.reverse telescopes) with
+    def augCombine (augCon : List augTyMarker') (topnames : List String) (telescopes : List (List ArgMarker)) : List augTy := match augCombine_core augCon (List.reverse topnames) (List.reverse telescopes) with
     | some l => l
     | none => []
 
