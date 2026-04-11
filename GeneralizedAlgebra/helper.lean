@@ -36,3 +36,20 @@ def paren' (sep : String) (sl : List String) (asSpace : List String := []): Stri
   if parensUnnecessary (String.intercalate " " (List.map (replaceAllWithSpace asSpace) sl))
   then String.intercalate sep sl
   else "("++ String.intercalate sep sl ++")"
+
+
+inductive ArgMarker : Type where
+| Anon : ArgMarker
+| Expl : String → ArgMarker
+| Impl : String → ArgMarker
+open ArgMarker
+
+def ArgMarker.toString : ArgMarker → String → String
+| Anon, tts => tts
+| Expl s, tts => "(" ++ s ++ " : " ++ tts ++ ")"
+| Impl s, tts => "{" ++ s ++ " : " ++ tts ++ "}"
+
+def ArgMarker.map (f : String → String) : ArgMarker → ArgMarker
+| Anon => Anon
+| Expl s => Expl (f s)
+| Impl s => Impl (f s)

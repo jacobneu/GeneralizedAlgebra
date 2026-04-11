@@ -767,6 +767,7 @@ namespace basicEliminators
   open nouGATmeta
   open elabState
   open elaborator
+  open ArgMarker
 
     def preElim_inner : eliminator_inner := ⟨
         preCon,
@@ -828,11 +829,11 @@ namespace basicEliminators
     inductive augTyMarker : Type where
     | augUU : augTyMarker
     | augEL : augTm → augTyMarker
-    | augPI : Option (String × Bool) → augTm → augTyMarker → augTyMarker
+    | augPI : ArgMarker → augTm → augTyMarker → augTyMarker
     | augEQ : augTm → augTm → augTyMarker
 
     inductive augTy : Type where
-    | mkAugTy : Option (String × Bool) → augTyMarker → augTy
+    | mkAugTy : ArgMarker → augTyMarker → augTy
 
     open augTm augTy augTyMarker augTyMarker'
 
@@ -858,20 +859,20 @@ namespace basicEliminators
     | augEQ' t1 t2, [] => return augEQ t1 t2
     | augPIx' X Y, some (s,true) :: tele => do
         let resY ← augCombine_single Y tele
-        return augPI (some (s,true)) X resY
+        return augPI (Expl s) X resY
     | augPIx' X Y, none :: tele => do
         let resY ← augCombine_single Y tele
-        return augPI none X resY
+        return augPI Anon X resY
     | augPIi' X Y, some (s,false) :: tele => do
         let resY ← augCombine_single Y tele
-        return augPI (some (s,false)) X resY
+        return augPI (Impl s) X resY
     | _,_ => none
 
     def augCombine_core : List augTyMarker' → List String → List (List (Option (String × Bool))) → Option (List augTy)
     | aT::augRest, s::topnames, tele::telescopes => do
       let firstTy ← augCombine_single aT tele
       let res ← augCombine_core augRest topnames telescopes
-      return mkAugTy (some (s,true)) firstTy :: res
+      return mkAugTy (Expl s) firstTy :: res
     | [], [], [] => return []
     | _, _, _ => none
 
@@ -897,14 +898,14 @@ namespace basicEliminators
     | augUU => "U"
     | augEL X => X.toString
     | augEQ s t => mkParen s.toString  ++ " = " ++ mkParen t.toString
-    | augPI none X Y => X.toString ++ " ⇒ " ++ Y.toString
-    | augPI (some (s,true)) X Y => "(" ++ s ++ " : " ++ X.toString ++ ") ⇒ " ++ Y.toString
-    | augPI (some (s,false)) X Y => "{" ++ s ++ " : " ++ X.toString ++ "} ⇒ " ++ Y.toString
+    | augPI Anon X Y => X.toString ++ " ⇒ " ++ Y.toString
+    | augPI (Expl s) X Y => "(" ++ s ++ " : " ++ X.toString ++ ") ⇒ " ++ Y.toString
+    | augPI (Impl s) X Y => "{" ++ s ++ " : " ++ X.toString ++ "} ⇒ " ++ Y.toString
 
     def augTy.toString : augTy → String
-    | mkAugTy none aT => "_ : " ++ aT.toString
-    | mkAugTy (some (s,true)) aT => "(" ++ s ++ " : " ++ aT.toString ++ ")"
-    | mkAugTy (some (s,false)) aT => "{" ++ s ++ " : " ++ aT.toString ++ "}"
+    | mkAugTy Anon aT => "_ : " ++ aT.toString
+    | mkAugTy (Expl s) aT => "(" ++ s ++ " : " ++ aT.toString ++ ")"
+    | mkAugTy (Impl s) aT => "{" ++ s ++ " : " ++ aT.toString ++ "}"
 
     instance : Repr augTy := ⟨ λ a _ => augTy.toString a ⟩
 

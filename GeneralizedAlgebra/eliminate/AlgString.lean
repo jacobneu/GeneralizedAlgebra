@@ -6,10 +6,12 @@ open elaborator
 open basicEliminators
 open augTy augTm augTyMarker
 open psExp
+open ArgMarker
 
 
-def AlgStr_Tm : List (Option (String × Bool)) → augTm → Option psExp
-| (some (As,_))::_, augVAR 0 => return psLit As
+def AlgStr_Tm : List ArgMarker → augTm → Option psExp
+| (Expl As)::_, augVAR 0 => return psLit As
+| (Impl As)::_, augVAR 0 => return psLit As
 | _::augCon, augVAR (succ n) => AlgStr_Tm augCon (augVAR n)
 | topnames, augAPPx f t => do
     let sf ← AlgStr_Tm topnames f
@@ -19,23 +21,12 @@ def AlgStr_Tm : List (Option (String × Bool)) → augTm → Option psExp
 | augCon, augTRANSP _ s => AlgStr_Tm augCon s
 | _,_ => none
 
-def AlgArgFmt : Option (String × Bool) → psExp → psExp → psExp
-| none, sX, sY =>
-    psNopar [sX, psLit "→", sY]
-| some (s,true), sX, psDep tele body =>
-    psDep ((s,sX)::tele) body
-| some (s,true), sX, sY =>
-    psDep [(s,sX)] sY
-| some (s,false), sX, psDepI tele body =>
-    psDepI ((s,sX)::tele) body
-| some (s,false), sX, sY =>
-    psDepI [(s,sX)] sY
 
-def AlgStr_Ty : List (Option (String × Bool)) → augTyMarker → Option psExp
+def AlgStr_Ty : List ArgMarker → augTyMarker → Option psExp
 | tele, augPI o X Y => do
     let sX ← AlgStr_Tm tele X
     let sY ← AlgStr_Ty (o::tele) Y
-    return AlgArgFmt o sX sY
+    return psDep  [(o,sX)] sY
 | _, augUU => return psLit "Set"
 | tele, augEL X => AlgStr_Tm tele X
 | tele, augEQ t1 t2 => do
@@ -43,12 +34,12 @@ def AlgStr_Ty : List (Option (String × Bool)) → augTyMarker → Option psExp
     let s2 ← AlgStr_Tm tele t2
     return psNopar $ List.map psExp.strictify [s1,psLit "=",s2]
 
-def getTopnames : List augTy → List (Option (String × Bool)) :=
+def getTopnames : List augTy → List ArgMarker :=
     List.map (λ (mkAugTy o _ ) => o)
 
 
 def AlgStr_Con_core : List augTy → Option (List String)
-| mkAugTy (some (s,true)) aT :: augCon => do
+| mkAugTy (Expl s) aT :: augCon => do
     let res ← AlgStr_Con_core augCon
     let firstname ← AlgStr_Ty (getTopnames augCon) aT
     let finalStr ← OuterToString id (some (s,true)) firstname

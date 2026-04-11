@@ -5,10 +5,11 @@ open elaborator
 open basicEliminators
 open augTy augTm augTyMarker
 open psExp
+open ArgMarker
 
 
 
-def DAlgStr_Tm : List (Option (String × Bool))→ augTm → StateT Nat Option psExp
+def DAlgStr_Tm : List ArgMarker → augTm → StateT Nat Option psExp
 | topnames, augVAR n =>
     (psDecorate · dalgFn) <$> AlgStr_Tm topnames (augVAR n)
 | topnames, augAPPx f s => do
@@ -18,17 +19,14 @@ def DAlgStr_Tm : List (Option (String × Bool))→ augTm → StateT Nat Option p
 | topnames, augAPPi f _ => DAlgStr_Tm topnames f
 | topnames, augTRANSP _ s => DAlgStr_Tm topnames s
 
-def DAlgArgFmt : (String × Bool) → psExp → psExp → psExp → psExp
-| (s,true), aX, dX, psDep tele body =>
-    psDepI [(s,aX)] $ psDep ((dalgFn s,psNopar [dX,psLit s])::tele) body
-| (s,true), aX, dX, body =>
-    psDepI [(s,aX)] $ psDep [(dalgFn s,psNopar [dX,psLit s])] body
-| (s,false), aX, dX, psDepI tele body =>
-    psDepI ((s,aX)::(dalgFn s,psNopar [dX,psLit s])::tele) body
-| (s,false), aX, dX, body =>
-    psDepI [(s,aX),(dalgFn s,psNopar [dX,psLit s])] body
+def DAlgArgFmt : ArgMarker → psExp → psExp → psExp → Option psExp
+| Expl s, aX, dX, body =>
+    psDep [(Impl s,aX)] $ psDep [(Expl $ dalgFn s,psNopar [dX,psLit s])] body
+| Impl s, aX, dX, body =>
+    psDep [(Impl s,aX),(Impl $ dalgFn s,psNopar [dX,psLit s])] body
+| _, _, _, _ => none
 
-def DAlgStr_Ty : List (Option (String × Bool)) → psExp → augTyMarker → StateT Nat Option psExp
+def DAlgStr_Ty : List ArgMarker → psExp → augTyMarker → StateT Nat Option psExp
 | _, algS, augUU => return psNopar [algS,psLit " → ",psLit "Set"]
 | topnames, algS, augEL X => (psL [ · , algS]) <$> DAlgStr_Tm topnames X
 | topnames, _, augEQ t1 t2 => do
@@ -36,18 +34,16 @@ def DAlgStr_Ty : List (Option (String × Bool)) → psExp → augTyMarker → St
     let ps2 ← DAlgStr_Tm topnames t2
     return psNopar $ List.map psExp.strictify [ps1,psLit "=",ps2]
 | topnames, algS, augPI o X Y => do
-    let strt ← (match o with
-      | none => (·,true) <$> getName
-      | _ => o)
+    let varo ← getNameAM o
     let aX ← AlgStr_Tm topnames X
     let dX ← DAlgStr_Tm topnames X
-    let algS' := if strt.2 then psNopar [algS,psLit strt.1] else algS
-    let dY ← DAlgStr_Ty (strt::topnames) algS' Y
-    return DAlgArgFmt strt aX dX dY
+    let algS' := if varo.2.2 then psNopar [algS,psLit varo.2.1] else algS
+    let dY ← DAlgStr_Ty (varo.1::topnames) algS' Y
+    DAlgArgFmt varo.1 aX dX dY
 
 
 def DAlgStr_Con_core : List augTy → StateT Nat Option (List String)
-| mkAugTy (some (s,true)) aT :: augCon => do
+| mkAugTy (Expl s) aT :: augCon => do
     let res ← DAlgStr_Con_core augCon
     let firstname ← DAlgStr_Ty (getTopnames augCon) (psLit s) aT
     let finalStr ← OuterToString dalgFn (some (s,true)) firstname
