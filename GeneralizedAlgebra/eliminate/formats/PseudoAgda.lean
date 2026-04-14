@@ -125,6 +125,10 @@ def dalgFn s := s ++ "ᴰ"
 
 def homFor sl := (parenFor sl) ++ "ᴹ"
 def homFn s := s ++ "ᴹ"
+
+def sectFor sl := (parenFor sl) ++ "ˢ"
+def sectFn s := s ++ "ˢ"
+
 def zeroFn s := s ++ "₀"
 def oneFn s := s ++ "₁"
 

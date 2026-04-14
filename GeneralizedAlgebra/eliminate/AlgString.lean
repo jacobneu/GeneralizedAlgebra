@@ -47,13 +47,11 @@ def AlgStr_Con_core : List augTy → Option (List String)
 | [] => return []
 | _ => none
 
+def AlgStr_Con : List augTy → List String := List.join ∘ Option.toList ∘ AlgStr_Con_core
 
-def AlgStrElim_outer : eliminator_outer augElim_inner := ⟨
-    List String,
-    λ Γ topnames telescopes => match AlgStr_Con_core (augCombine Γ topnames telescopes) with
-        | some l => l
-        | none => []
-⟩
+def AlgStrElim_outer : eliminator_outer augElim_inner :=
+    elimProduct_outer_post augElim_outer AlgStr_Con
+
 def AlgStrElim := toEliminator AlgStrElim_outer
 
 syntax "[AlgStr|" con_inner "]" : condata_outer

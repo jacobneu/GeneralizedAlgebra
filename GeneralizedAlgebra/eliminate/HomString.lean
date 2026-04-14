@@ -32,12 +32,11 @@ def HomStr_Ty : List ArgMarker → psExp → psExp → augTyMarker → StateT Na
 | _, _, _, augEQ _ _ => return psLit "⊤"
 
 
-def HomStr_Con_core : List augTy → StateT Nat Option (List String)
+def Hom_Con_core : List augTy → StateT Nat Option (List (String × psExp))
 | mkAugTy (Expl s) aT :: augCon => do
-    let res ← HomStr_Con_core augCon
+    let res ← Hom_Con_core augCon
     let firstname ← HomStr_Ty (getTopnames augCon) (psLit $ zeroFn s) (psLit $ oneFn s) aT
-    let finalStr ← OuterToString homFn (some (s,true)) firstname
-    return res ++ [finalStr]
+    return res ++ [(s,firstname)]
 | [] => return []
 | _ => none
 
@@ -46,13 +45,14 @@ def isntTrivial s := match List.reverse (String.toList s) with
 | '⊤'::_ => false
 | _ => true
 
-def HomStrElim_outer : eliminator_outer augElim_inner := ⟨
-    List String,
-    λ Γ topnames telescopes => match
-        (StateT.run (HomStr_Con_core (augCombine Γ topnames telescopes)) 0) with
-        | some (ll,_) => List.filter isntTrivial ll
+def HomStr_Con (AΓ : List augTy) : List String :=
+    match (StateT.run (Hom_Con_core AΓ) 0) with
+        | some (ll,_) =>  List.filter isntTrivial $ List.map (λ (s,pe) => collapseFor [homFn s, ":", pe.toString]) ll
         | none => []
-⟩
+
+def HomStrElim_outer : eliminator_outer augElim_inner :=
+    elimProduct_outer_post augElim_outer HomStr_Con
+
 def HomStrElim := toEliminator HomStrElim_outer
 
 syntax "[HomStr|" con_inner "]" : condata_outer

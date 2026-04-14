@@ -42,22 +42,23 @@ def DAlgStr_Ty : List ArgMarker → psExp → augTyMarker → StateT Nat Option 
     DAlgArgFmt varo.1 aX dX dY
 
 
-def DAlgStr_Con_core : List augTy → StateT Nat Option (List String)
+def DAlg_Con_core : List augTy → StateT Nat Option (List (String × psExp))
 | mkAugTy (Expl s) aT :: augCon => do
-    let res ← DAlgStr_Con_core augCon
+    let res ← DAlg_Con_core augCon
     let firstname ← DAlgStr_Ty (getTopnames augCon) (psLit s) aT
-    let finalStr ← OuterToString dalgFn (some (s,true)) firstname
-    return res ++ [finalStr]
+    return res ++ [(s,firstname)]
 | [] => return []
 | _ => none
 
-def DAlgStrElim_outer : eliminator_outer augElim_inner := ⟨
-    List String,
-    λ Γ topnames telescopes => match
-        (StateT.run (DAlgStr_Con_core (augCombine Γ topnames telescopes)) 0) with
-        | some (ll,_) => ll
+
+def DAlgStr_Con (AΓ : List augTy) : List String :=
+    match (StateT.run (DAlg_Con_core AΓ) 0) with
+        | some (ll,_) =>  List.map (λ (s,pe) => collapseFor [dalgFn s, ":", pe.toString]) ll
         | none => []
-⟩
+
+def DAlgStrElim_outer : eliminator_outer augElim_inner :=
+    elimProduct_outer_post augElim_outer DAlgStr_Con
+
 def DAlgStrElim := toEliminator DAlgStrElim_outer
 
 syntax "[DAlgStr|" con_inner "]" : condata_outer
