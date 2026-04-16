@@ -38,16 +38,20 @@ def paren' (sep : String) (sl : List String) (asSpace : List String := []): Stri
   else "("++ String.intercalate sep sl ++")"
 
 
-inductive ArgMarker : Type where
-| Anon : ArgMarker
-| Expl : String → ArgMarker
-| Impl : String → ArgMarker
-open ArgMarker
+inductive ArgMarker' (identType : Type) : Type where
+| Anon : ArgMarker' identType
+| Expl : identType → ArgMarker' identType
+| Impl : identType → ArgMarker' identType
+open ArgMarker'
 
-def ArgMarker.toString : ArgMarker → String → String
+def ArgMarker := ArgMarker' String
+
+def ArgMarker'.toString {identType : Type} [ts : ToString identType]: ArgMarker' identType → String → String
 | Anon, tts => tts
-| Expl s, tts => "(" ++ s ++ " : " ++ tts ++ ")"
-| Impl s, tts => "{" ++ s ++ " : " ++ tts ++ "}"
+| Expl s, tts => "(" ++ ts.toString s ++ " : " ++ tts ++ ")"
+| Impl s, tts => "{" ++ ts.toString s ++ " : " ++ tts ++ "}"
+
+def ArgMarker.toString : ArgMarker → String → String := ArgMarker'.toString
 
 def ArgMarker.map (f : String → String) : ArgMarker → ArgMarker
 | Anon => Anon

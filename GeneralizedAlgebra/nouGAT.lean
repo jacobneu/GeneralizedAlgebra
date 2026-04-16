@@ -5,7 +5,7 @@ open Lean Elab Meta
 open preTy preTm
 open Std Format
 open Nat
-open ArgMarker
+open ArgMarker'
 
 
 namespace nouGATmeta
@@ -184,9 +184,9 @@ namespace nouGATmeta
     | metaTRANSP m1 m2 => mkApp2 (.const ``metaTRANSP []) (mkMetaTmLit m1) (mkMetaTmLit m2)
 
     def ArgMarker.mkLit : ArgMarker → Expr
-    | Anon => .const ``Anon []
-    | Expl i => .app (.const ``Expl []) (mkStrLit i)
-    | Impl i => .app (.const ``Impl []) (mkStrLit i)
+    | Anon => mkAppN (.const ``Anon []) #[.const ``String []]
+    | Expl i => mkAppN (.const ``Expl []) #[.const ``String [],mkStrLit i]
+    | Impl i => mkAppN (.const ``Impl []) #[.const ``String [],mkStrLit i]
 
     def mkMetaArgLit : metaArg → MetaM Expr -- :: metaArg
     | (mA, mt, mX) => do
