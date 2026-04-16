@@ -1,6 +1,7 @@
 import GeneralizedAlgebra.nouGAT
 import GeneralizedAlgebra.eliminate.SectString
 import GeneralizedAlgebra.eliminate.HomString
+import GeneralizedAlgebra.eliminate.formats.PseudoAgda
 
 open Lean Elab Meta
 open preTy preTm
@@ -31,7 +32,7 @@ def fullElim : eliminator :=
         ]
         )
     (λ (⟨Γ,topnames,telescopes⟩,augcon) =>
-        GAT.mk Γ topnames telescopes augcon (AlgStr_Con augcon) (DAlgStr_Con augcon) (HomStr_Con augcon) (SectStr_Con augcon)
+        GAT.mk Γ topnames telescopes augcon (AlgStr_Con pseudoAgda augcon) (DAlgStr_Con pseudoAgda augcon) (HomStr_Con pseudoAgda augcon) (SectStr_Con pseudoAgda augcon)
         )
 
 def elabGATCon : Syntax → MetaM Expr

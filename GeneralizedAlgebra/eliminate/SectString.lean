@@ -5,40 +5,40 @@ open Nat
 open elaborator
 open basicEliminators
 open augTy augTm augTyMarker
-open psExp
+open sfExp
 open ArgMarker
 
 
 
-def SectStr_Tm : List ArgMarker → augTm → Option psExp
-| topnames, augVAR n => (psDecorate · sectFn) <$> AlgStr_Tm topnames (augVAR n)
-| topnames, augAPPx f _ => SectStr_Tm topnames f
-| topnames, augAPPi f _ => SectStr_Tm topnames f
-| topnames, augTRANSP _ s => SectStr_Tm topnames s
+def SectStr_Tm (SF : StringFormat) : List ArgMarker → augTm → Option sfExp
+| topnames, augVAR n => (sfDecorate · SF.sectFn) <$> AlgStr_Tm topnames (augVAR n)
+| topnames, augAPPx f _ => SectStr_Tm SF topnames f
+| topnames, augAPPi f _ => SectStr_Tm SF topnames f
+| topnames, augTRANSP _ s => SectStr_Tm SF topnames s
 
 
-def SectStr_Ty : List ArgMarker → psExp → psExp → augTyMarker → StateT Nat Option psExp
+def SectStr_Ty (SF : StringFormat) : List ArgMarker → sfExp → sfExp → augTyMarker → StateT Nat Option sfExp
 | _, alg, dalg, augUU => do
     let v ← getName
-    return psDep [(Expl v,alg)] $ psL [dalg,psLit v]
+    return sfDep [(Expl v,alg)] $ sfL [dalg,sfLit v]
 | topnames, alg, dalg, augEL X => do
-    let sX ← SectStr_Tm topnames X
-    return psNopar [psL [sX, alg], psLit "=", dalg]
+    let sX ← SectStr_Tm SF topnames X
+    return sfNopar [sfL [sX, alg], sfLit "=", dalg]
 | topnames, alg, dalg, augPI o X Y => do
     let varo ← getNameAM o
     let aX ← AlgStr_Tm topnames X
-    let hX ← SectStr_Tm topnames X
-    let alg' := if varo.2.2 then psL [alg,psLit varo.2.1] else alg
-    let dalg' := if varo.2.2 then psL [dalg,psR [hX,psLit varo.2.1]] else dalg
-    let hY ← SectStr_Ty (varo.1::topnames) alg' dalg' Y
-    return psDep [(Impl $ varo.2.1,aX)] hY
-| _, _, _, augEQ _ _ => return psLit "⊤"
+    let hX ← SectStr_Tm SF topnames X
+    let alg' := if varo.2.2 then sfL [alg,sfLit varo.2.1] else alg
+    let dalg' := if varo.2.2 then sfL [dalg,sfR [hX,sfLit varo.2.1]] else dalg
+    let hY ← SectStr_Ty SF (varo.1::topnames) alg' dalg' Y
+    return sfDep [(Impl $ varo.2.1,aX)] hY
+| _, _, _, augEQ _ _ => return sfLit "⊤"
 
 
-def Sect_Con_core : List augTy → StateT Nat Option (List (String × psExp))
+def Sect_Con_core (SF : StringFormat) : List augTy → StateT Nat Option (List (String × sfExp))
 | mkAugTy (Expl s) aT :: augCon => do
-    let res ← Sect_Con_core augCon
-    let firstname ← SectStr_Ty (getTopnames augCon) (psLit s) (psLit $ dalgFn s) aT
+    let res ← Sect_Con_core SF augCon
+    let firstname ← SectStr_Ty SF (getTopnames augCon) (sfLit s) (sfLit $ SF.dalgFn s) aT
     return res ++ [(s,firstname)]
 | [] => return []
 | _ => none
@@ -48,14 +48,14 @@ def Sect_Con_core : List augTy → StateT Nat Option (List (String × psExp))
 -- | '⊤'::_ => false
 -- | _ => true
 
-def SectStr_Con (AΓ : List augTy) : List String :=
-    match (StateT.run (Sect_Con_core AΓ) 0) with
-        | some (ll,_) =>  List.filter isntTrivial $ List.map (λ (s,pe) => collapseFor [sectFn s, ":", pe.toString]) ll
+def SectStr_Con (SF : StringFormat) (AΓ : List augTy) : List String :=
+    match (StateT.run (Sect_Con_core SF AΓ) 0) with
+        | some (ll,_) =>  List.filter isntTrivial $ List.map (λ (s,pe) => SF.collapseFor [SF.sectFn s, ":", pe.toString]) ll
         | none => []
 
-def SectStrElim_outer : eliminator_outer augElim_inner :=
-    elimProduct_outer_post augElim_outer SectStr_Con
+def SectStrElim_outer (SF : StringFormat) : eliminator_outer augElim_inner :=
+    elimProduct_outer_post augElim_outer (SectStr_Con SF)
 
-def SectStrElim := toEliminator SectStrElim_outer
+def SectStrElim (SF : StringFormat) := toEliminator (SectStrElim_outer SF)
 
 syntax "[SectStr|" con_inner "]" : condata_outer
