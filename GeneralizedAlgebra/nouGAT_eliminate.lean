@@ -24,6 +24,14 @@ structure GAT where
     (homStr : List String)
     (sectStr : List String)
 
+def GAT.algStr_on (𝔊 : GAT) (ss : List String) :=
+    AlgStr_Con pseudoAgda $ augCon.renameMany 𝔊.augcon ss
+def GAT.dalgStr_on (𝔊 : GAT) (ss : List String) :=
+    DAlgStr_Con pseudoAgda $ augCon.renameMany 𝔊.augcon ss
+def GAT.sectStr_on (𝔊 : GAT) (ss : List String) :=
+    SectStr_Con pseudoAgda $ augCon.renameMany 𝔊.augcon ss
+
+
 def fullElim : eliminator :=
     elim_post (
         elimProductMany [
@@ -34,6 +42,11 @@ def fullElim : eliminator :=
     (λ (⟨Γ,topnames,telescopes⟩,augcon) =>
         GAT.mk Γ topnames telescopes augcon (AlgStr_Con pseudoAgda augcon) (DAlgStr_Con pseudoAgda augcon) (HomStr_Con pseudoAgda augcon) (SectStr_Con pseudoAgda augcon)
         )
+
+def psAlgStrElim := AlgStrElim pseudoAgda
+def psDAlgStrElim := DAlgStrElim pseudoAgda
+def psHomStrElim := HomStrElim pseudoAgda
+def psSectStrElim := SectStrElim pseudoAgda
 
 def elabGATCon : Syntax → MetaM Expr
 | `(condata_outer| [GATdata| $s:con_inner ] ) =>
@@ -49,16 +62,16 @@ def elabGATCon : Syntax → MetaM Expr
     elabGATraw s
 
 | `(condata_outer| [AlgStr| $s:con_inner ] ) =>
-    elabGAT (mkLitElim (.const ``AlgStrElim [])) s
+    elabGAT (mkLitElim (.const ``psAlgStrElim [])) s
 
 | `(condata_outer| [DAlgStr| $s:con_inner ] ) =>
-    elabGAT (mkLitElim (.const ``DAlgStrElim [])) s
+    elabGAT (mkLitElim (.const ``psDAlgStrElim [])) s
 
 | `(condata_outer| [HomStr| $s:con_inner ] ) =>
-    elabGAT (mkLitElim (.const ``HomStrElim [])) s
+    elabGAT (mkLitElim (.const ``psHomStrElim [])) s
 
 | `(condata_outer| [SectStr| $s:con_inner ] ) =>
-    elabGAT (mkLitElim (.const ``SectStrElim [])) s
+    elabGAT (mkLitElim (.const ``psSectStrElim [])) s
 
 | `(condata_outer| ⦃ $s:con_inner ⦄ ) =>
     elabGAT (mkLitElim (.const ``fullElim [])) s

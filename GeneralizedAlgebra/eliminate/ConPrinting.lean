@@ -37,6 +37,10 @@ def preConrepr : preCon → String :=
 instance : Repr preCon :=
 ⟨ λ 𝔊 _ => preConrepr 𝔊 ⟩
 
+def printPreCon (Γ : preCon) : IO Unit := do
+  IO.println "◇"
+  List.forM (List.reverse Γ) (λ t => IO.println $ " ▷ " ++ preTyrepr t)
+
 -- instance GATRepr : Repr GAT :=
 -- ⟨ λ 𝔊 _ =>  preConrepr (𝔊.toGATdata.con) ⟩
 

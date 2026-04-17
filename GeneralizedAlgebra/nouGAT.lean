@@ -812,6 +812,15 @@ namespace basicEliminators
     inductive augTy : Type where
     | mkAugTy : ArgMarker → augTyMarker → augTy
 
+    def augTy.rename? : Option augTy → Option String → augTy
+    | mkAugTy (Expl _) t, some s => mkAugTy (Expl s) t
+    | mkAugTy Anon t, some s => mkAugTy (Expl s) t
+    | mkAugTy (Impl _) t, some s => mkAugTy (Impl s) t
+    | none, _ => mkAugTy Anon augTyMarker.augUU
+    | some a, none => a
+
+    def augCon.renameMany (AΓ : List augTy) (ss : List String) : List augTy := (List.zipWithAll augTy.rename? (AΓ.reverse) (ss.take (AΓ.length))).reverse
+
     open augTm augTy augTyMarker augTyMarker'
 
     def augElim_inner : eliminator_inner := ⟨
