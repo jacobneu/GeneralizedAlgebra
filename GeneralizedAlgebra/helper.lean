@@ -38,6 +38,11 @@ def paren' (sep : String) (sl : List String) (asSpace : List String := []): Stri
   else "("++ String.intercalate sep sl ++")"
 
 
+def List.zipWithSnd {α}{β}{γ} (g : Option α → β → γ) : List α → List β → List γ
+| _, [] => []
+| [], y::ys => g none y :: List.zipWithSnd g [] ys
+| x::xs, y::ys => g (some x) y :: List.zipWithSnd g xs ys
+
 inductive ArgMarker' (identType : Type) : Type where
 | Anon : ArgMarker' identType
 | Expl : identType → ArgMarker' identType
@@ -45,6 +50,11 @@ inductive ArgMarker' (identType : Type) : Type where
 open ArgMarker'
 
 def ArgMarker := ArgMarker' String
+
+def extractIdent? {identType : Type} : ArgMarker' identType → Option identType
+| Anon => none
+| Impl s => some s
+| Expl s => some s
 
 def ArgMarker'.toString {identType : Type} [ts : ToString identType]: ArgMarker' identType → String → String
 | Anon, tts => tts

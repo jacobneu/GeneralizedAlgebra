@@ -25,11 +25,11 @@ structure GAT where
     (sectStr : List String)
 
 def GAT.algStr_on (𝔊 : GAT) (ss : List String) :=
-    AlgStr_Con pseudoAgda $ augCon.renameMany 𝔊.augcon ss
+    AlgStr_Con pseudoAgda 𝔊.augcon ss
 def GAT.dalgStr_on (𝔊 : GAT) (ss : List String) :=
-    DAlgStr_Con pseudoAgda $ augCon.renameMany 𝔊.augcon ss
+    DAlgStr_Con pseudoAgda 𝔊.augcon ss
 def GAT.sectStr_on (𝔊 : GAT) (ss : List String) :=
-    SectStr_Con pseudoAgda $ augCon.renameMany 𝔊.augcon ss
+    SectStr_Con pseudoAgda 𝔊.augcon ss
 
 
 def fullElim : eliminator :=

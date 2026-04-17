@@ -10,19 +10,14 @@ open ArgMarker'
 
 
 
-def SectStr_Tm : List (ArgMarker' sfExp) → augTm → Option sfExp
-| topnames, augVAR n => do
-    let iarg ← topnames[n]?
-    match iarg with
-    | Expl i => return sfDec i sfSect
-    | Impl i => return sfDec i sfSect --shouldn't happen
-    | Anon => none  --shouldn't happen
+def SectStr_Tm : List (Option sfExp) → augTm → Option sfExp
+| topnames, augVAR n => (sfDec · sfSect) <$> Option.join topnames[n]?
 | topnames, augAPPx f _ => SectStr_Tm topnames f
 | topnames, augAPPi f _ => SectStr_Tm topnames f
 | topnames, augTRANSP _ s => SectStr_Tm topnames s
 
 
-def SectStr_Ty : List (ArgMarker' sfExp) → sfExp → sfExp → augTyMarker → StateT Nat Option sfExp
+def SectStr_Ty : List (Option sfExp) → sfExp → sfExp → augTyMarker → StateT Nat Option sfExp
 | _, alg, dalg, augUU => do
     let v ← getName
     return sfDep [(Expl $ sfIdent v,alg)] $ sfL [dalg,sfIdent v]
@@ -35,26 +30,27 @@ def SectStr_Ty : List (ArgMarker' sfExp) → sfExp → sfExp → augTyMarker →
     let hX ← SectStr_Tm topnames X
     let alg' := if varo.2.2 then sfL [alg,sfIdent varo.2.1] else alg
     let dalg' := if varo.2.2 then sfL [dalg,sfR [hX,sfIdent varo.2.1]] else dalg
-    let hY ← SectStr_Ty (varo.1::topnames) alg' dalg' Y
+    let hY ← SectStr_Ty (sfIdent varo.2.1::topnames) alg' dalg' Y
     return sfDep [(Impl $ sfIdent varo.2.1,aX)] hY
 | _, _, _, augEQ _ _ => return sfTop
 
 
-def Sect_Con_core : List augTy → StateT Nat Option (List (String × sfExp))
-| mkAugTy (Expl s) aT :: augCon => do
+def Sect_Con_core : List (Option String × augTyMarker) → StateT Nat Option (List (String × sfExp))
+| (os,aT) :: augCon => do
+    let s ← os
     let res ← Sect_Con_core augCon
-    let firstname ← SectStr_Ty (getTopnames augCon) (sfIdent s) (sfIdentDec s sfDalg) aT
+    let firstname ← SectStr_Ty (augCon.map (λ (os',_) => sfIdent <$> os')) (sfIdent s) (sfIdentDec s sfDalg) aT
     return res ++ [(s,firstname)]
 | [] => return []
-| _ => none
 
 
 -- def isntTrivial s := match List.reverse (String.toList s) with
 -- | '⊤'::_ => false
 -- | _ => true
 
-def SectStr_Con (SF : StringFormat) (AΓ : List augTy) : List String :=
-    match (StateT.run (Sect_Con_core AΓ) 0) with
+def SectStr_Con (SF : StringFormat) (AΓ : List augTy) (algNames : List String := []): List String :=
+    let AΓ' := (List.zipWithSnd (λ os (mkAugTy as aT) => Option.elim os (extractIdent? as,aT) (some ·,aT)) algNames AΓ.reverse).reverse
+    match (StateT.run (Sect_Con_core AΓ') 0) with
         | some (ll,_) =>  List.filter isntTrivial $ List.map (OuterToString SF sfSect) ll
         | none => []
 
