@@ -24,12 +24,14 @@ structure GAT where
     (homStr : List String)
     (sectStr : List String)
 
-def GAT.algStr_on (𝔊 : GAT) (ss : List String) :=
-    AlgStr_Con pseudoAgda 𝔊.augcon ss
-def GAT.dalgStr_on (𝔊 : GAT) (ss : List String) :=
-    DAlgStr_Con pseudoAgda 𝔊.augcon ss
-def GAT.sectStr_on (𝔊 : GAT) (ss : List String) :=
-    SectStr_Con pseudoAgda 𝔊.augcon ss
+def GAT.algStr_on (𝔊 : GAT) (algS : List String) :=
+    AlgStr_Con pseudoAgda 𝔊.augcon algS
+def GAT.dalgStr_on (𝔊 : GAT) (algS dalgS : List String) :=
+    DAlgStr_Con pseudoAgda 𝔊.augcon algS dalgS
+def GAT.sectStr_on (𝔊 : GAT) (algS dalgS sectS: List String) :=
+    SectStr_Con pseudoAgda 𝔊.augcon algS dalgS sectS
+def GAT.homStr_on (𝔊 : GAT) (zeroS oneS homS: List String) :=
+    HomStr_Con pseudoAgda 𝔊.augcon zeroS oneS homS
 
 
 def fullElim : eliminator :=

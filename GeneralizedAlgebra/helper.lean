@@ -56,6 +56,12 @@ def extractIdent? {identType : Type} : ArgMarker' identType → Option identType
 | Impl s => some s
 | Expl s => some s
 
+
+def ArgMarker'.map {identType identType'} (f : identType → identType') : ArgMarker' identType → ArgMarker' identType'
+| Anon => Anon
+| Expl s => Expl (f s)
+| Impl s => Impl (f s)
+
 def ArgMarker'.toString {identType : Type} [ts : ToString identType]: ArgMarker' identType → String → String
 | Anon, tts => tts
 | Expl s, tts => "(" ++ ts.toString s ++ " : " ++ tts ++ ")"

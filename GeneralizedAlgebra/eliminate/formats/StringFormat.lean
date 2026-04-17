@@ -210,6 +210,15 @@ def getNameAM {m}[Monad m] : ArgMarker → StateT Nat m (ArgMarker' sfExp × Str
   let vf := varFormat x
   return (Expl (sfIdent vf),vf,true)
 
+-- def getNameSF {m}[Monad m] : ArgMarker' sfExp → StateT Nat m (ArgMarker' sfExp × String × Bool)
+-- | Expl s => return (Expl (sfIdent s),s,true)
+-- | Impl s => return (Impl (sfIdent s),s,false)
+-- | Anon => do
+--   let x ← get
+--   set $ succ x
+--   let vf := varFormat x
+--   return (Expl (sfIdent vf),vf,true)
+
 def mkReplaceVF reps s :=
     (List.foldl (λ (s',n) rep => (String.replace s' (varFormat n) rep,succ n)) (s,0) reps).1
 
@@ -221,5 +230,7 @@ notation i " /w " ll => List.map (mkReplace ll) i
 notation s " ⧸ " i => (varFormat i,s)
 
 
-def OuterToString (SF : StringFormat) (dec : sfDecor) : (String × sfExp) → String
+def OuterToString (SF : StringFormat) : (String × sfExp) → String
+| (s, pe) => SF.collapseFor [s, SF.colon, pe.toString SF]
+def OuterToStringDec (SF : StringFormat) (dec : sfDecor) : (String × sfExp) → String
 | (s, pe) => SF.collapseFor [SF.decorate s dec, SF.colon, pe.toString SF]
