@@ -6,8 +6,10 @@ def main : List String → IO PUnit
       | some (_,𝔊s,𝔊) => (𝔊s,𝔊)
       | _ => ("𝔖𝔢𝔱",𝔖𝔢𝔱)
     let theCmd := match theCmdStr with
-      | "Con" => λ G (𝔊 : GAT) =>
-          List.forM  ([G ++ " = ◇"] ++ List.map (" ▷ " ++ preTyrepr ·) (List.reverse 𝔊.con)) IO.println
+      | "Con" => λ G (𝔊 : GAT) => do
+            IO.print $ G ++ " = "
+            printPreCon 𝔊.con
+        --   List.forM  ([G ++ " = ◇"] ++ List.map (" ▷ " ++ SFparam.ConStr_Ty pseudoAgda ·) (List.reverse 𝔊.con)) IO.println
       | "augcon" => λ G 𝔊 =>
           List.forM  ([G ++ " = ◇"] ++ List.map (" ▷ " ++ basicEliminators.augTy.toString ·) (List.reverse 𝔊.augcon)) IO.println
       | "Alg" => λ G 𝔊 =>

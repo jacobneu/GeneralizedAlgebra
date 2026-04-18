@@ -1,4 +1,5 @@
 import GeneralizedAlgebra.nouGAT
+import GeneralizedAlgebra.eliminate.ConString
 import GeneralizedAlgebra.eliminate.SectString
 import GeneralizedAlgebra.eliminate.HomString
 import GeneralizedAlgebra.eliminate.formats.PseudoAgda

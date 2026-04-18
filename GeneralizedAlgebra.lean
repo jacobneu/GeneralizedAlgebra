@@ -1,6 +1,6 @@
 import GeneralizedAlgebra.nouGAT_eliminate
 -- import GeneralizedAlgebra.eliminate.DAlgString
-import GeneralizedAlgebra.eliminate.ConPrinting
+-- import GeneralizedAlgebra.eliminate.ConPrinting
 
 import GeneralizedAlgebra.signatures.set
 import GeneralizedAlgebra.signatures.pointed

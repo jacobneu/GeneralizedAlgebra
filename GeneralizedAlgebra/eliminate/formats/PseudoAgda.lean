@@ -27,5 +27,13 @@ def pseudoAgda : StringFormat := ⟨
     "⊤",
     ":",
     "{",
-    "}"
+    "}",
+    List.foldl (· ++ " ▷ " ++ ·) "◇",
+    "U",
+    (String.intercalate " " ["Π",·,·]),
+    "Eq",
+    "El",
+    "@",
+    "transp",
+    "[wk]"
 ⟩

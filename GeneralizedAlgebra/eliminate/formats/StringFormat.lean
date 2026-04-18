@@ -78,6 +78,14 @@ structure StringFormat where
     (colon : String)
     (openCurly : String)
     (closeCurly : String)
+    (conLineFoldl : List String → String)
+    (conUU : String)
+    (conPi : String → String → String)
+    (conEq : String)
+    (conEl : String)
+    (conApplic : String)
+    (conTransp : String)
+    (conWk : String)
 
 def StringFormat.dalgFn (SF : StringFormat) s := SF.decorate s sfDalg
 def StringFormat.oneFn (SF : StringFormat) s := SF.decorate s sfOne
