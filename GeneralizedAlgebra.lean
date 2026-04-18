@@ -38,3 +38,21 @@ def GATlist := [
   ("PCwF","𝔓ℭ𝔴𝔉",𝔓ℭ𝔴𝔉),
   -- ("GATCwF","𝔊𝔄𝔗ℭ𝔴𝔉",𝔊𝔄𝔗ℭ𝔴𝔉)
   ]
+def mkMain (SF: StringFormat): List String → IO PUnit
+| theCmdStr::theGATstr::reps => do
+    let (frakStr,theGAT) := match (List.find? (λ (gs,_,_) => gs == theGATstr) GATlist) with
+      | some (_,𝔊s,𝔊) => (𝔊s,𝔊)
+      | _ => ("𝔖𝔢𝔱",𝔖𝔢𝔱)
+    let deco : Option sfDecor := match theCmdStr with
+      | "Con" => some sfDecor.sfId
+      | "Alg" => some sfDecor.sfAlg
+      | "DAlg" => some sfDecor.sfDalg
+      | "Hom" => some sfDecor.sfHom
+      | "Sect" => some sfDecor.sfSect
+      | _ => none
+    match deco with
+      | none => IO.println "Error: unknown command"
+      | some dec => do
+          let headings := SF.formatWrapping frakStr theGAT.topnames dec
+          List.forM (headings.1 :: List.map (mkReplaceVF reps) (getStr theGAT SF dec) ++ [headings.2]) IO.println
+| _ => IO.println "Error: command and GAT not supplied"

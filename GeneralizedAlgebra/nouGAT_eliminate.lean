@@ -20,10 +20,10 @@ structure GAT where
     (topnames : List String)
     (telescopes : List (List ArgMarker))
     (augcon : List augTy)
-    (algStr : List String)
-    (dalgStr : List String)
-    (homStr : List String)
-    (sectStr : List String)
+    -- (algStr : StringFormat → List String)
+    -- (dalgStr : StringFormat →  List String)
+    -- (homStr : StringFormat →  List String)
+    -- (sectStr : StringFormat →  List String)
 
 def GAT.algStr_on (𝔊 : GAT) (algS : List String) :=
     AlgStr_Con pseudoAgda 𝔊.augcon algS
@@ -43,13 +43,24 @@ def fullElim : eliminator :=
         ]
         )
     (λ (⟨Γ,topnames,telescopes⟩,augcon) =>
-        GAT.mk Γ topnames telescopes augcon (AlgStr_Con pseudoAgda augcon) (DAlgStr_Con pseudoAgda augcon) (HomStr_Con pseudoAgda augcon) (SectStr_Con pseudoAgda augcon)
+        GAT.mk Γ topnames telescopes augcon
         )
 
 def psAlgStrElim := AlgStrElim pseudoAgda
 def psDAlgStrElim := DAlgStrElim pseudoAgda
 def psHomStrElim := HomStrElim pseudoAgda
 def psSectStrElim := SectStrElim pseudoAgda
+
+open sfDecor
+open SFparam
+
+def getStr (𝔊 : GAT) (SF : StringFormat) : sfDecor → List String
+| sfId => List.map (SF.formatLine · sfId) $ ConStr_Con_core SF 𝔊.con
+| sfAlg => List.map (SF.formatLine · sfAlg) $ AlgStr_Con SF 𝔊.augcon
+| sfHom => List.map (SF.formatLine · sfHom) $ HomStr_Con SF 𝔊.augcon
+| sfDalg => List.map (SF.formatLine · sfDalg) $ DAlgStr_Con SF 𝔊.augcon
+| sfSect => List.map (SF.formatLine · sfSect) $ SectStr_Con SF 𝔊.augcon
+| _ => []
 
 def elabGATCon : Syntax → MetaM Expr
 | `(condata_outer| [GATdata| $s:con_inner ] ) =>

@@ -5,6 +5,7 @@ open Nat ArgMarker'
 
 inductive sfDecor where
 | sfId : sfDecor
+| sfAlg : sfDecor
 | sfDalg : sfDecor
 | sfHom : sfDecor
 | sfSect : sfDecor
@@ -30,6 +31,7 @@ open sfExp
 def sfIdent s := sfIdentDec s sfId
 
 def sfDecor.reprPrec : sfDecor → Nat → String
+| sfAlg,_ => "sfAlg"
 | sfDalg,_ => "sfDalg"
 | sfHom,_ => "sfHom"
 | sfSect,_ => "sfSect"
@@ -78,7 +80,6 @@ structure StringFormat where
     (colon : String)
     (openCurly : String)
     (closeCurly : String)
-    (conLineFoldl : List String → String)
     (conUU : String)
     (conPi : String → String → String)
     (conEq : String)
@@ -86,6 +87,8 @@ structure StringFormat where
     (conApplic : String)
     (conTransp : String)
     (conWk : String)
+    (formatWrapping : String → List String → sfDecor → String × String)
+    (formatLine : String → sfDecor → String)
 
 def StringFormat.dalgFn (SF : StringFormat) s := SF.decorate s sfDalg
 def StringFormat.oneFn (SF : StringFormat) s := SF.decorate s sfOne

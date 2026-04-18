@@ -34,9 +34,10 @@ def ConStr_Ty : preTy → String
 --     return res ++ [(s,firstname)]
 -- | [] => return []
 
-def ConStr_Con_core (Γ : List preTy) : List String := (List.map (ConStr_Ty SF) Γ)
+def ConStr_Con_core (Γ : List preTy) : List String := (List.map (ConStr_Ty SF) Γ.reverse)
 
-def ConStr_Con : List preTy → String := SF.conLineFoldl ∘ ConStr_Con_core SF
+def ConStr_Con (Γ : List preTy) : String :=
+  List.foldl (· ++ "\n" ++ ·) "" (List.map (SF.formatLine · sfDecor.sfId) $ ConStr_Con_core SF Γ)
 
 end SFparam
     -- match Alg_Con_core AΓ' with
@@ -55,9 +56,9 @@ def preConrepr : preCon → String :=
 instance : Repr preCon :=
 ⟨ λ 𝔊 _ => preConrepr 𝔊 ⟩
 
-def printPreCon (Γ : preCon) : IO Unit := do
+def printPreCon (Γ : preCon) (SF := pseudoAgda): IO Unit := do
   IO.println "◇"
-  List.forM (List.reverse Γ) (λ t => IO.println $ " ▷ " ++ ConStr_Ty pseudoAgda t)
+  List.forM (List.reverse Γ) (λ t => IO.println $ SF.formatLine (ConStr_Ty SF t) sfDecor.sfId)
 
 -- instance GATRepr : Repr GAT :=
 -- ⟨ λ 𝔊 _ =>  preConrepr (𝔊.toGATdata.con) ⟩
