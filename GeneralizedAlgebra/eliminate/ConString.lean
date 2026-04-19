@@ -22,7 +22,7 @@ def ConStr_Tm : preTm → String
 def ConStr_Ty : preTy → String
 | preUU => SF.conUU
 | preEQ s t => SF.collapseFor [SF.conEq,SF.paren (ConStr_Tm SF s),SF.paren (ConStr_Tm SF t)]
-| preEL X => SF.collapseFor [SF.conEl,ConStr_Tm SF X]
+| preEL X => SF.collapseFor [SF.conEl,SF.paren (ConStr_Tm SF X)]
 | prePI X Y => SF.conPi (SF.paren (ConStr_Tm SF X)) (SF.paren (ConStr_Ty Y))
 
 
