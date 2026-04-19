@@ -32,7 +32,7 @@ def psFormatWrapping (G : String) (topnames : List String) : sfDecor → List St
 | sfZero => ([String.intercalate "," (List.map (· ++ "₀") topnames)],[])
 
 def pseudoAgda : StringFormat := ⟨
-    λ sl => paren' " " sl [" "],
+    mkParen,
     String.intercalate " ",
     psDecorate,
     "Set",

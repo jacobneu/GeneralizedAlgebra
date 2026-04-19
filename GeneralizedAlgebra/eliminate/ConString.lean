@@ -14,16 +14,16 @@ match s.toNat? with
 | _ => s ++ SF.conWk
 
 def ConStr_Tm : preTm → String
-| preAPP (preAPP f t1) t2 =>   SF.collapseFor [ConStr_Tm (preAPP f t1),SF.conApplic, (mkParen (ConStr_Tm t2))] -- mkParen (ConStr_Tm f) ++ " @ " ++ mkParen (ConStr_Tm t1) ++ " @ " ++ mkParen (ConStr_Tm t2)
-| preAPP f t =>  SF.collapseFor [mkParen (ConStr_Tm f),SF.conApplic, (mkParen (ConStr_Tm t))]
+| preAPP (preAPP f t1) t2 =>   SF.collapseFor [ConStr_Tm (preAPP f t1),SF.conApplic, (SF.paren (ConStr_Tm t2))] -- SF.paren (ConStr_Tm f) ++ " @ " ++ SF.paren (ConStr_Tm t1) ++ " @ " ++ SF.paren (ConStr_Tm t2)
+| preAPP f t =>  SF.collapseFor [SF.paren (ConStr_Tm f),SF.conApplic, (SF.paren (ConStr_Tm t))]
 | preVAR n => Nat.repr n
-| preTRANSP eq y => SF.collapseFor [SF.conTransp, mkParen (ConStr_Tm eq), mkParen (ConStr_Tm y)]
+| preTRANSP eq y => SF.collapseFor [SF.conTransp, SF.paren (ConStr_Tm eq), SF.paren (ConStr_Tm y)]
 
 def ConStr_Ty : preTy → String
 | preUU => SF.conUU
-| preEQ s t => SF.collapseFor [SF.conEq,mkParen (ConStr_Tm SF s),mkParen (ConStr_Tm SF t)]
+| preEQ s t => SF.collapseFor [SF.conEq,SF.paren (ConStr_Tm SF s),SF.paren (ConStr_Tm SF t)]
 | preEL X => SF.collapseFor [SF.conEl,ConStr_Tm SF X]
-| prePI X Y => SF.conPi (mkParen (ConStr_Tm SF X)) (mkParen (ConStr_Ty Y))
+| prePI X Y => SF.conPi (SF.paren (ConStr_Tm SF X)) (SF.paren (ConStr_Ty Y))
 
 
 -- def Con_Con_core : List preTy → List sfExp

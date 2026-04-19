@@ -70,7 +70,7 @@ def argDec (dec : sfDecor) : ArgMarker' sfExp → ArgMarker' sfExp
 
 
 structure StringFormat where
-    (parenFor : List String → String)
+    (paren : String → String)
     (collapseFor : List String → String)
     (decorate : String → sfDecor → String)
     (set : String)
