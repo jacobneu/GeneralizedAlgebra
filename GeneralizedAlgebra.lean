@@ -53,6 +53,6 @@ def mkMain (SF: StringFormat): List String → IO PUnit
     match deco with
       | none => IO.println "Error: unknown command"
       | some dec => do
-          let headings := SF.formatWrapping frakStr theGAT.topnames dec
+          let headings := SF.formatWrapping theGATstr frakStr theGAT.topnames dec
           List.forM (headings.1 ++ List.map (mkReplaceVF reps) (getStr theGAT SF dec) ++ headings.2) IO.println
 | _ => IO.println "Error: command and GAT not supplied"

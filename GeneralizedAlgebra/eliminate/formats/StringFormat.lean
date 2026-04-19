@@ -87,7 +87,7 @@ structure StringFormat where
     (conApplic : String)
     (conTransp : String)
     (conWk : String)
-    (formatWrapping : String → List String → sfDecor → List String × List String)
+    (formatWrapping : String → String → List String → sfDecor → List String × List String)
     (formatLine : String → sfDecor → String)
 
 def StringFormat.dalgFn (SF : StringFormat) s := SF.decorate s sfDalg

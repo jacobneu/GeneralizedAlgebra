@@ -22,12 +22,12 @@ def psFormatLine (s : String) : sfDecor → String
 | sfId => "  ▷ " ++ s
 | _ => "   " ++ s
 
-def psFormatWrapping (G : String) (topnames : List String) : sfDecor → List String × List String
-| sfId => ([G ++ " = ◇"],[""])
-| sfAlg => (["record " ++ G ++ "-Alg where "],[""])
-| sfDalg => (["record " ++ G ++ "-DAlg (" ++ (String.intercalate "," topnames) ++ ") where"],[""])
-| sfHom => (["record " ++ G ++ "-Hom (" ++ (String.intercalate "," (List.map (· ++ "₀") topnames)) ++ ") (" ++ (String.intercalate "," (List.map (· ++ "₁") topnames)) ++ ") where"],[""])
-| sfSect => (["record " ++ G ++ "-Sect (" ++ (String.intercalate "," topnames) ++ ") (" ++ (String.intercalate "," (List.map (· ++ "ᴰ") topnames)) ++ ") where"],[""])
+def psFormatWrapping (_ Gfrak : String) (topnames : List String) : sfDecor → List String × List String
+| sfId => ([Gfrak ++ " = ◇"],[""])
+| sfAlg => (["record " ++ Gfrak ++ "-Alg where "],[""])
+| sfDalg => (["record " ++ Gfrak ++ "-DAlg (" ++ (String.intercalate "," topnames) ++ ") where"],[""])
+| sfHom => (["record " ++ Gfrak ++ "-Hom (" ++ (String.intercalate "," (List.map (· ++ "₀") topnames)) ++ ") (" ++ (String.intercalate "," (List.map (· ++ "₁") topnames)) ++ ") where"],[""])
+| sfSect => (["record " ++ Gfrak ++ "-Sect (" ++ (String.intercalate "," topnames) ++ ") (" ++ (String.intercalate "," (List.map (· ++ "ᴰ") topnames)) ++ ") where"],[""])
 | sfOne => ([String.intercalate "," (List.map (· ++ "₁") topnames)],[])
 | sfZero => ([String.intercalate "," (List.map (· ++ "₀") topnames)],[])
 
