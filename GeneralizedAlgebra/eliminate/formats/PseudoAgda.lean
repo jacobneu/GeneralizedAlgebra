@@ -35,6 +35,7 @@ def pseudoAgda : StringFormat := ⟨
     mkParen,
     String.intercalate " ",
     psDecorate,
+    id,
     "Set",
     "=",
     "→",

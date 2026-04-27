@@ -73,6 +73,7 @@ structure StringFormat where
     (paren : String → String)
     (collapseFor : List String → String)
     (decorate : String → sfDecor → String)
+    (identModify : String → String)
     (set : String)
     (eq : String)
     (arr : String)

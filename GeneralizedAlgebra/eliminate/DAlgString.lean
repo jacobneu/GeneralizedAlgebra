@@ -53,9 +53,9 @@ def DAlg_Con_core : List (augTyMarker × Option String × Option String) → Sta
 
 
 def DAlgStr_Con (SF : StringFormat) (AΓ : List augTy) (algNames dalgNames : List String := []): List String :=
-    let (origNames,aTs) := (AΓ.map (λ (mkAugTy as aT) => (extractIdent? as,aT))).unzip
-    let algNames' := (List.zipWithSnd (Option.elim · · some) algNames origNames.reverse).reverse
-    let dalgNames' := (List.zipWithSnd (Option.elim · · some) dalgNames (algNames'.map (Option.map SF.dalgFn)).reverse).reverse
+    let (origNames,aTs) := (AΓ.map (λ (mkAugTy as aT) => (Option.map SF.identModify $ extractIdent? as,aT))).unzip
+    let algNames' := (List.zipWithSnd (Option.elim · · some) (algNames.map SF.identModify) origNames.reverse).reverse
+    let dalgNames' := (List.zipWithSnd (Option.elim · · some) (dalgNames.map SF.identModify) (algNames'.map (Option.map SF.dalgFn)).reverse).reverse
     let AΓ' := List.zip aTs (List.zip algNames' dalgNames')
     match (StateT.run (DAlg_Con_core AΓ') 0) with
         | some (ll,_) =>  List.map (OuterToString SF) ll

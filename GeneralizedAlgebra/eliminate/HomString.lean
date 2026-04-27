@@ -51,10 +51,10 @@ def isntTrivial s := match List.reverse (String.toList s) with
 | _ => true
 
 def HomStr_Con (SF : StringFormat) (AΓ : List augTy) (zeroNames oneNames homNames : List String := []): List String :=
-    let (origNames,aTs) := (AΓ.map (λ (mkAugTy as aT) => (extractIdent? as,aT))).unzip
-    let zeroNames' := (List.zipWithSnd (Option.elim · · some) zeroNames (origNames.map (Option.map SF.zeroFn)).reverse).reverse
-    let oneNames' := (List.zipWithSnd (Option.elim · · some) oneNames (origNames.map (Option.map SF.oneFn)).reverse).reverse
-    let homNames' := (List.zipWithSnd (Option.elim · · some) homNames (origNames.map (Option.map SF.homFn)).reverse).reverse
+    let (origNames,aTs) := (AΓ.map (λ (mkAugTy as aT) => (Option.map SF.identModify $ extractIdent? as,aT))).unzip
+    let zeroNames' := (List.zipWithSnd (Option.elim · · some) (zeroNames.map SF.identModify) (origNames.map (Option.map SF.zeroFn)).reverse).reverse
+    let oneNames' := (List.zipWithSnd (Option.elim · · some) (oneNames.map SF.identModify) (origNames.map (Option.map SF.oneFn)).reverse).reverse
+    let homNames' := (List.zipWithSnd (Option.elim · · some) (homNames.map SF.identModify) (origNames.map (Option.map SF.homFn)).reverse).reverse
     let AΓ' := List.zip aTs (List.zip zeroNames' (List.zip oneNames' homNames'))
     match (StateT.run (Hom_Con_core AΓ') 0) with
         | some (ll,_) =>  List.filter isntTrivial $ List.map (OuterToString SF) ll

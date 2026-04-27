@@ -53,7 +53,7 @@ def Alg_Con_core : List (Option String × augTyMarker) →  Option (List (String
 
 
 def AlgStr_Con (SF : StringFormat) (AΓ : List augTy) (algNames : List String := []): List String :=
-    let AΓ' := (List.zipWithSnd (λ os (mkAugTy as aT) => Option.elim os (extractIdent? as,aT) (some ·,aT)) algNames AΓ.reverse).reverse
+    let AΓ' := (List.zipWithSnd (λ os (mkAugTy as aT) => Option.elim os (Option.map SF.identModify $ extractIdent? as,aT) (some ·,aT)) (algNames.map SF.identModify) AΓ.reverse).reverse
     match Alg_Con_core AΓ' with
         | some ll =>  List.map (OuterToString SF) ll
         | none => []
