@@ -51,5 +51,6 @@ def pseudoAgda : StringFormat := ⟨
     "transp",
     "[wk]",
     psFormatWrapping,
-    psFormatLine
+    psFormatLine,
+    ""
 ⟩
