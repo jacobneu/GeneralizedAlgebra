@@ -90,6 +90,7 @@ structure StringFormat where
     (conWk : String)
     (formatWrapping : String → String → List String → sfDecor → List String × List String)
     (formatLine : String → sfDecor → String)
+    (breakOpportunity : String)
 
 def StringFormat.dalgFn (SF : StringFormat) s := SF.decorate s sfDalg
 def StringFormat.oneFn (SF : StringFormat) s := SF.decorate s sfOne
@@ -130,8 +131,8 @@ def sfExp.toStringParen : Nat → sfExp → String
 
 
 def closeArg (tts :  String) : Bool → String
-| true => SF.collapseFor ["",SF.colon,tts] ++ ")"
-| false => SF.collapseFor ["",SF.colon,tts] ++ SF.closeCurly
+| true => SF.collapseFor ["",SF.colon,tts] ++ ")" ++ SF.breakOpportunity
+| false => SF.collapseFor ["",SF.colon,tts] ++ SF.closeCurly ++ SF.breakOpportunity
 def openArg (s :  String) : Bool → String
 | true => "(" ++ s
 | false => SF.openCurly ++ s
@@ -142,13 +143,13 @@ def sfDepToString_core : Nat → String → Bool → List (ArgMarker' sfExp × s
 | succ n, tts, currentExpl, (Impl s,tt')::rest =>
     let tts' := tt'.toString_core n
     let currentArg := match (currentExpl,tts == tts') with
-        | (false, true) => SF.collapseFor ["",s.toString_core n]
+        | (false, true) => SF.collapseFor [" ",s.toString_core n]
         | _ => closeArg tts currentExpl ++ openArg (s.toString_core n) false
     currentArg ++ sfDepToString_core n tts' false rest
 | succ n, tts, currentExpl, (Expl s,tt')::rest =>
     let tts' := tt'.toString_core n
     let currentArg := match (currentExpl,tts == tts') with
-        | (true, true) => SF.collapseFor ["",s.toString_core n]
+        | (true, true) => SF.collapseFor [" ",s.toString_core n]
         | _ => closeArg tts currentExpl ++ openArg (s.toString_core n) true
     currentArg ++ sfDepToString_core n tts' true rest
 | succ n, tts, currentExpl, tel => SF.collapseFor [closeArg tts currentExpl,SF.arr,sfDepToString n tel]

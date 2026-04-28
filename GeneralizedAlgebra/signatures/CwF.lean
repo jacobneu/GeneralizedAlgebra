@@ -38,7 +38,7 @@ def ℭ𝔴𝔉 : GAT  := ⦃
     pair    : {Δ Γ : Con} ⇒ {A : Ty Γ} ⇒ (γ : Sub Δ Γ) ⇒
               Tm Δ (substTy {Δ} {Γ} γ A) ⇒
               Sub Δ (ext Γ A),
-    pair_nat: {Θ Δ Γ : Con} ⇒ {A : Ty Γ} ⇒ (γ : Sub Δ Γ) ⇒
+    pairnat: {Θ Δ Γ : Con} ⇒ {A : Ty Γ} ⇒ (γ : Sub Δ Γ) ⇒
               (t : Tm Δ (substTy {Δ} {Γ} γ A)) ⇒
               (δ : Sub Θ Δ) ⇒
               comp {Θ} {Δ} {ext Γ A} (pair {Δ} {Γ} {A} γ t) δ
@@ -46,16 +46,16 @@ def ℭ𝔴𝔉 : GAT  := ⦃
     p      : {Γ : Con} ⇒ (A : Ty Γ) ⇒ Sub (ext Γ A) Γ,
     v      : {Γ : Con} ⇒ (A : Ty Γ) ⇒
               Tm (ext Γ A) (substTy {ext Γ A} {Γ} (p {Γ} A) A),
-    ext_β₁  : {Δ Γ : Con} ⇒ (A : Ty Γ) ⇒
+    extβ₁  : {Δ Γ : Con} ⇒ (A : Ty Γ) ⇒
               (γ : Sub Δ Γ) ⇒
               (t : Tm Δ (substTy {Δ} {Γ} γ A)) ⇒
               comp {Δ} {ext Γ A} {Γ} (p {Γ} A) (pair {Δ} {Γ} {A} γ t) ≡ γ,
-    ext_β₂  : {Δ Γ : Con} ⇒ (A : Ty Γ) ⇒
+    extβ₂  : {Δ Γ : Con} ⇒ (A : Ty Γ) ⇒
               (γ : Sub Δ Γ) ⇒ (t : Tm Δ (substTy {Δ} {Γ} γ A)) ⇒
               substTm {Δ} {ext Γ A} {substTy {ext Γ A} {Γ} (p {Γ} A) A} (pair {Δ} {Γ} {A} γ t) (v {Γ} A)
-                  #⟨compTy {Δ} {ext Γ A} {Γ} A (p {Γ} A) (pair {Δ} {Γ} {A} γ t)⟩  #⟨ext_β₁ {Δ} {Γ} A γ t⟩
+                  #⟨compTy {Δ} {ext Γ A} {Γ} A (p {Γ} A) (pair {Δ} {Γ} {A} γ t)⟩  #⟨extβ₁ {Δ} {Γ} A γ t⟩
               ≡ t,
-    ext_η   : {Γ : Con} ⇒ (A : Ty Γ) ⇒
+    extη   : {Γ : Con} ⇒ (A : Ty Γ) ⇒
               pair {ext Γ A} {Γ} {A} (p {Γ} A) (v {Γ} A)
               ≡ id (ext Γ A)
 ⦄
