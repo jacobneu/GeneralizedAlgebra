@@ -9,6 +9,8 @@ import GeneralizedAlgebra.signatures.nat
 import GeneralizedAlgebra.signatures.evenodd
 import GeneralizedAlgebra.signatures.quiver
 import GeneralizedAlgebra.signatures.refl_quiver
+import GeneralizedAlgebra.signatures.dgraph
+import GeneralizedAlgebra.signatures.ugraph
 import GeneralizedAlgebra.signatures.monoid
 import GeneralizedAlgebra.signatures.group
 import GeneralizedAlgebra.signatures.preorder
@@ -35,6 +37,8 @@ def GATlist := [
   ("EO","𝔈𝔒",𝔈𝔒),
   ("Quiv","𝔔𝔲𝔦𝔳",𝔔𝔲𝔦𝔳),
   ("rQuiv","𝔯𝔔𝔲𝔦𝔳",𝔯𝔔𝔲𝔦𝔳),
+  ("dGraph","𝔡𝔊𝔯𝔞𝔭𝔥",𝔡𝔊𝔯𝔞𝔭𝔥),
+  ("uGraph","𝔲𝔊𝔯𝔞𝔭𝔥",𝔲𝔊𝔯𝔞𝔭𝔥),
   ("Mon","𝔐𝔬𝔫",𝔐𝔬𝔫),
   ("Grp","𝔊𝔯𝔭",𝔊𝔯𝔭),
   ("PreOrd","𝔓𝔯𝔢𝔒𝔯𝔡",𝔓𝔯𝔢𝔒𝔯𝔡),
