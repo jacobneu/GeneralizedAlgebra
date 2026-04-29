@@ -1,3 +1,4 @@
-import GeneralizedAlgebra.nouGAT
+import GeneralizedAlgebra.nouGAT_eliminate
 
-def 𝔅 : GAT := ⦃ X : U, x : X, x' : X ⦄
+def 𝔅 : GAT :=
+  ⦃ X : U, x x' : X ⦄

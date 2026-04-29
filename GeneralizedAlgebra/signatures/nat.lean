@@ -1,7 +1,7 @@
-import GeneralizedAlgebra.nouGAT
+import GeneralizedAlgebra.nouGAT_eliminate
 
 def 𝔑 : GAT := ⦃
-    Nat   : U,
-    zero  : Nat,
-    succ  : Nat ⇒ Nat
+    N  : U,
+    z  : N,
+    s  : N ⇒ N
 ⦄

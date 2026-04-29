@@ -1,78 +1,92 @@
 import GeneralizedAlgebra.helper
+import Lean
 
-
+open Lean Meta
 open Nat
 
-mutual
-  inductive Con : Type where
-  | EMPTY : Con
-  | EXTEND : Con → Ty → Con
+inductive preTm : Type where
+| preVAR : Nat → preTm
+| preAPP : preTm → preTm → preTm
+| preTRANSP : preTm → preTm → preTm
 
-  inductive Subst : Type where
-  | EPSILON : Con → Subst
-  | ID : Con → Subst
-  | COMP : Subst → Subst → Subst
-  | PAIR : Subst → Tm → Subst
-  | PROJ1 : Subst → Subst
+inductive preTy : Type where
+| preUU : preTy
+| preEL : preTm → preTy
+| prePI : preTm → preTy → preTy
+| preEQ : preTm → preTm → preTy
 
-  inductive Ty : Type where
-  | SUBST_Ty : Subst → Ty → Ty
-  | UU : Ty
-  | EL : Tm → Ty
-  | PI : Tm → Ty → Ty
-  | EQ : Tm → Tm → Ty
+open preTm preTy
 
-  inductive Tm : Type where
-  | SUBST_Tm : Subst → Tm → Tm
-  | PROJ2 : Subst → Tm
-  | APP : Tm → Tm
-  | TRANSP : Tm → Tm → Tm
-  | TRANSPop : Tm → Tm → Tm
-end
+-- Written backwards!
+def preCon : Type := List preTy
+instance : GetElem preCon Nat preTy fun (Γ : preCon) (i : Nat) => i < Γ.length := List.instGetElemNatLtLength
+def preEXTEND (Γ : preCon) (A : preTy) := A :: Γ
+def preEMPTY : preCon := []
 
-open Con Subst Ty Tm
+def preWkTmArr : Nat → preTm → preTm
+| a, preVAR n => if n < a then preVAR n else preVAR (succ n)
+| a, preAPP f t => preAPP (preWkTmArr a f) (preWkTmArr a t)
+| a, preTRANSP eq t => preTRANSP (preWkTmArr a eq) (preWkTmArr a t)
 
+def preWkTyArr : Nat → preTy → preTy
+| _, preUU => preUU
+| a, preEL t => preEL (preWkTmArr a t)
+| a, preEQ s t => preEQ (preWkTmArr a s) (preWkTmArr a t)
+| a, prePI X Y => prePI (preWkTmArr a X) (preWkTyArr (succ a) Y)
 
-infixl:10 " ▷ " => EXTEND
-notation t " [ " σ " ]t " => SUBST_Tm σ t
-
-def len : Con → Nat
-| EMPTY => 0
-| Γ ▷ _ => succ (len Γ)
-
-def deBruijn : Tm → Option Nat
-| PROJ2 (ID _) => some 0
-| t [ PROJ1 (ID _) ]t => do let res ← deBruijn t; return (succ res)
-| _ => none
-
-def wk (Γ : Con) (A : Ty) : Subst := PROJ1 (@ID (Γ ▷ A))
-def V0 (Γ : Con) (T0 : Ty) : Tm := PROJ2 (@ID (Γ ▷ T0))
+def preWkTm := preWkTmArr 0
+def preWkTy := preWkTyArr 0
 
 
--- namespace GAT
+-- def congrDec {A B : Type}{x x' : A} (f : A → B) (dec : Decidable (x = x')) : Decidable (f x = f x') := match dec with
+-- | isFalse e => by apply isFalse; intro c; apply e; injection f;
+-- | isTrue e => _
 
-inductive Arg : Type where
-| Impl : String → Ty → Arg
-| Expl : String → Ty → Arg
-| Anon : Ty → Arg
-open Arg
+instance preTm.decEq : DecidableEq preTm := fun
+| t1 , t2 => by
+  cases t1 with
+  | preVAR n1 => cases t2 with
+    | preVAR n2 => cases Nat.decEq n1 n2 with
+        | isFalse e => apply isFalse; intro c; apply e; injection c;
+        | isTrue e' => apply isTrue; apply congrArg; assumption
+    | _ => left; intro; contradiction
+  | preAPP f x => cases t2 with
+    | preAPP f' x' => cases preTm.decEq f f' with
+        | isFalse e => apply isFalse; intro c; apply e; injection c;
+        | isTrue e => cases preTm.decEq x x' with
+          | isFalse e' => apply isFalse; intro c; apply e'; injection c;
+          | isTrue e' => apply isTrue; rw [e,e']
+    | _ => left; intro; contradiction
+  | preTRANSP f x => cases t2 with
+    | preTRANSP f' x' => cases preTm.decEq f f' with
+        | isFalse e => apply isFalse; intro c; apply e; injection c;
+        | isTrue e => cases preTm.decEq x x' with
+          | isFalse e' => apply isFalse; intro c; apply e'; injection c;
+          | isTrue e' => apply isTrue; rw [e,e']
+    | _ => left; intro; contradiction
 
-def getName : Arg → Option String
-| Impl i _ => some i
-| Expl i _ => some i
-| Anon _ => none
+def substTm : Nat → preTm → preTm → preTm
+| a, s, preVAR n =>
+  match compare n a with
+    | Ordering.lt => preVAR n
+    | Ordering.eq => s
+    | Ordering.gt => preVAR (n - 1)
+| a, s, preAPP f t => preAPP (substTm a s f) (substTm a s t)
+| a, s, preTRANSP eq t => preTRANSP (substTm a s eq) (substTm a s t)
 
-structure GAT where
-  (con : Con)
+def substTy : Nat → preTm → preTy → preTy
+| _, _, preUU => preUU
+| a, s, preEL t => preEL (substTm a s t)
+| a, s, preEQ s' t => preEQ (substTm a s s') (substTm a s t)
+| a, s, prePI X Y => prePI (substTm a s X) (substTy (succ a) s Y)
+
+-- inductive preArg : Type where
+-- -- | preImpl : String → preTy → preArg
+-- | preExpl : String → preTm → preArg
+-- | preAnon : preTm → preArg
+-- open preArg
+
+structure GATdata where
+  (con : preCon)
   (topnames : List String)
-  (telescopes : List (List Arg × Ty))
-
--- #check Listappend
-def GAT.subnames (𝔊 : GAT) : List String :=
-  List.join $
-  List.map (λ (L,s) => L ++ [s]) $
-  List.zip
-    (List.map ((mappartial getName) ∘ Prod.fst) (GAT.telescopes 𝔊))
-    (GAT.topnames 𝔊)
-
--- end GAT
+  (telescopes : List (List ArgMarker))

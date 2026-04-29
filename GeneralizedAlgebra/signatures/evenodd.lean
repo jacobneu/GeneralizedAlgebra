@@ -1,4 +1,4 @@
-import GeneralizedAlgebra.nouGAT
+import GeneralizedAlgebra.nouGAT_eliminate
 
 def 𝔈𝔒 : GAT := ⦃
     Even  : U,

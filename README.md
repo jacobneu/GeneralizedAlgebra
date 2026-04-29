@@ -7,9 +7,9 @@ Created by Jacob Neumann for his PhD thesis, **A Generalized Algebraic Theory of
 
 ## oneGAT and nouGAT
 
-The GAT signature language, which we refer to as `oneGAT` is the QIIT signature language from ['Constructing Quotient Inductive-Inductive Types by Altenkirch, Kaposi, and Kovács](https://dl.acm.org/doi/abs/10.1145/3290315), but (currently) without the *Pi-types with metatheoretic domain*. The definition of `oneGAT` is given in [signature.lean](GeneralizedAlgebra/signature.lean) and the `oneGAT`-to-String function is implemented in [ConPrinting.lean](GeneralizedAlgebra/ConPrinting.lean).
+The GAT signature language, which we refer to as `oneGAT` is the QIIT signature language from ['Constructing Quotient Inductive-Inductive Types by Altenkirch, Kaposi, and Kovács](https://dl.acm.org/doi/abs/10.1145/3290315), but (currently) without the *Pi-types with metatheoretic domain*. The definition of `oneGAT` is given in [signature.lean](GeneralizedAlgebra/signature.lean) and the `oneGAT`-to-String function is implemented in [ConPrinting.lean](GeneralizedAlgebra/eliminate/ConPrinting.lean).
 
-The purpose of this project is to provide a convenient syntax for defining `oneGAT` signatures, and for automatically generating the corresponding notions of algebra, homomorphism, displayed algebra, section, etc., as defined in the 'Constructing QIITs' paper and its [appendix](https://bitbucket.org/akaposi/finitaryqiit/raw/master/appendix.pdf). We call this syntax `nouGAT`. The `nouGAT`-to-`oneGAT` parser is implemented in [nouGAT.lean](GeneralizedAlgebra/nouGAT.lean), and the algebra-generation, displayed-algebra-generation, etc. in [AlgPrinting.lean](GeneralizedAlgebra/AlgPrinting.lean).
+The purpose of this project is to provide a convenient syntax for defining `oneGAT` signatures, and for automatically generating the corresponding notions of algebra, homomorphism, displayed algebra, section, etc., as defined in the 'Constructing QIITs' paper and its [appendix](https://bitbucket.org/akaposi/finitaryqiit/raw/master/appendix.pdf). We call this syntax `nouGAT`. The `nouGAT`-to-`oneGAT` parser is implemented in [nouGAT.lean](GeneralizedAlgebra/nouGAT.lean), and the algebra-generation, displayed-algebra-generation, etc. in [eliminate](GeneralizedAlgebra/eliminate).
 
 The `nouGAT` syntax uses named variables (instead of `oneGAT`'s de Bruijn indices), Russell-style universe U with implicit El (instead of Tarski-style, with explicit El), infix arrows for (dependent) functions (instead of explicit Pi's), and other syntactic sugar implemented or in-the-works. So, for instance, the GAT ℭ𝔞𝔱 of *categories* would be written in `nouGAT` as:
 ```
@@ -59,7 +59,7 @@ In the future, we hope to implement the algebras, homomorphisms, displayed algeb
 
 Currently, signatures are given in a "pretty" and "plain" form. The "plain" form will actually syntax-check, and produce a `oneGAT` signature. The "pretty" versions make use of `nouGAT` syntax which may not have been implemented yet, and therefore likely won't compile. The "pretty" versions are the ones used in the text of the thesis. The ultimate goal is to implement the missing syntax, so that the "pretty" versions will produce the same `oneGAT` signature as their "plain" counterpart.
 
-See [GeneralizedAlgebra.lean](GeneralizedAlgebra.lean) for a listing of all the example GATs and a demonstration of their `oneGAT` representation, algebras, displayed algebras, etc.
+See [Main.lean](Main.lean) for a listing of all the example GATs and a demonstration of their `oneGAT` representation, algebras, and displayed algebras.
 
 ### Basic structures
 
@@ -111,12 +111,10 @@ See [GeneralizedAlgebra.lean](GeneralizedAlgebra.lean) for a listing of all the 
 - **Categories with Families (CwFs)** — ℭ𝔴𝔉
     - *Pretty:* [CwF.lean](GeneralizedAlgebra/pretty_signatures/CwF.lean)
     - *Plain*: [CwF.lean](GeneralizedAlgebra/signatures/CwF.lean)
-- **CwFs supporting unit type** — ℭ𝔴𝔉+1
-    - *Pretty:* [CwF_unit.lean](GeneralizedAlgebra/pretty_signatures/CwF_unit.lean)
-    - *Plain*: [CwF_unit.lean](GeneralizedAlgebra/signatures/CwF_unit.lean)
+
 - **Polarized Categories with Families (PCwFs)** — 𝔓ℭ𝔴𝔉
     - *Pretty:* [PCwF.lean](GeneralizedAlgebra/pretty_signatures/PCwF.lean)
     - *Plain*: [PCwF.lean](GeneralizedAlgebra/signatures/PCwF.lean)
-- **Neutral-Polarized Categories with Families (NPCwFs)** — 𝔑𝔓ℭ𝔴𝔉
+- **GAT signature Categories with Families (GATCwFs)** — 𝔑𝔓ℭ𝔴𝔉
     - *Pretty:* [NPCwF.lean](GeneralizedAlgebra/pretty_signatures/NPCwF.lean)
     - *Plain*: [NPCwF.lean](GeneralizedAlgebra/signatures/NPCwF.lean)

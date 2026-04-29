@@ -1,12 +1,16 @@
+-- import GeneralizedAlgebra
 import Lake
 open Lake DSL
 
-package «GeneralizedAlgebra» where
+package «generalizedalgebra» where
   -- add package configuration options here
 
 lean_lib «GeneralizedAlgebra» where
-  -- add library configuration options here
 
 @[default_target]
-lean_exe «generalizedalgebra» where
-  root := `Main
+lean_exe «pseudoAgda» where
+  root := `pseudoAgda
+
+@[default_target]
+lean_exe «forester» where
+  root := `Forester
