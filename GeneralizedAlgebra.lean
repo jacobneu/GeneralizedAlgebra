@@ -1,6 +1,6 @@
-import GeneralizedAlgebra.nouGAT
-import GeneralizedAlgebra.eliminate.DAlgString
-import GeneralizedAlgebra.eliminate.ConPrinting
+import GeneralizedAlgebra.nouGAT_eliminate
+-- import GeneralizedAlgebra.eliminate.DAlgString
+-- import GeneralizedAlgebra.eliminate.ConPrinting
 
 import GeneralizedAlgebra.signatures.set
 import GeneralizedAlgebra.signatures.pointed
@@ -21,30 +21,38 @@ import GeneralizedAlgebra.signatures.GAT_CwF
 
 
 def GATlist := [
-  ("Set","𝔖𝔢𝔱",𝔖𝔢𝔱_data),
-  ("P","𝔓",𝔓_data),
-  ("B","𝔅",𝔅_data),
-  ("N","𝔑",𝔑_data),
-  ("EO","𝔈𝔒",𝔈𝔒_data),
-  ("Quiv","𝔔𝔲𝔦𝔳",𝔔𝔲𝔦𝔳_data),
-  ("rQuiv","𝔯𝔔𝔲𝔦𝔳",𝔯𝔔𝔲𝔦𝔳_data),
-  ("Mon","𝔐𝔬𝔫",𝔐𝔬𝔫_data),
-  ("Grp","𝔊𝔯𝔭",𝔊𝔯𝔭_data),
-  ("PreOrd","𝔓𝔯𝔢𝔒𝔯𝔡",𝔓𝔯𝔢𝔒𝔯𝔡_data),
-  ("Setoid","𝔖𝔢𝔱𝔬𝔦𝔡",𝔖𝔢𝔱𝔬𝔦𝔡_data),
-  ("Cat","ℭ𝔞𝔱",ℭ𝔞𝔱_data),
-  ("Grpd","𝔊𝔯𝔭𝔡",𝔊𝔯𝔭𝔡_data),
-  ("CwF","ℭ𝔴𝔉",ℭ𝔴𝔉_data),
-  ("PCwF","𝔓ℭ𝔴𝔉",𝔓ℭ𝔴𝔉_data),
-  ("GATCwF","𝔊𝔄𝔗ℭ𝔴𝔉",𝔊𝔄𝔗ℭ𝔴𝔉_data)]
-
--- Functions for displaying
-def printIndent s := IO.println ("    " ++ s)
-
-def printAlg (G : String) (𝔊 : GATdata) : IO PUnit := do
-  IO.println $ "record " ++ G ++ "-Alg where "
-  List.forM (AlgStr_Con 𝔊) printIndent
-
-def printDAlg (G : String) (𝔊 : GATdata) : IO PUnit := do
-  IO.println $ "record " ++ G ++ "-DAlg (" ++ (String.intercalate "," (List.reverse 𝔊.topnames)) ++ ") where"
-  List.forM (DAlgStr_Con 𝔊) printIndent
+  ("Set","𝔖𝔢𝔱",𝔖𝔢𝔱),
+  ("P","𝔓",𝔓),
+  ("B","𝔅",𝔅),
+  ("N","𝔑",𝔑),
+  ("EO","𝔈𝔒",𝔈𝔒),
+  ("Quiv","𝔔𝔲𝔦𝔳",𝔔𝔲𝔦𝔳),
+  ("rQuiv","𝔯𝔔𝔲𝔦𝔳",𝔯𝔔𝔲𝔦𝔳),
+  ("Mon","𝔐𝔬𝔫",𝔐𝔬𝔫),
+  ("Grp","𝔊𝔯𝔭",𝔊𝔯𝔭),
+  ("PreOrd","𝔓𝔯𝔢𝔒𝔯𝔡",𝔓𝔯𝔢𝔒𝔯𝔡),
+  ("Setoid","𝔖𝔢𝔱𝔬𝔦𝔡",𝔖𝔢𝔱𝔬𝔦𝔡),
+  ("Cat","ℭ𝔞𝔱",ℭ𝔞𝔱),
+  ("Grpd","𝔊𝔯𝔭𝔡",𝔊𝔯𝔭𝔡),
+  ("CwF","ℭ𝔴𝔉",ℭ𝔴𝔉),
+  ("PCwF","𝔓ℭ𝔴𝔉",𝔓ℭ𝔴𝔉),
+  -- ("GATCwF","𝔊𝔄𝔗ℭ𝔴𝔉",𝔊𝔄𝔗ℭ𝔴𝔉)
+  ]
+def mkMain (SF: StringFormat): List String → IO PUnit
+| theCmdStr::theGATstr::reps => do
+    let (frakStr,theGAT) := match (List.find? (λ (gs,_,_) => gs == theGATstr) GATlist) with
+      | some (_,𝔊s,𝔊) => (𝔊s,𝔊)
+      | _ => ("𝔖𝔢𝔱",𝔖𝔢𝔱)
+    let deco : Option sfDecor := match theCmdStr with
+      | "Con" => some sfDecor.sfId
+      | "Alg" => some sfDecor.sfAlg
+      | "DAlg" => some sfDecor.sfDalg
+      | "Hom" => some sfDecor.sfHom
+      | "Sect" => some sfDecor.sfSect
+      | _ => none
+    match deco with
+      | none => IO.println "Error: unknown command"
+      | some dec => do
+          let headings := SF.formatWrapping theGATstr frakStr theGAT.topnames dec
+          List.forM (headings.1 ++ List.map (mkReplaceVF reps) (getStr theGAT SF dec) ++ headings.2) IO.println
+| _ => IO.println "Error: command and GAT not supplied"

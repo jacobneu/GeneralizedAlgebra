@@ -38,6 +38,33 @@ def preWkTm := preWkTmArr 0
 def preWkTy := preWkTyArr 0
 
 
+-- def congrDec {A B : Type}{x x' : A} (f : A → B) (dec : Decidable (x = x')) : Decidable (f x = f x') := match dec with
+-- | isFalse e => by apply isFalse; intro c; apply e; injection f;
+-- | isTrue e => _
+
+instance preTm.decEq : DecidableEq preTm := fun
+| t1 , t2 => by
+  cases t1 with
+  | preVAR n1 => cases t2 with
+    | preVAR n2 => cases Nat.decEq n1 n2 with
+        | isFalse e => apply isFalse; intro c; apply e; injection c;
+        | isTrue e' => apply isTrue; apply congrArg; assumption
+    | _ => left; intro; contradiction
+  | preAPP f x => cases t2 with
+    | preAPP f' x' => cases preTm.decEq f f' with
+        | isFalse e => apply isFalse; intro c; apply e; injection c;
+        | isTrue e => cases preTm.decEq x x' with
+          | isFalse e' => apply isFalse; intro c; apply e'; injection c;
+          | isTrue e' => apply isTrue; rw [e,e']
+    | _ => left; intro; contradiction
+  | preTRANSP f x => cases t2 with
+    | preTRANSP f' x' => cases preTm.decEq f f' with
+        | isFalse e => apply isFalse; intro c; apply e; injection c;
+        | isTrue e => cases preTm.decEq x x' with
+          | isFalse e' => apply isFalse; intro c; apply e'; injection c;
+          | isTrue e' => apply isTrue; rw [e,e']
+    | _ => left; intro; contradiction
+
 def substTm : Nat → preTm → preTm → preTm
 | a, s, preVAR n =>
   match compare n a with
@@ -62,4 +89,4 @@ def substTy : Nat → preTm → preTy → preTy
 structure GATdata where
   (con : preCon)
   (topnames : List String)
-  (telescopes : List (List (Option (String × Bool))))
+  (telescopes : List (List ArgMarker))

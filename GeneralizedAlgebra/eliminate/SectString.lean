@@ -1,0 +1,70 @@
+import GeneralizedAlgebra.eliminate.DAlgString
+import GeneralizedAlgebra.eliminate.HomString
+
+open Nat
+open elaborator
+open basicEliminators
+open augTy augTm augTyMarker
+open sfExp sfDecor
+open ArgMarker'
+
+
+
+def SectStr_Tm : List (Option sfExp × Option sfExp × Option sfExp) → augTm → Option sfExp
+| topnames, augVAR n =>  Option.join (Prod.snd <$> Prod.snd <$> topnames[n]?)
+| topnames, augAPPx f _ => SectStr_Tm topnames f
+| topnames, augAPPi f _ => SectStr_Tm topnames f
+| topnames, augTRANSP _ s => SectStr_Tm topnames s
+
+
+def SectStr_Ty : List (Option sfExp × Option sfExp × Option sfExp) → sfExp → sfExp → augTyMarker → StateT Nat Option sfExp
+| _, alg, dalg, augUU => do
+    let v ← getName
+    return sfDep [(Expl $ sfIdent v,alg)] $ sfL [dalg,sfIdent v]
+| topnames, alg, dalg, augEL X => do
+    let sX ← SectStr_Tm topnames X
+    return sfEq (sfL [sX, alg]) dalg
+| topnames, alg, dalg, augPI o X Y => do
+    let varo ← getNameAM o
+    let dvar ← sfIdent <$> getName
+    let svar ← sfIdent <$> getName
+    let aX ← AlgStr_Tm (topnames.map Prod.fst) X
+    let hX ← SectStr_Tm topnames X
+    let alg' := if varo.2.2 then sfL [alg,sfIdent varo.2.1] else alg
+    let dalg' := if varo.2.2 then sfL [dalg,sfR [hX,sfIdent varo.2.1]] else dalg
+    let hY ← SectStr_Ty ((sfIdent varo.2.1,dvar,svar)::topnames) alg' dalg' Y
+    return sfDep [(Impl $ sfIdent varo.2.1,aX)] hY
+| _, _, _, augEQ _ _ => return sfTop
+
+
+def Sect_Con_core : List (augTyMarker × Option String × Option String × Option String) → StateT Nat Option (List (String × sfExp))
+| (aT,os,ods,oss) :: augCon => do
+    let s ← os
+    let ds ← ods
+    let ss ← oss
+    let res ← Sect_Con_core augCon
+    let firstname ← SectStr_Ty (augCon.map (λ (_,os',ods',oss') => (sfIdent <$> os',sfIdent <$> ods',sfIdent <$> oss'))) (sfIdent s) (sfIdent ds) aT
+    return res ++ [(ss,firstname)]
+| [] => return []
+
+
+-- def isntTrivial s := match List.reverse (String.toList s) with
+-- | '⊤'::_ => false
+-- | _ => true
+
+def SectStr_Con (SF : StringFormat) (AΓ : List augTy) (algNames dalgNames sectNames : List String := []): List String :=
+    let (origNames,aTs) := (AΓ.map (λ (mkAugTy as aT) => (Option.map SF.identModify $ extractIdent? as,aT))).unzip
+    let algNames' := (List.zipWithSnd (Option.elim · · some) (algNames.map SF.identModify) origNames.reverse).reverse
+    let dalgNames' := (List.zipWithSnd (Option.elim · · some) (dalgNames.map SF.identModify) (algNames'.map (Option.map SF.dalgFn)).reverse).reverse
+    let sectNames' := (List.zipWithSnd (Option.elim · · some) (sectNames.map SF.identModify) (algNames'.map (Option.map SF.sectFn)).reverse).reverse
+    let AΓ' := List.zip aTs (List.zip algNames' (List.zip dalgNames' sectNames'))
+    match (StateT.run (Sect_Con_core AΓ') 0) with
+        | some (ll,_) =>  List.filter isntTrivial $ List.map (OuterToString SF) ll
+        | none => []
+
+def SectStrElim_outer (SF : StringFormat) : eliminator_outer augElim_inner :=
+    elimProduct_outer_post augElim_outer (SectStr_Con SF)
+
+def SectStrElim (SF : StringFormat) := toEliminator (SectStrElim_outer SF)
+
+syntax "[SectStr|" con_inner "]" : condata_outer

@@ -1,58 +1,69 @@
 import GeneralizedAlgebra.eliminate.AlgString
 
-
 open Nat
-open preTy preTm
+open elaborator
+open basicEliminators
+open augTy augTm augTyMarker
+open sfExp sfDecor
+open ArgMarker'
 
-def dalg s := s ++ "ᴰ"
 
--- def DAlgStr_Tm : List String → preTm → String
--- | s::ss, preVAR 0
 
-def DAlgStr_Tm : List String → preTm → String
-| topnames, preVAR n => dalg (AlgStr_Tm topnames (preVAR n))
-| topnames, preAPP f s => DAlgStr_Tm topnames f ++ " " ++ mkParen (AlgStr_Tm topnames s) ++ " " ++ mkParen (DAlgStr_Tm topnames s)
-| topnames, preTRANSP _ s => DAlgStr_Tm topnames s
+def DAlgStr_Tm : List (Option sfExp × Option sfExp) → augTm → StateT Nat Option sfExp
+| topnames, augVAR n => Option.join (Prod.snd <$> topnames[n]?)
+| topnames, augAPPx f s => do
+    let sf ← DAlgStr_Tm topnames f
+    let ss ← DAlgStr_Tm topnames s
+    return sfL [sf, ss]
+| topnames, augAPPi f _ => DAlgStr_Tm topnames f
+| topnames, augTRANSP _ s => DAlgStr_Tm topnames s
 
-def DAlgStr_Ty : List String → List String → String → preTy → String
-| _, _, algS, preUU => algS ++ " → Set"
-| topnames, _, algS, preEL tt => DAlgStr_Tm topnames tt ++ " " ++ mkParen algS
-| topnames, t::ts, algS, prePI X Y =>
-"(" ++ t ++ " : " ++ AlgStr_Tm topnames X ++ ") → (" ++ dalg t ++ " : " ++ DAlgStr_Tm topnames X ++ " " ++ t ++ ") → " ++ DAlgStr_Ty (t::topnames) ts (algS ++ " " ++ t) Y
-| topnames, _, _, preEQ s t => DAlgStr_Tm topnames s ++ " = " ++ DAlgStr_Tm topnames t
-| _, _, _, _ => ""
+def DAlgArgFmt : ArgMarker' sfExp → sfExp → sfExp → sfExp → sfExp → Option sfExp
+| Expl s, ds, aX, dX, body =>
+    sfDep [(Impl s,aX)] $ sfDep [(Expl ds,sfNopar [dX,s])] body
+| Impl s, ds, aX, dX, body =>
+    sfDep [(Impl s,aX),(Impl ds,sfNopar [dX,s])] body
+| _, _, _, _, _ => none
 
-def DAlgStr_Con_core : preCon → List (List String) → List String → List String
-| [], _, _ => []
-| X::XS, tt::tts, s::ss =>
-    DAlgStr_Con_core XS tts ss ++ [dalg s ++ " : " ++ DAlgStr_Ty ss tt s X ]
-| _,_,_ => []
+def DAlgStr_Ty : List (Option sfExp × Option sfExp) → sfExp → augTyMarker → StateT Nat Option sfExp
+| _, algS, augUU => return sfArr algS sfSet
+| topnames, algS, augEL X => (sfL [ · , algS]) <$> DAlgStr_Tm topnames X
+| topnames, _, augEQ t1 t2 => do
+    let sf1 ← DAlgStr_Tm topnames t1
+    let sf2 ← DAlgStr_Tm topnames t2
+    return sfEq sf1 sf2
+| topnames, algS, augPI o X Y => do
+    let varo ← getNameAM o
+    let dvar ← sfIdent <$> getName
+    let aX ← AlgStr_Tm (topnames.map Prod.fst) X
+    let dX ← DAlgStr_Tm topnames X
+    let algS' := if varo.2.2 then sfNopar [algS,sfIdent varo.2.1] else algS
+    let dY ← DAlgStr_Ty ((sfIdent varo.2.1,dvar)::topnames) algS' Y
+    DAlgArgFmt varo.1 dvar aX dX dY
 
-def genVars_core : Nat → List (List (Option (String × Bool))) → List (List String) → List (List String)
-| _, [],_ => []
-| acc, []::AS, given => []::genVars_core acc AS given
--- | acc, []::AS, [] => []::genVars_core acc AS []
-| acc, (none::as)::AS, []::givenRest => match genVars_core (succ acc) (as::AS) ([]::givenRest) with
-    | headStr::rest => (("X_" ++ toString acc)::headStr)::rest
-    | [] => []
-| acc, (_::as)::AS, (s1::givenFst)::givenRest => match genVars_core acc (as::AS) (givenFst::givenRest) with
-    | headStr::rest => (s1::headStr)::rest
-    | [] => []
-| acc, (none::as)::AS, [] => match genVars_core (succ acc) (as::AS) [] with
-    | headStr::rest => (("X_" ++ toString acc)::headStr)::rest
-    | [] => []
--- | acc, (_::as)::AS, (s1::givenFst)::givenRest => match genVars_core acc (as::AS) (givenFst::givenRest) with
---     | headStr::rest => (s1::headStr)::rest
---     | [] => []
-| acc, ((some s)::as)::AS, [] => match genVars_core acc (as::AS) [] with
-    | headStr::rest => (s.1::headStr)::rest
-    | [] => []
-| acc, ((some s)::as)::AS, ([]::givenRest) => match genVars_core acc (as::AS) ([]::givenRest) with
-    | headStr::rest => (s.1::headStr)::rest
-    | [] => []
 
-def genVars (input : List (List (Option (String × Bool)))) (given : List (List String) := []) : List (List String) := genVars_core 0 (List.reverse input) given
+def DAlg_Con_core : List (augTyMarker × Option String × Option String) → StateT Nat Option (List (String × sfExp))
+| (aT,os,ods) :: augCon => do
+    let s ← os
+    let ds ← ods
+    let res ← DAlg_Con_core augCon
+    let firstname ← DAlgStr_Ty (augCon.map (λ (_,os',ods') => (sfIdent <$> os',sfIdent <$> ods'))) (sfIdent s) aT
+    return res ++ [(ds,firstname)]
+| [] => return []
 
-def DAlgStr_Con (𝔊 : GATdata) (teleNames : List (List String) := []): List String :=
-let telescopeNames := List.reverse (genVars 𝔊.telescopes teleNames)
-DAlgStr_Con_core 𝔊.con telescopeNames (List.reverse 𝔊.topnames)
+
+def DAlgStr_Con (SF : StringFormat) (AΓ : List augTy) (algNames dalgNames : List String := []): List String :=
+    let (origNames,aTs) := (AΓ.map (λ (mkAugTy as aT) => (Option.map SF.identModify $ extractIdent? as,aT))).unzip
+    let algNames' := (List.zipWithSnd (Option.elim · · some) (algNames.map SF.identModify) origNames.reverse).reverse
+    let dalgNames' := (List.zipWithSnd (Option.elim · · some) (dalgNames.map SF.identModify) (algNames'.map (Option.map SF.dalgFn)).reverse).reverse
+    let AΓ' := List.zip aTs (List.zip algNames' dalgNames')
+    match (StateT.run (DAlg_Con_core AΓ') 0) with
+        | some (ll,_) =>  List.map (OuterToString SF) ll
+        | none => []
+
+def DAlgStrElim_outer (SF : StringFormat) : eliminator_outer augElim_inner :=
+    elimProduct_outer_post augElim_outer (DAlgStr_Con SF)
+
+def DAlgStrElim (SF : StringFormat) := toEliminator (DAlgStrElim_outer SF)
+
+syntax "[DAlgStr|" con_inner "]" : condata_outer

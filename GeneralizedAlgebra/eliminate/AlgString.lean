@@ -1,61 +1,66 @@
 import GeneralizedAlgebra.nouGAT
-
+import GeneralizedAlgebra.eliminate.formats.StringFormat
 
 open Nat
-open preTy preTm
 open elaborator
 open basicEliminators
+open augTy augTm augTyMarker
+open sfExp
+open ArgMarker'
 
 
-
-def AlgStr_Tm : List String → preTm → String
-| As::_, preVAR 0 => As
-| _::ss, preVAR (succ n) => AlgStr_Tm ss (preVAR n)
-| topnames, preAPP f t =>
-    AlgStr_Tm topnames f ++ " " ++ mkParen (AlgStr_Tm topnames t)
-| topnames, preTRANSP _ s => AlgStr_Tm topnames s
-| _, _ => ""
-
-def AlgStr_Ty : List String → preTy → List (Option (String × Bool) × preTm) → String
-| _, preUU, _ => "Set"
-| topnames, preEL t, _ =>
-    AlgStr_Tm topnames t
-| topnames, preEQ s t, _ =>
-    AlgStr_Tm topnames s ++ " = " ++ AlgStr_Tm topnames t
-| topnames, prePI _ Y, (none,t) ::trest =>
-    AlgStr_Tm topnames t ++ " → " ++ AlgStr_Ty (""::topnames) Y trest
-| topnames, prePI _ Y, (some (s,true),t) ::trest =>
-    "(" ++ s ++ " : " ++ AlgStr_Tm topnames t ++ ") → " ++ AlgStr_Ty (s::topnames) Y trest
-| topnames, prePI _ Y, (some (s,false),_) ::trest =>
-    -- "{" ++ s ++ " : " ++ AlgStr_Tm topnames t ++ "} → " ++
-    AlgStr_Ty (s::topnames) Y trest
-| _, _, _ => ""
-
-def AlgStr_Con_core : List String → List (preTy × List (Option (String × Bool) × preTm)) → List String
-| [s],[(X,tt)] =>
-    [s ++ " : " ++ AlgStr_Ty [] X tt]
-| s::ss, (X,tt)::rest => -- ⟨X::XS,s::ss,(tt,_)::tts⟩ =>
-    AlgStr_Con_core ss rest ++
-    [s ++ " : " ++ AlgStr_Ty ss X tt]
-| _,_ => []
-
-def GATdataZip_core : preTy → List (Option (String × Bool)) → preTy × List (Option (String × Bool) × preTm)
-| prePI X Y, o::TT => (prePI X Y,(o,X) :: (GATdataZip_core Y TT).2)
-| T, _ => (T,[])
-
-def GATdataZip : GATdata → List String × List (preTy × List (Option (String × Bool) × preTm))
-| ⟨thePreCon, theTopnames, theTelescopes⟩ =>
-    (List.reverse theTopnames, List.zipWith GATdataZip_core thePreCon (List.reverse theTelescopes))
-
-def AlgStr_Con (𝔊 : GATdata) : List String := let z := GATdataZip 𝔊; AlgStr_Con_core z.1 z.2
+def AlgStr_Tm : List (Option sfExp) → augTm → Option sfExp
+| augCon, augVAR n => Option.join augCon[n]?
+| topnames, augAPPx f t => do
+    let sf ← AlgStr_Tm topnames f
+    let st ← AlgStr_Tm topnames t
+    return sfL [sf,st]
+| topnames, augAPPi f _ => AlgStr_Tm topnames f
+| augCon, augTRANSP _ s => AlgStr_Tm augCon s
 
 
-def AlgStrElim_outer : eliminator_outer preElim_inner := ⟨
-    List String,
-    λ Γ topnames telescopes =>
-        AlgStr_Con_core (List.reverse topnames) (List.zipWith GATdataZip_core Γ (List.reverse telescopes))
-⟩
-def AlgStrElim := toEliminator AlgStrElim_outer
+def AlgStr_Ty : List (Option sfExp) → augTyMarker → Option sfExp
+| tele, augPI o X Y => do
+    let sX ← AlgStr_Tm tele X
+    let sY ← AlgStr_Ty (sfIdent <$> (extractIdent? o)::tele) Y
+    return sfDep  [(mkSfArgMark o,sX)] sY
+| _, augUU => return sfSet
+| tele, augEL X => AlgStr_Tm tele X
+| tele, augEQ t1 t2 => do
+    let s1 ← AlgStr_Tm tele t1
+    let s2 ← AlgStr_Tm tele t2
+    return sfEq s1 s2
 
-syntax "[AlgStr|" "]" : condata_outer
+def getTopnames : List augTy → List (ArgMarker' sfExp) :=
+    List.map (λ (mkAugTy o _ ) => mkSfArgMark o)
+def getTopnamesStr : List augTy → Option (List String)
+| [] => return []
+| mkAugTy (Expl s) _ :: rest => do
+    let res ← getTopnamesStr rest
+    return s :: res
+| mkAugTy (Impl s) _ :: rest => do
+    let res ← getTopnamesStr rest
+    return s :: res
+| _ => none
+
+def Alg_Con_core : List (Option String × augTyMarker) →  Option (List (String × sfExp))
+| (os, aT) :: augCon => do
+    let s ← os
+    let res ← Alg_Con_core augCon
+    let firstname ← AlgStr_Ty (augCon.map (λ (os',_) => sfIdent <$> os')) aT
+    return res ++ [(s,firstname)]
+| [] => return []
+
+
+def AlgStr_Con (SF : StringFormat) (AΓ : List augTy) (algNames : List String := []): List String :=
+    let AΓ' := (List.zipWithSnd (λ os (mkAugTy as aT) => Option.elim os (Option.map SF.identModify $ extractIdent? as,aT) (some ·,aT)) (algNames.map SF.identModify) AΓ.reverse).reverse
+    match Alg_Con_core AΓ' with
+        | some ll =>  List.map (OuterToString SF) ll
+        | none => []
+
+def AlgStrElim_outer (SF : StringFormat) : eliminator_outer augElim_inner :=
+    elimProduct_outer_post augElim_outer (AlgStr_Con SF)
+
+def AlgStrElim (SF : StringFormat) := toEliminator (AlgStrElim_outer SF)
+
 syntax "[AlgStr|" con_inner "]" : condata_outer

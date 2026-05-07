@@ -1,6 +1,6 @@
 import GeneralizedAlgebra.nouGAT_eliminate
 
-def ℭ𝔞𝔱_data  := [GATdata|
+def ℭ𝔞𝔱 : GAT := ⦃
     Obj : U,
     Hom : Obj ⇒ Obj ⇒ U,
     id  : (X : Obj) ⇒ Hom X X,
@@ -12,5 +12,5 @@ def ℭ𝔞𝔱_data  := [GATdata|
             comp {X} {X} {Y} f (id X) ≡ f,
     assoc : {W X Y Z : Obj} ⇒ (e : Hom W X) ⇒ (f : Hom X Y) ⇒ (g : Hom Y Z) ⇒
             comp {W} {Y} {Z} g (comp {W} {X} {Y} f e) ≡ comp {W} {X} {Z} (comp {X} {Y} {Z} g f) e
-]
+⦄
 def Cat_names_alt1 := ["Obj","Mor","I","id", "I", "J", "K","comp","I","J","j","idr","I","J","K","idl","I","J","K","L","j","k","l","ass"]

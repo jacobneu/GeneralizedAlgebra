@@ -1,15 +1,4 @@
-import GeneralizedAlgebra.signatures.pointed
+import GeneralizedAlgebra.nouGAT_eliminate
 
-def 𝔅_data : GATdata :=
-  [GATdata| X : U, x x' : X ]
-
--- def 𝔅 : GAT := ⟨
---   𝔅_data,
---   by
---     apply wellCon.wellCons
---     apply wellTy.wellEL
---     apply @wellTm.wellWkTm _ preTy.preUU
---     apply wellTm.wellZero
---     apply wellTy.wellUU
---     exact 𝔓.2
--- ⟩
+def 𝔅 : GAT :=
+  ⦃ X : U, x x' : X ⦄

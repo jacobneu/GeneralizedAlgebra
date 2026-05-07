@@ -8,5 +8,9 @@ package «generalizedalgebra» where
 lean_lib «GeneralizedAlgebra» where
 
 @[default_target]
-lean_exe «generalizedalgebra» where
-  root := `Main
+lean_exe «pseudoAgda» where
+  root := `pseudoAgda
+
+@[default_target]
+lean_exe «forester» where
+  root := `Forester
